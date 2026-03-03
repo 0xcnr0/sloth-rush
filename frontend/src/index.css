@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slug-green: #22c55e;
+  --color-slug-dark: #0a0e17;
+  --color-slug-card: #111827;
+  --color-slug-border: #1f2937;
+  --color-slug-gold: #f59e0b;
+  --color-slug-purple: #a855f7;
+  --color-slug-blue: #3b82f6;
+  --color-slug-red: #ef4444;
+  --font-family-display: "Inter", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-slug-dark);
+  color: white;
+  font-family: var(--font-family-display);
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -1,0 +1,17 @@
+{
+  "name": "slug-rush",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Slug Rush — Base L2 blockchain snail racing game",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "contracts"
+  ],
+  "scripts": {
+    "frontend": "npm run dev --workspace=frontend",
+    "backend": "npm run dev --workspace=backend",
+    "contracts": "npx hardhat compile --config contracts/hardhat.config.ts",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+  }
+}
