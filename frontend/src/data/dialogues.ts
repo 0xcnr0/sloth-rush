@@ -11,44 +11,44 @@ export interface DialogueSet {
   lose: string[]
 }
 
-// Turbo Slug — kibirli, özgüvenli
+// Turbo Slug — cocky, overconfident
 const TURBO_SLUG: DialogueSet = {
-  race_start: ['Yoldan çekil!', 'Kolay olacak...', 'Hazır mısınız kaybetmeye?'],
-  overtake: ['Kenara çekil!', 'Beni kimse durduramaz!', 'Toz yuttunuz!'],
-  shell_hit: ['Ouch! Bu haksızlık!', 'Bana mı attın?!', 'Acıttı ama durduramaz!'],
-  boost: ['TURBO ZAMANI!', 'Roket modu ON!', 'Haha, hoşçakalın!'],
-  win: ['Sürpriz değil.', 'Her zamanki gibi birinci!', 'Toz yuttunuz!'],
-  lose: ['Bu sefer şanssızdım...', 'Tekrar deneyin bakalım!', 'Hakem!'],
+  race_start: ['Out of my way!', 'This will be easy...', 'Ready to lose?'],
+  overtake: ['Step aside!', 'Nobody can stop me!', 'Eat my dust!'],
+  shell_hit: ['Ouch! That\'s unfair!', 'You threw that at ME?!', 'That hurt but can\'t stop me!'],
+  boost: ['TURBO TIME!', 'Rocket mode ON!', 'Haha, see ya later!'],
+  win: ['No surprise here.', 'First place as always!', 'Eat my dust!'],
+  lose: ['Just bad luck this time...', 'Try me again!', 'Rigged!'],
 }
 
-// Shell Knight — asil, centilmen
+// Shell Knight — noble, gentleman
 const SHELL_KNIGHT: DialogueSet = {
-  race_start: ['Onurlu bir yarış olsun!', 'Kabuğum hazır!', 'Hadi beyler, fair play!'],
-  overtake: ['İyi yarıştı.', 'Affedersin, geçiyorum.', 'Bir şövalye her zaman öndedir.'],
-  shell_hit: ['Bu... asil değildi.', 'Kabuğum dayanır!', 'Acı ama onurum yerinde.'],
-  boost: ['Kabuğum kalkanımdır!', 'Şövalye hızlanıyor!', 'Onurlu bir sprint!'],
-  win: ['Zafer onurludur.', 'İyi mücadele etti herkes.', 'Kabuğumu öpebilirsiniz.'],
-  lose: ['Rakibim daha iyiydi.', 'Bir dahaki sefere!', 'Onurlu bir mağlubiyet.'],
+  race_start: ['May this be an honorable race!', 'My shell is ready!', 'Fair play, everyone!'],
+  overtake: ['Well raced.', 'Pardon me, passing through.', 'A knight always leads.'],
+  shell_hit: ['That was... ungentlemanly.', 'My shell endures!', 'Painful, but my honor stands.'],
+  boost: ['My shell is my shield!', 'The knight accelerates!', 'An honorable sprint!'],
+  win: ['Victory with honor.', 'Well fought, everyone.', 'You may kiss my shell.'],
+  lose: ['My rival was better.', 'Next time!', 'An honorable defeat.'],
 }
 
-// Goo Mage — tuhaf, mistik
+// Goo Mage — weird, mystical
 const GOO_MAGE: DialogueSet = {
-  race_start: ['Baloncuklarım güç veriyor!', 'Sümüğüm hazır!', 'Büyü zamanı!'],
-  overtake: ['Sümük büyüsü!', 'Baloncuk geçişi!', 'Yapışkan sürpriz!'],
-  shell_hit: ['Sümüğüm!', 'Büyüm bozuldu!', 'Baloncuklarım patlıyor!'],
-  boost: ['MEGA SÜMÜK!', 'Büyü gücüyle!', 'Yapışkan turbo!'],
-  win: ['Büyü kazandı!', 'Sümük her zaman kazanır!', 'Baloncuk zafer dansı!'],
-  lose: ['Büyüm yetmedi...', 'Sümüğüm kurudu...', 'Daha çok baloncuk lazım...'],
+  race_start: ['My bubbles give me power!', 'My slime is ready!', 'Spell time!'],
+  overtake: ['Slime magic!', 'Bubble pass!', 'Sticky surprise!'],
+  shell_hit: ['My slime!', 'My spell broke!', 'My bubbles are popping!'],
+  boost: ['MEGA SLIME!', 'With spell power!', 'Sticky turbo!'],
+  win: ['Magic wins!', 'Slime always wins!', 'Bubble victory dance!'],
+  lose: ['My spell wasn\'t enough...', 'My slime dried up...', 'Need more bubbles...'],
 }
 
-// Storm Racer — agresif, sert
+// Storm Racer — aggressive, fierce
 const STORM_RACER: DialogueSet = {
-  race_start: ['Fırtına yaklaşıyor!', 'Yolumdan çekil!', 'Şimşek gibi geçeceğim!'],
-  overtake: ['YILDIRIM!', 'Çekil önümden!', 'Fırtına geçiyor!'],
-  shell_hit: ['GRRR!', 'Bunu ödeyeceksin!', 'Öfkem artıyor!'],
-  boost: ['ŞIMŞEK MODU!', 'Gök gürültüsü!', 'BOOM!'],
-  win: ['Fırtına kazandı!', 'Kimse duramaz!', 'ŞİMŞEK! ŞAMPİYON!'],
-  lose: ['Bu fırtına bitmedi!', 'Öfke birikiyor...', 'Bir dahakine yıkılırsınız!'],
+  race_start: ['The storm is coming!', 'Get out of my way!', 'I\'ll pass like lightning!'],
+  overtake: ['THUNDER!', 'Move it!', 'Storm coming through!'],
+  shell_hit: ['GRRR!', 'You\'ll pay for that!', 'My rage is building!'],
+  boost: ['LIGHTNING MODE!', 'Thunder roars!', 'BOOM!'],
+  win: ['The storm wins!', 'Nobody can stop me!', 'LIGHTNING CHAMPION!'],
+  lose: ['This storm isn\'t over!', 'Rage building...', 'Next time you\'re going down!'],
 }
 
 const DIALOGUE_MAP: Record<string, DialogueSet> = {
@@ -93,24 +93,24 @@ export type TrashTalkSet = {
 
 const TRASH_TALK_MAP: Record<string, TrashTalkSet> = {
   turbo_slug: {
-    intro: ['Hazir misiniz kaybetmeye?', 'Bugun de ben kazanacagim!', 'Kolayca halledecegim.'],
-    taunt: ['Siz yavasssiniz!', 'Beni yakalayamazsiniz!', 'Toz yutacaksiniz!'],
-    confident: ['Birinci sirada gorusuruz.', 'Sonuc belli zaten.', 'Kolay gelsin... bana.'],
+    intro: ['Ready to lose?', 'Another win for me today!', 'I\'ll handle this easily.'],
+    taunt: ['You\'re all so slow!', 'You can\'t catch me!', 'Eat my dust!'],
+    confident: ['See you at first place.', 'Result is obvious.', 'Good luck... to me.'],
   },
   shell_knight: {
-    intro: ['Onurlu bir yaris olsun!', 'Kabugum hazir!', 'Herkese basarilar!'],
-    taunt: ['Sovayle her zaman kazanir.', 'Kabugumdan gecemezsiniz!', 'Asil bir zafer olacak.'],
-    confident: ['Hazirim.', 'Onurumla yarisacagim.', 'Kabugum kalkanim!'],
+    intro: ['May this be an honorable race!', 'My shell is ready!', 'Good luck to all!'],
+    taunt: ['A knight always wins.', 'You can\'t get past my shell!', 'A noble victory awaits.'],
+    confident: ['I am ready.', 'I shall race with honor.', 'My shell is my shield!'],
   },
   goo_mage: {
-    intro: ['Buyulerim hazir!', 'Baloncuklarim guc veriyor!', 'Sumuk zamani!'],
-    taunt: ['Yapiskan surpriz!', 'Buyum sizi yavaslacak!', 'Sumugumden korkmalisiniz!'],
-    confident: ['Buyu her zaman kazanir.', 'Baloncuk gucu!', 'Sumuk yolu!'],
+    intro: ['My spells are ready!', 'My bubbles give me power!', 'Slime time!'],
+    taunt: ['Sticky surprise!', 'My spell will slow you down!', 'Fear my slime!'],
+    confident: ['Magic always wins.', 'Bubble power!', 'The way of slime!'],
   },
   storm_racer: {
-    intro: ['Firtina yaklassiyor!', 'Simsek gibi gececegim!', 'BOOM!'],
-    taunt: ['Yolumdan cekilin!', 'Ofkem birikti!', 'YILDIRIM ATACAGIM!'],
-    confident: ['Kimse duramaz.', 'Firtina bitmez.', 'GOK GURULTUSU!'],
+    intro: ['The storm approaches!', 'I\'ll strike like lightning!', 'BOOM!'],
+    taunt: ['Get out of my way!', 'My rage has built up!', 'THUNDER INCOMING!'],
+    confident: ['Nobody can stop me.', 'The storm never ends.', 'THUNDER ROARS!'],
   },
 }
 

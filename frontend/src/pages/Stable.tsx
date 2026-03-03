@@ -365,11 +365,11 @@ export default function Stable() {
                 {streaks[snail.id] && (() => {
                   const s = streaks[snail.id]
                   const badges: { icon: string; label: string; color: string }[] = []
-                  if (s.total_wins >= 1) badges.push({ icon: '\u2B50', label: 'İlk Galibiyet', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' })
-                  if (s.max_wins >= 3) badges.push({ icon: '\uD83D\uDD25', label: 'Ateş Serisi', color: 'bg-orange-500/20 text-orange-400 border-orange-500/50' })
+                  if (s.total_wins >= 1) badges.push({ icon: '\u2B50', label: 'First Win', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' })
+                  if (s.max_wins >= 3) badges.push({ icon: '\uD83D\uDD25', label: 'On Fire', color: 'bg-orange-500/20 text-orange-400 border-orange-500/50' })
                   if (s.total_races >= 10) badges.push({ icon: '\uD83D\uDEE1\uFE0F', label: 'Veteran', color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' })
-                  if (s.total_wins >= 10) badges.push({ icon: '\uD83C\uDFC6', label: 'Şampiyon', color: 'bg-purple-500/20 text-purple-400 border-purple-500/50' })
-                  if (s.current_wins >= 5) badges.push({ icon: '\uD83D\uDC51', label: 'Yenilmez', color: 'bg-red-500/20 text-red-400 border-red-500/50' })
+                  if (s.total_wins >= 10) badges.push({ icon: '\uD83C\uDFC6', label: 'Champion', color: 'bg-purple-500/20 text-purple-400 border-purple-500/50' })
+                  if (s.current_wins >= 5) badges.push({ icon: '\uD83D\uDC51', label: 'Unbeatable', color: 'bg-red-500/20 text-red-400 border-red-500/50' })
                   if (badges.length === 0) return null
                   return (
                     <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">

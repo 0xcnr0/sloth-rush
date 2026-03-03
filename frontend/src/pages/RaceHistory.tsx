@@ -117,7 +117,7 @@ export default function RaceHistory() {
                     className={`border-b border-slug-border/50 hover:bg-white/5 transition-colors ${i === races.length - 1 ? 'border-b-0' : ''}`}
                   >
                     <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
-                      {new Date(race.createdAt).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(race.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="px-4 py-3 text-gray-300">{FORMAT_LABELS[race.format] || race.format}</td>
                     <td className="px-4 py-3 text-white font-medium">{race.snailName}</td>

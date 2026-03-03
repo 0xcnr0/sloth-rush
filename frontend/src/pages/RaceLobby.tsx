@@ -494,7 +494,7 @@ export default function RaceLobby() {
             className="text-center"
           >
             <h1 className="text-2xl font-bold mb-2 text-slug-gold">GRAND PRIX FINAL</h1>
-            <p className="text-gray-400 mb-4">Son bid! Taktik Mod ile yarış!</p>
+            <p className="text-gray-400 mb-4">Final bid! Race in Tactic Mode!</p>
 
             <motion.div
               key={countdown}

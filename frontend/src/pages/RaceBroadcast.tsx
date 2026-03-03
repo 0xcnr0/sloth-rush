@@ -499,18 +499,18 @@ export default function RaceBroadcast() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold">
-            <span className="text-slug-green">LIVE</span> — Grand Kabuk Track
+            <span className="text-slug-green">LIVE</span> — Grand Shell Track
             {isTactic && <span className="ml-2 text-slug-purple text-sm font-normal">(TACTIC MODE)</span>}
           </h1>
           <div className="flex items-center gap-2">
             <p className="text-gray-500 text-sm">Race {raceData.raceId?.slice(-8)}</p>
             {raceData.weather && (() => {
               const w: Record<string, { emoji: string; label: string; color: string }> = {
-                sunny:  { emoji: '\u{2600}\uFE0F', label: 'G\u00fcne\u015fli', color: 'text-yellow-400' },
-                rainy:  { emoji: '\u{1F327}\uFE0F', label: 'Ya\u011fmurlu', color: 'text-blue-400' },
-                windy:  { emoji: '\u{1F4A8}', label: 'R\u00fczgarl\u0131', color: 'text-teal-400' },
-                foggy:  { emoji: '\u{1F32B}\uFE0F', label: 'Sisli', color: 'text-gray-400' },
-                stormy: { emoji: '\u{26C8}\uFE0F', label: 'F\u0131rt\u0131nal\u0131', color: 'text-red-400' },
+                sunny:  { emoji: '\u{2600}\uFE0F', label: 'Sunny', color: 'text-yellow-400' },
+                rainy:  { emoji: '\u{1F327}\uFE0F', label: 'Rainy', color: 'text-blue-400' },
+                windy:  { emoji: '\u{1F4A8}', label: 'Windy', color: 'text-teal-400' },
+                foggy:  { emoji: '\u{1F32B}\uFE0F', label: 'Foggy', color: 'text-gray-400' },
+                stormy: { emoji: '\u{26C8}\uFE0F', label: 'Stormy', color: 'text-red-400' },
               }
               const info = w[raceData.weather] || w.sunny
               return (
@@ -525,7 +525,7 @@ export default function RaceBroadcast() {
           <button
             onClick={() => { const m = toggleMute(); setSoundMuted(m) }}
             className="bg-slug-card border border-slug-border rounded-lg px-2.5 py-2 text-lg cursor-pointer hover:bg-white/5 transition-colors"
-            title={soundMuted ? 'Sesi Aç' : 'Sesi Kapat'}
+            title={soundMuted ? 'Unmute' : 'Mute'}
           >
             {soundMuted ? '\u{1F507}' : '\u{1F50A}'}
           </button>
@@ -861,7 +861,7 @@ export default function RaceBroadcast() {
           gridPositions.forEach((gp: any) => names.set(gp.id, gp.name))
           finalOrder.forEach((fo: FinalOrder) => { if (!names.has(fo.id)) names.set(fo.id, fo.name) })
 
-          // MVP 1: "En İyi Geçiş" — Most positions gained (grid start → final)
+          // MVP 1: "Best Overtake" — Most positions gained (grid start → final)
           let bestClimber = { id: 0, name: '', gain: -99 }
           for (const fo of finalOrder) {
             const startPos = gridPositions.findIndex((gp: any) => gp.id === fo.id) + 1
@@ -872,7 +872,7 @@ export default function RaceBroadcast() {
             }
           }
 
-          // MVP 2: "Hız Canavarı" — Highest max speed
+          // MVP 2: "Speed Demon" — Highest max speed
           let speedDemon = { id: 0, name: '', speed: 0 }
           for (const [idStr, spd] of Object.entries(maxSpeeds)) {
             if (spd > speedDemon.speed) {
@@ -895,7 +895,7 @@ export default function RaceBroadcast() {
             }
           }
 
-          // MVP 4: "Dayanıklı" — Most hits taken and still finished
+          // MVP 4: "Tank" — Most hits taken and still finished
           const hitCount: Record<number, number> = {}
           for (const e of events) {
             if (['tactic_shell', 'slime_burst', 'clash'].includes(e.type)) {
@@ -911,16 +911,16 @@ export default function RaceBroadcast() {
 
           const mvpAwards: { emoji: string; title: string; name: string; detail: string }[] = []
           if (bestClimber.gain > 0) {
-            mvpAwards.push({ emoji: '\u{1F3CE}\uFE0F', title: 'En İyi Geçiş', name: bestClimber.name, detail: `${bestClimber.gain} pozisyon yukarı!` })
+            mvpAwards.push({ emoji: '\u{1F3CE}\uFE0F', title: 'Best Overtake', name: bestClimber.name, detail: `Climbed ${bestClimber.gain} positions!` })
           }
           if (speedDemon.speed > 0) {
-            mvpAwards.push({ emoji: '\u{26A1}', title: 'Hız Canavarı', name: speedDemon.name, detail: `Max ${speedDemon.speed.toFixed(1)} u/t` })
+            mvpAwards.push({ emoji: '\u{26A1}', title: 'Speed Demon', name: speedDemon.name, detail: `Max ${speedDemon.speed.toFixed(1)} u/t` })
           }
           if (comebackKing) {
-            mvpAwards.push({ emoji: '\u{1F451}', title: 'Comeback King', name: comebackKing.name, detail: `P${comebackKing.worstPos}'den ilk 2'ye!` })
+            mvpAwards.push({ emoji: '\u{1F451}', title: 'Comeback King', name: comebackKing.name, detail: `From P${comebackKing.worstPos} to top 2!` })
           }
           if (tankSnail && tankSnail.hits >= 1) {
-            mvpAwards.push({ emoji: '\u{1F6E1}\uFE0F', title: 'Dayanıklı', name: tankSnail.name, detail: `${tankSnail.hits} darbe yedi, yine bitirdi!` })
+            mvpAwards.push({ emoji: '\u{1F6E1}\uFE0F', title: 'Tank', name: tankSnail.name, detail: `Took ${tankSnail.hits} hits and still finished!` })
           }
 
           return (
@@ -984,12 +984,12 @@ export default function RaceBroadcast() {
                     transition={{ delay: 1 }}
                     className="bg-slug-purple/10 border border-slug-purple/30 rounded-xl p-4 mb-6"
                   >
-                    <h3 className="text-slug-purple font-bold text-sm mb-2">Peki Ya...?</h3>
+                    <h3 className="text-slug-purple font-bold text-sm mb-2">What If...?</h3>
                     <p className="text-gray-300 text-sm">
-                      {runnerUp.name}, bitiş çizgisine sadece <span className="text-slug-gold font-bold">{gap} birim</span> uzaktaydı.
-                      {isTactic && !boostCount[runnerUp.id] && ' Bir Boost kullansaydı, belki 1. olurdu!'}
-                      {isTactic && boostCount[runnerUp.id] && ' Shell zamanlaması farklı olsaydı, sonuç değişebilirdi!'}
-                      {!isTactic && ' Daha yüksek bir bid ile Pole Position alabilirdi!'}
+                      {runnerUp.name} was only <span className="text-slug-gold font-bold">{gap} units</span> from the finish line.
+                      {isTactic && !boostCount[runnerUp.id] && ' A well-timed Boost could have changed everything!'}
+                      {isTactic && boostCount[runnerUp.id] && ' Different Shell timing could have flipped the result!'}
+                      {!isTactic && ' A higher bid could have secured Pole Position!'}
                     </p>
                   </motion.div>
                 )}
@@ -1002,7 +1002,7 @@ export default function RaceBroadcast() {
                     transition={{ delay: 0.8 }}
                     className="bg-slug-card border border-slug-border rounded-xl p-4 mb-6"
                   >
-                    <h3 className="text-gray-400 text-xs font-bold uppercase mb-3 text-center">MVP Ödülleri</h3>
+                    <h3 className="text-gray-400 text-xs font-bold uppercase mb-3 text-center">MVP Awards</h3>
                     <div className="grid grid-cols-2 gap-3">
                       {mvpAwards.map((award, i) => (
                         <motion.div
@@ -1041,19 +1041,19 @@ export default function RaceBroadcast() {
                     }}
                     className="px-8 py-3 bg-slug-green text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-green/90 transition-colors cursor-pointer"
                   >
-                    Rövanş!
+                    Rematch!
                   </button>
                   <button
                     onClick={() => navigate('/stable')}
                     className="px-6 py-2.5 border border-slug-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                   >
-                    Ahıra Dön
+                    Back to Stable
                   </button>
                   <button
                     onClick={() => navigate('/shop')}
                     className="px-6 py-2.5 border border-slug-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                   >
-                    SLUG Coin Al
+                    Buy SLUG Coins
                   </button>
                 </motion.div>
               </div>

@@ -139,10 +139,10 @@ const MAX_TICKS = 1500; // 150 seconds max
 
 // Random events from GDD
 const RANDOM_EVENTS = [
-  { type: "slime_burst", chance: 0.003, description: "Sümük Patlaması! Lider iz bıraktı!", stat: "agi" as const },
-  { type: "rain", chance: 0.002, description: "Ani Yağmur! Tüm hızlar düştü!", stat: "sta" as const },
-  { type: "luck_orb", chance: 0.0025, description: "Şans Tobu belirdi!", stat: "lck" as const },
-  { type: "clash", chance: 0.0015, description: "Kavga Anı! İki snail çarpıştı!", stat: "ref" as const },
+  { type: "slime_burst", chance: 0.003, description: "Slime Burst! Leader left a trail!", stat: "agi" as const },
+  { type: "rain", chance: 0.002, description: "Sudden Rain! All speeds dropping!", stat: "sta" as const },
+  { type: "luck_orb", chance: 0.0025, description: "Luck Orb appeared!", stat: "lck" as const },
+  { type: "clash", chance: 0.0015, description: "Clash! Two snails collided!", stat: "ref" as const },
 ];
 
 export function simulateRace(participants: SnailStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false): RaceResult {
