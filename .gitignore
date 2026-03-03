@@ -6,7 +6,7 @@ dist/
 *.tsbuildinfo
 
 # Database
-data/
+/data/
 *.db
 *.db-wal
 *.db-shm
