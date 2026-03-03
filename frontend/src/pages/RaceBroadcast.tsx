@@ -625,7 +625,7 @@ export default function RaceBroadcast() {
               transition={{ delay: 4.5 }}
               className="text-center mt-4"
             >
-              <span className="text-gray-500 text-sm animate-pulse">Yaris basliyor...</span>
+              <span className="text-gray-500 text-sm animate-pulse">Race starting...</span>
             </motion.div>
           </motion.div>
         )}

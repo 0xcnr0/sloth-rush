@@ -456,9 +456,9 @@ export default function RaceLobby() {
               animate={{ scale: 1 }}
               className="text-3xl font-extrabold text-slug-gold mb-4"
             >
-              ELEME TAMAMLANDI!
+              ELIMINATION COMPLETE!
             </motion.h1>
-            <p className="text-gray-400 mb-6">Finalistler belirlendi. Final {gpBreakCountdown}sn sonra basliyor...</p>
+            <p className="text-gray-400 mb-6">Finalists determined. Final starts in {gpBreakCountdown}s...</p>
 
             <div className="text-6xl font-extrabold text-white mb-8">{gpBreakCountdown}</div>
 
@@ -480,7 +480,7 @@ export default function RaceLobby() {
               ))}
             </div>
 
-            <p className="text-slug-purple text-sm font-bold">FINAL = TAKTIK MOD + GDA FIYAT + KAOS MODU!</p>
+            <p className="text-slug-purple text-sm font-bold">FINAL = TACTIC MODE + GDA PRICING + CHAOS MODE!</p>
           </motion.div>
         )}
 

@@ -320,14 +320,14 @@ export default function Stable() {
                         ? 'bg-red-500/20 text-red-400 border border-red-500'
                         : 'bg-orange-500/20 text-orange-400 border border-orange-500'
                     }`}>
-                      {streaks[snail.id].current_wins >= 5 ? 'DURDURULAMAZ!' : `${streaks[snail.id].current_wins} Win Streak`} &#x1F525;
+                      {streaks[snail.id].current_wins >= 5 ? 'UNSTOPPABLE!' : `${streaks[snail.id].current_wins} Win Streak`} &#x1F525;
                     </span>
                   </div>
                 )}
                 {streaks[snail.id] && streaks[snail.id].current_losses >= 3 && (
                   <div className="text-center mb-1">
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-gray-700/50 text-gray-400">
-                      &#x1F622; Motivasyona ihtiyacin var!
+                      &#x1F622; Needs some motivation!
                     </span>
                   </div>
                 )}
