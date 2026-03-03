@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import db from "../db";
-import { simulateRace, calculatePot, SnailStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../../../simulation/engine";
+import { simulateRace, calculatePot, SnailStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
 
 const router = Router();
 

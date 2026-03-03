@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 
-const dbPath = process.env.DATABASE_PATH || path.join(__dirname, "..", "..", "..", "data", "slug-rush.db");
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, "..", "data", "slug-rush.db");
 
 // Ensure data directory exists
 import fs from "fs";
