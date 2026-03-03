@@ -380,62 +380,62 @@ router.post("/simulate", (req: Request, res: Response) => {
         ).run(order.wallet, payout.payout, `${position}${position === 1 ? "st" : position === 2 ? "nd" : position === 3 ? "rd" : "th"} place in ${raceId}`);
       }
     }
+
+    // Update streaks for non-bot participants
+    for (let i = 0; i < result.finalOrder.length; i++) {
+      const entry = result.finalOrder[i];
+      if (entry.isBot) continue;
+      const snailId = entry.id;
+      const isWin = i === 0;
+
+      // Ensure streak row exists
+      db.prepare(
+        "INSERT OR IGNORE INTO streaks (snail_id) VALUES (?)"
+      ).run(snailId);
+
+      if (isWin) {
+        db.prepare(
+          `UPDATE streaks SET
+            current_wins = current_wins + 1,
+            max_wins = MAX(max_wins, current_wins + 1),
+            current_losses = 0,
+            total_races = total_races + 1,
+            total_wins = total_wins + 1
+          WHERE snail_id = ?`
+        ).run(snailId);
+      } else {
+        db.prepare(
+          `UPDATE streaks SET
+            current_losses = current_losses + 1,
+            max_losses = MAX(max_losses, current_losses + 1),
+            current_wins = 0,
+            total_races = total_races + 1
+          WHERE snail_id = ?`
+        ).run(snailId);
+      }
+    }
+
+    // Reward correct predictions (15 SLUG each)
+    const winnerId = result.finalOrder[0]?.id;
+    if (winnerId) {
+      const correctPredictions = db.prepare(
+        "SELECT * FROM predictions WHERE race_id = ? AND predicted_snail_id = ? AND rewarded = 0"
+      ).all(raceId, winnerId) as any[];
+
+      for (const pred of correctPredictions) {
+        db.prepare(
+          `INSERT INTO coin_balances (wallet, balance) VALUES (?, 15)
+           ON CONFLICT(wallet) DO UPDATE SET balance = balance + 15, updated_at = datetime('now')`
+        ).run(pred.wallet);
+        db.prepare(
+          "INSERT INTO transactions (wallet, type, amount, description) VALUES (?, 'prediction_reward', 15, ?)"
+        ).run(pred.wallet, `Correct prediction for ${raceId}`);
+        db.prepare("UPDATE predictions SET correct = 1, rewarded = 1 WHERE id = ?").run(pred.id);
+      }
+    }
   });
 
   saveResults();
-
-  // Update streaks for non-bot participants
-  for (let i = 0; i < result.finalOrder.length; i++) {
-    const entry = result.finalOrder[i];
-    if (entry.isBot) continue;
-    const snailId = entry.id;
-    const isWin = i === 0;
-
-    // Ensure streak row exists
-    db.prepare(
-      "INSERT OR IGNORE INTO streaks (snail_id) VALUES (?)"
-    ).run(snailId);
-
-    if (isWin) {
-      db.prepare(
-        `UPDATE streaks SET
-          current_wins = current_wins + 1,
-          max_wins = MAX(max_wins, current_wins + 1),
-          current_losses = 0,
-          total_races = total_races + 1,
-          total_wins = total_wins + 1
-        WHERE snail_id = ?`
-      ).run(snailId);
-    } else {
-      db.prepare(
-        `UPDATE streaks SET
-          current_losses = current_losses + 1,
-          max_losses = MAX(max_losses, current_losses + 1),
-          current_wins = 0,
-          total_races = total_races + 1
-        WHERE snail_id = ?`
-      ).run(snailId);
-    }
-  }
-
-  // Reward correct predictions (15 SLUG each)
-  const winnerId = result.finalOrder[0]?.id;
-  if (winnerId) {
-    const correctPredictions = db.prepare(
-      "SELECT * FROM predictions WHERE race_id = ? AND predicted_snail_id = ? AND rewarded = 0"
-    ).all(raceId, winnerId) as any[];
-
-    for (const pred of correctPredictions) {
-      db.prepare(
-        `INSERT INTO coin_balances (wallet, balance) VALUES (?, 15)
-         ON CONFLICT(wallet) DO UPDATE SET balance = balance + 15, updated_at = datetime('now')`
-      ).run(pred.wallet);
-      db.prepare(
-        "INSERT INTO transactions (wallet, type, amount, description) VALUES (?, 'prediction_reward', 15, ?)"
-      ).run(pred.wallet, `Correct prediction for ${raceId}`);
-      db.prepare("UPDATE predictions SET correct = 1, rewarded = 1 WHERE id = ?").run(pred.id);
-    }
-  }
 
   // Send every 3rd frame for smooth animation (~100 frames for a 300-tick race)
   const animFrames = result.frames.filter((_, i) => i % 3 === 0 || i === result.frames.length - 1);
@@ -491,7 +491,8 @@ router.post("/action", (req: Request, res: Response) => {
   for (const pa of priorActions) {
     gdaState = applyGDAPurchase(gdaState, pa.action_type, pa.tick);
   }
-  const cost = getGDAPrice(gdaState, actionType, tick);
+  const isChaos = race.format === "gp_final";
+  const cost = getGDAPrice(gdaState, actionType, tick, isChaos);
 
   const balance = db.prepare("SELECT balance FROM coin_balances WHERE wallet = ?").get(wallet) as any;
   const currentBalance = balance?.balance || 0;
@@ -646,6 +647,9 @@ router.get("/:id/prices", (req: Request, res: Response) => {
   const { id } = req.params;
   const tick = parseInt(req.query.tick as string) || 0;
 
+  const race = db.prepare("SELECT format FROM races WHERE id = ?").get(id) as any;
+  const isChaos = race?.format === "gp_final";
+
   const priorActions = db.prepare(
     "SELECT action_type, tick FROM tactic_actions WHERE race_id = ? ORDER BY id ASC"
   ).all(id) as any[];
@@ -656,8 +660,8 @@ router.get("/:id/prices", (req: Request, res: Response) => {
   }
 
   res.json({
-    boostPrice: getGDAPrice(gdaState, "boost", tick),
-    shellPrice: getGDAPrice(gdaState, "shell", tick),
+    boostPrice: getGDAPrice(gdaState, "boost", tick, isChaos),
+    shellPrice: getGDAPrice(gdaState, "shell", tick, isChaos),
     boostPurchases: gdaState.boostPurchases,
     shellPurchases: gdaState.shellPurchases,
   });

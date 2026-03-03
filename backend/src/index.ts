@@ -14,6 +14,11 @@ initDB();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT === "production";
+if (isProduction && !process.env.FRONTEND_URL) {
+  console.error("FATAL: FRONTEND_URL must be set in production. Exiting.");
+  process.exit(1);
+}
 app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
 app.use(express.json());
 
