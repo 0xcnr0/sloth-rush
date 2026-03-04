@@ -1047,7 +1047,7 @@ router.get("/:id/replay", async (req: Request, res: Response) => {
 });
 
 // GET /api/race/active — List active races
-router.get("/active/list", async (_req: Request, res: Response) => {
+router.get("/active", async (_req: Request, res: Response) => {
   const races = await getAll(
     `SELECT r.*, COUNT(rp.id) as participant_count
      FROM races r
