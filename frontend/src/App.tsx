@@ -7,6 +7,7 @@ import RaceLobby from './pages/RaceLobby'
 import RaceBroadcast from './pages/RaceBroadcast'
 import Shop from './pages/Shop'
 import RaceHistory from './pages/RaceHistory'
+import Leaderboard from './pages/Leaderboard'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/race/:id" element={<RaceBroadcast />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/history" element={<RaceHistory />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
       </Route>
     </Routes>
   )

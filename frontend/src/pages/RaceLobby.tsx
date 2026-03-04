@@ -37,14 +37,25 @@ export default function RaceLobby() {
 
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Load snails
+  // Load creatures (snails + free slugs)
+  const [allCreatures, setAllCreatures] = useState<any[]>([])
   useEffect(() => {
     if (!address) return
     api.getStable(address).then(data => {
-      setSnails(data.slugs.filter((s: any) => s.type === 'snail'))
+      setAllCreatures(data.slugs)
       setCoinBalance(data.coinBalance)
     }).catch(() => {})
   }, [address])
+
+  // Filter creatures based on format: exhibition → all, others → snails only
+  useEffect(() => {
+    if (selectedFormat.id === 'exhibition') {
+      setSnails(allCreatures)
+    } else {
+      setSnails(allCreatures.filter((s: any) => s.type === 'snail'))
+    }
+    setSelectedSnail(null)
+  }, [selectedFormat, allCreatures])
 
   // Countdown timer for bidding
   const startCountdown = useCallback(() => {
@@ -242,9 +253,14 @@ export default function RaceLobby() {
                     >
                       <span className="text-3xl">&#x1f40c;</span>
                       <div className="text-left">
-                        <p className="text-white font-semibold">{snail.name}</p>
+                        <p className="text-white font-semibold flex items-center gap-2">
+                          {snail.name}
+                          {snail.type === 'free_slug' && (
+                            <span className="px-1.5 py-0.5 bg-slug-blue/20 text-slug-blue text-[10px] font-bold rounded">FREE SLUG</span>
+                          )}
+                        </p>
                         <p className="text-gray-500 text-xs capitalize">
-                          {snail.rarity} {snail.race?.replace('_', ' ')}
+                          {snail.type === 'free_slug' ? 'Free Slug' : `${snail.rarity} ${snail.race?.replace('_', ' ')}`}
                         </p>
                       </div>
                     </button>

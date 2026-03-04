@@ -6,6 +6,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { api } from '../lib/api'
 import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
+import DailyQuests from '../components/DailyQuests'
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'bg-gray-600 text-gray-200',
@@ -106,6 +107,7 @@ export default function Stable() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [streaks, setStreaks] = useState<Record<number, { current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }>>({})
+  const [upgradeProgress, setUpgradeProgress] = useState<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean } | null>(null)
 
   async function loadStable() {
     if (!address) return
@@ -119,6 +121,18 @@ export default function Stable() {
   }
 
   useEffect(() => { loadStable() }, [address])
+
+  // Trigger stable_visit quest progress
+  useEffect(() => {
+    if (!address) return
+    api.trackQuestProgress(address, 'stable_visit').catch(() => {})
+  }, [address])
+
+  // Load free upgrade progress
+  useEffect(() => {
+    if (!address) return
+    api.getUpgradeProgress(address).then(setUpgradeProgress).catch(() => {})
+  }, [address])
 
   useEffect(() => {
     if (!address) return
@@ -177,6 +191,23 @@ export default function Stable() {
         alert(err.message)
         setUpgradeState('idle')
       }
+    }
+  }
+
+  async function handleFreeUpgrade() {
+    if (!address) return
+    setUpgradeState('burning')
+    await new Promise(r => setTimeout(r, 1500))
+    setUpgradeState('revealing')
+    try {
+      const data = await api.freeUpgrade(address)
+      setNewSnail(data.snail)
+      await new Promise(r => setTimeout(r, 2000))
+      setUpgradeState('done')
+      setCoinBalance(prev => prev + data.coinBonus)
+    } catch (err: any) {
+      alert(err.message)
+      setUpgradeState('idle')
     }
   }
 
@@ -265,6 +296,47 @@ export default function Stable() {
               Upgrade to Snail — $3 USDC
             </button>
           </div>
+
+          {/* Free Upgrade Path */}
+          {upgradeProgress && (
+            <div className="mt-4 bg-slug-dark border border-slug-border rounded-xl p-5">
+              <p className="text-gray-400 text-sm mb-3 text-center">...or upgrade for free by completing milestones</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'XP', current: upgradeProgress.xp, target: upgradeProgress.requirements.xp },
+                  { label: 'Races', current: upgradeProgress.races, target: upgradeProgress.requirements.races },
+                  { label: 'Wins', current: upgradeProgress.wins, target: upgradeProgress.requirements.wins },
+                  { label: 'Login Days', current: upgradeProgress.loginDays, target: upgradeProgress.requirements.loginDays },
+                ].map(item => {
+                  const pct = Math.min(100, (item.current / item.target) * 100)
+                  const done = item.current >= item.target
+                  return (
+                    <div key={item.label} className="text-center">
+                      <p className={`text-xs font-semibold mb-1 ${done ? 'text-slug-green' : 'text-gray-400'}`}>
+                        {done ? '\u2705 ' : ''}{item.label}
+                      </p>
+                      <div className="w-full bg-slug-border rounded-full h-1.5 mb-1">
+                        <div
+                          className={`h-1.5 rounded-full transition-all ${done ? 'bg-slug-green' : 'bg-slug-purple'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-500">{item.current}/{item.target}</p>
+                    </div>
+                  )
+                })}
+              </div>
+              {upgradeProgress.eligible && (
+                <button
+                  onClick={handleFreeUpgrade}
+                  disabled={upgradeState !== 'idle'}
+                  className="w-full mt-4 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Free Upgrade!
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -401,6 +473,11 @@ export default function Stable() {
           </div>
         </div>
       )}
+
+      {/* Daily Quests */}
+      <div className="mt-8">
+        <DailyQuests />
+      </div>
 
       {/* Upgrade Overlay */}
       <AnimatePresence>

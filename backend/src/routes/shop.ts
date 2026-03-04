@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import db from "../db";
+import { query, getOne, runTransaction } from "../db";
 
 const router = Router();
 
@@ -16,7 +16,7 @@ router.get("/packages", (_req: Request, res: Response) => {
 });
 
 // POST /api/shop/buy-coins — Purchase a coin package (mock USDC)
-router.post("/buy-coins", (req: Request, res: Response) => {
+router.post("/buy-coins", async (req: Request, res: Response) => {
   const { wallet, packageId } = req.body;
 
   if (!wallet || !packageId) {
@@ -31,22 +31,23 @@ router.post("/buy-coins", (req: Request, res: Response) => {
   }
 
   // Mock USDC payment — in production this would verify on-chain USDC transfer
-  const buyCoins = db.transaction(() => {
-    db.prepare(
-      `INSERT INTO coin_balances (wallet, balance) VALUES (?, ?)
-       ON CONFLICT(wallet) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`
-    ).run(wallet, pkg.coins, pkg.coins);
+  await runTransaction(async (client) => {
+    await client.query(
+      `INSERT INTO coin_balances (wallet, balance) VALUES ($1, $2)
+       ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + $3, updated_at = NOW()`,
+      [wallet, pkg.coins, pkg.coins]
+    );
 
-    db.prepare(
-      "INSERT INTO transactions (wallet, type, amount, description) VALUES (?, 'shop_purchase', ?, ?)"
-    ).run(wallet, pkg.coins, `${pkg.name} package ($${pkg.price} USDC)`);
+    await client.query(
+      "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'shop_purchase', $2, $3)",
+      [wallet, pkg.coins, `${pkg.name} package ($${pkg.price} USDC)`]
+    );
   });
 
-  buyCoins();
-
-  const newBalance = db.prepare(
-    "SELECT balance FROM coin_balances WHERE wallet = ?"
-  ).get(wallet) as any;
+  const newBalance = await getOne(
+    "SELECT balance FROM coin_balances WHERE wallet = $1",
+    [wallet]
+  );
 
   res.json({
     purchased: true,

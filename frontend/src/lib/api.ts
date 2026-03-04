@@ -138,4 +138,43 @@ export const api = {
       '/slug/daily-login',
       { method: 'POST', body: JSON.stringify({ wallet }) }
     ),
+
+  // XP
+  getXP: (wallet: string) =>
+    request<{ wallet: string; xp: number }>(`/slug/xp/${wallet}`),
+
+  // Quests
+  getDailyQuests: (wallet: string) =>
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; slug_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+      `/quests/daily/${wallet}`
+    ),
+
+  trackQuestProgress: (wallet: string, type: string) =>
+    request<{ updated: boolean }>('/quests/progress', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, requirementType: type }),
+    }),
+
+  // Upgrade progress (free path)
+  getUpgradeProgress: (wallet: string) =>
+    request<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean }>(
+      `/slug/upgrade-progress/${wallet}`
+    ),
+
+  freeUpgrade: (wallet: string) =>
+    request<{ snail: any; burnedSlugId: number; coinBonus: number }>('/slug/free-upgrade', {
+      method: 'POST',
+      body: JSON.stringify({ wallet }),
+    }),
+
+  // Leaderboard
+  getLeaderboard: (league: string) =>
+    request<{ leaderboard: { rank: number; wallet: string; snail_name: string; rarity: string; total_rp: number }[] }>(
+      `/leaderboard/${league}`
+    ),
+
+  getMyRanking: (wallet: string) =>
+    request<{ rank: number; wallet: string; total_rp: number } | null>(
+      `/leaderboard/me/${wallet}`
+    ),
 }
