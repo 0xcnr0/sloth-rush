@@ -83,14 +83,17 @@ export default function RaceBroadcast() {
   // H10: Fetch race data from API if state is missing (e.g. page refresh)
   useEffect(() => {
     if (!raceData && id) {
-      api.getRaceReplay(parseInt(id)).then(replay => {
-        if (replay) {
+      api.getRaceReplay(id).then((data: any) => {
+        if (data) {
+          const meta = typeof data.metadata === 'string' ? JSON.parse(data.metadata) : (data.metadata || {})
+          const frames = typeof data.frames === 'string' ? JSON.parse(data.frames) : (data.frames || [])
+          const events = typeof data.events === 'string' ? JSON.parse(data.events) : (data.events || [])
           setRaceData({
-            frames: replay.frames,
-            events: replay.events,
-            finalOrder: replay.metadata?.finalOrder || [],
-            trackLength: replay.metadata?.trackLength || 1000,
-            weather: replay.metadata?.weather,
+            frames,
+            events,
+            finalOrder: meta.finalOrder || [],
+            trackLength: meta.trackLength || 1000,
+            weather: meta.weather,
           })
         }
       }).catch(err => {
