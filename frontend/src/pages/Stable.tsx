@@ -625,11 +625,75 @@ export default function Stable() {
                   )
                 })()}
 
-                {/* Equipped accessory */}
-                {snail.equipped_accessory && (
-                  <div className="mt-3 flex items-center justify-center gap-1.5 text-xs">
-                    <span className="text-gray-500">Accessory:</span>
-                    <span className="text-slug-purple font-semibold">{snail.equipped_accessory}</span>
+                {/* Cosmetic / Accessory badges */}
+                {(snail.cosmetic || snail.equipped_accessory || snail.accessory) && (
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
+                    {snail.cosmetic && (
+                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-pink-500/10 text-pink-400 border-pink-500/30">
+                        {'\u{1F3A8}'} {typeof snail.cosmetic === 'string' ? snail.cosmetic : snail.cosmetic.name || 'Cosmetic'}
+                      </span>
+                    )}
+                    {(snail.equipped_accessory || snail.accessory) && (
+                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
+                        {'\u{2699}\uFE0F'} {snail.equipped_accessory || (typeof snail.accessory === 'string' ? snail.accessory : snail.accessory?.name) || 'Accessory'}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Equip cosmetic / accessory dropdowns */}
+                {(ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
+                  <div className="mt-3 p-3 bg-slug-dark rounded-lg border border-slug-border space-y-2">
+                    {ownedCosmetics.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={cosmeticEquip[snail.id] || ''}
+                          onChange={e => setCosmeticEquip(prev => ({ ...prev, [snail.id]: Number(e.target.value) }))}
+                          className="flex-1 bg-slug-card border border-slug-border rounded px-2 py-1 text-white text-[10px] outline-none"
+                        >
+                          <option value="">Cosmetic...</option>
+                          {ownedCosmetics.map((c: any) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleEquipCosmetic(snail.id)}
+                          disabled={!cosmeticEquip[snail.id]}
+                          className="px-2 py-1 bg-pink-500/20 text-pink-400 rounded text-[10px] font-bold cursor-pointer disabled:opacity-40"
+                        >
+                          Equip
+                        </button>
+                      </div>
+                    )}
+                    {ownedAccessories.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={accessoryEquip[snail.id] || ''}
+                          onChange={e => setAccessoryEquip(prev => ({ ...prev, [snail.id]: Number(e.target.value) }))}
+                          className="flex-1 bg-slug-card border border-slug-border rounded px-2 py-1 text-white text-[10px] outline-none"
+                        >
+                          <option value="">Accessory...</option>
+                          {ownedAccessories.map((a: any) => (
+                            <option key={a.id} value={a.id}>{a.name}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleEquipAccessory(snail.id)}
+                          disabled={!accessoryEquip[snail.id]}
+                          className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-[10px] font-bold cursor-pointer disabled:opacity-40"
+                        >
+                          Equip
+                        </button>
+                        {(snail.equipped_accessory || snail.accessory) && (
+                          <button
+                            onClick={() => handleUnequipAccessory(snail.id)}
+                            className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded text-[10px] font-bold cursor-pointer"
+                          >
+                            &#x2715;
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -1055,6 +1055,12 @@ export default function RaceBroadcast() {
                   >
                     Buy SLUG Coins
                   </button>
+                  <button
+                    onClick={() => navigate(`/replay/${id}`)}
+                    className="px-6 py-2.5 border border-slug-purple text-slug-purple rounded-xl hover:bg-slug-purple/10 transition-colors cursor-pointer"
+                  >
+                    Watch Replay
+                  </button>
                 </motion.div>
               </div>
             </motion.div>
