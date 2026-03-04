@@ -51,6 +51,7 @@ export async function runTransaction<T>(
 }
 
 export async function initDB() {
+  console.log("initDB: creating core tables...");
   await pool.query(`
     CREATE TABLE IF NOT EXISTS slugs (
       id SERIAL PRIMARY KEY,
@@ -194,6 +195,7 @@ export async function initDB() {
     );
   `);
 
+  console.log("initDB: creating training tables...");
   await pool.query(`
     CREATE TABLE IF NOT EXISTS trainings (
       id SERIAL PRIMARY KEY,
@@ -227,6 +229,7 @@ export async function initDB() {
     );
   `);
 
+  console.log("initDB: creating Sprint 3-6 tables...");
   await pool.query(`
     -- Mini game daily plays tracking
     CREATE TABLE IF NOT EXISTS daily_minigame_plays (
@@ -329,6 +332,7 @@ export async function initDB() {
     );
   `);
 
+  console.log("initDB: altering columns and seeding data...");
   // ALTER stat columns to REAL if they are still INTEGER
   // PostgreSQL: safe to run multiple times, will fail silently if already REAL
   try {

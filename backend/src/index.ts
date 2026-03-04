@@ -21,8 +21,7 @@ async function main() {
 
   const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT === "production";
   if (isProduction && !process.env.FRONTEND_URL) {
-    console.error("FATAL: FRONTEND_URL must be set in production. Exiting.");
-    process.exit(1);
+    console.warn("WARNING: FRONTEND_URL not set in production — CORS will allow all origins");
   }
   app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
   app.use(express.json());
