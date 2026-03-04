@@ -31,7 +31,7 @@ export default function RaceReplay() {
   const finalOrder = replay?.finalOrder || []
   const totalFrames = frames.length
 
-  const currentEvents = events.filter((e: any) =>
+  const _currentEvents = events.filter((e: any) =>
     e.tick === (frames[currentFrame]?.tick ?? -1)
   )
 
