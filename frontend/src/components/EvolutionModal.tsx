@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 
 interface EvolutionModalProps {
@@ -65,7 +66,7 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
       setEvolveResult(result)
       setEvolved(true)
     } catch (err: any) {
-      alert(err.message || 'Evolution failed')
+      toast.error(err.message || 'Evolution failed')
     }
     setEvolving(false)
   }

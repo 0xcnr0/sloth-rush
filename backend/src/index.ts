@@ -8,6 +8,7 @@ import shopRoutes from "./routes/shop";
 import questRoutes from "./routes/quest";
 import leaderboardRoutes from "./routes/leaderboard";
 import seasonRoutes from "./routes/season";
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -20,11 +21,39 @@ async function main() {
   const app = express();
 
   const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT === "production";
-  if (isProduction && !process.env.FRONTEND_URL) {
-    console.warn("WARNING: FRONTEND_URL not set in production — CORS will allow all origins");
-  }
-  app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',')
+    : ['http://localhost:5173', 'http://localhost:3000'];
+
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn("Blocked CORS request from:", origin);
+        callback(null, false);
+      }
+    }
+  }));
   app.use(express.json());
+
+  // Rate limiting
+  const generalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    message: { error: "Too many requests, please try again later" },
+  });
+  app.use('/api', generalLimiter);
+
+  const strictLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { error: "Too many requests, please try again later" },
+  });
+  app.use('/api/slug/mint', strictLimiter);
+  app.use('/api/slug/daily-login', strictLimiter);
+  app.use('/api/slug/evolve', strictLimiter);
+  app.use('/api/shop/buy-coins', strictLimiter);
 
   // Routes
   app.get("/health", (_req, res) => {
@@ -53,6 +82,12 @@ async function main() {
       res.json({ averageXP: Math.round(parseFloat(avgXP.avg)), tierDistribution: tierDist });
     });
   }
+
+  // Global error handler
+  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("Unhandled error:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  });
 
   app.listen(PORT, () => {
     console.log(`Slug Rush API running on port ${PORT}`);

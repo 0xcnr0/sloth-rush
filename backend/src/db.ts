@@ -483,4 +483,28 @@ export async function initDB() {
       ["milestone", "First Mini Game", "Complete your first mini game", "mini_game_complete", 1, 30, 15, "milestone"]
     );
   }
+
+  console.log("initDB: creating indexes...");
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_slugs_wallet ON slugs(wallet);
+    CREATE INDEX IF NOT EXISTS idx_slugs_wallet_burned ON slugs(wallet, is_burned);
+    CREATE INDEX IF NOT EXISTS idx_coin_balances_wallet ON coin_balances(wallet);
+    CREATE INDEX IF NOT EXISTS idx_race_participants_race ON race_participants(race_id);
+    CREATE INDEX IF NOT EXISTS idx_race_participants_wallet ON race_participants(wallet);
+    CREATE INDEX IF NOT EXISTS idx_race_participants_snail ON race_participants(snail_id);
+    CREATE INDEX IF NOT EXISTS idx_streaks_snail ON streaks(snail_id);
+    CREATE INDEX IF NOT EXISTS idx_user_quest_progress_wallet ON user_quest_progress(wallet);
+    CREATE INDEX IF NOT EXISTS idx_trainings_snail ON trainings(snail_id);
+    CREATE INDEX IF NOT EXISTS idx_race_points_wallet_season ON race_points(wallet, season);
+    CREATE INDEX IF NOT EXISTS idx_gp_points_wallet_season ON gp_points(wallet, season);
+    CREATE INDEX IF NOT EXISTS idx_transactions_wallet ON transactions(wallet);
+    CREATE INDEX IF NOT EXISTS idx_daily_logins_wallet ON daily_logins(wallet);
+    CREATE INDEX IF NOT EXISTS idx_races_status ON races(status);
+    CREATE INDEX IF NOT EXISTS idx_user_cosmetics_wallet ON user_cosmetics(wallet);
+    CREATE INDEX IF NOT EXISTS idx_user_accessories_wallet ON user_accessories(wallet);
+    CREATE INDEX IF NOT EXISTS idx_snail_equipment_snail ON snail_equipment(snail_id);
+    CREATE INDEX IF NOT EXISTS idx_predictions_race ON predictions(race_id);
+    CREATE INDEX IF NOT EXISTS idx_tactic_actions_race ON tactic_actions(race_id);
+    CREATE INDEX IF NOT EXISTS idx_daily_races_date ON daily_races(race_date);
+  `);
 }

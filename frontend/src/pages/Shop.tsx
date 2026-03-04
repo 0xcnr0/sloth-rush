@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 
 const PACKAGE_STYLES: Record<string, { border: string; bg: string; icon: string }> = {
@@ -66,7 +67,7 @@ export default function Shop() {
       setLastPurchase({ name: data.package.name, coins: data.coinsAdded })
       setTimeout(() => setLastPurchase(null), 3000)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
     setBuying(null)
   }
@@ -81,7 +82,7 @@ export default function Shop() {
       const d = await api.getShopCosmetics(address)
       setCosmetics(d.cosmetics)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
     setBuying(null)
   }
@@ -89,12 +90,12 @@ export default function Shop() {
   async function handleEquipCosmetic(cosmeticId: number) {
     if (!address) return
     const snailId = equipSnailId[cosmeticId]
-    if (!snailId) { alert('Select a snail first'); return }
+    if (!snailId) { toast.error('Select a snail first'); return }
     try {
       await api.equipCosmetic(address, snailId, cosmeticId)
-      alert('Cosmetic equipped!')
+      toast.success('Cosmetic equipped!')
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
   }
 
@@ -107,7 +108,7 @@ export default function Shop() {
       const d = await api.getShopAccessories(address)
       setAccessories(d.accessories)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
     setBuying(null)
   }
@@ -115,12 +116,12 @@ export default function Shop() {
   async function handleEquipAccessory(accessoryId: number) {
     if (!address) return
     const snailId = equipSnailId[accessoryId + 10000] // offset to avoid conflict with cosmetic ids
-    if (!snailId) { alert('Select a snail first'); return }
+    if (!snailId) { toast.error('Select a snail first'); return }
     try {
       await api.equipAccessory(address, snailId, accessoryId)
-      alert('Accessory equipped!')
+      toast.success('Accessory equipped!')
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
   }
 

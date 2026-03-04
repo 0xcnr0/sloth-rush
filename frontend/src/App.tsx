@@ -11,6 +11,7 @@ import Leaderboard from './pages/Leaderboard'
 import MiniGames from './pages/MiniGames'
 import Spectate from './pages/Spectate'
 import RaceReplay from './pages/RaceReplay'
+import NotFound from './pages/NotFound'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/mini-games" element={<MiniGames />} />
         <Route path="/spectate" element={<Spectate />} />
         <Route path="/replay/:id" element={<RaceReplay />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   )

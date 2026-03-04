@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAccount } from 'wagmi'
 import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { getCommentary } from '../data/commentary'
 import { getDialogue, getEmote, getTrashTalk, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
@@ -78,6 +79,26 @@ export default function RaceBroadcast() {
   const currentTickRef = useRef(0)
   const pausedRef = useRef(false)
   const resumeCallbackRef = useRef<(() => void) | null>(null)
+
+  // H10: Fetch race data from API if state is missing (e.g. page refresh)
+  useEffect(() => {
+    if (!raceData && id) {
+      api.getRaceReplay(parseInt(id)).then(replay => {
+        if (replay) {
+          setRaceData({
+            frames: replay.frames,
+            events: replay.events,
+            finalOrder: replay.metadata?.finalOrder || [],
+            trackLength: replay.metadata?.trackLength || 1000,
+            weather: replay.metadata?.weather,
+          })
+        }
+      }).catch(err => {
+        console.error("Failed to fetch race replay:", err)
+        toast.error("Race data could not be loaded")
+      }).finally(() => setLoading(false))
+    }
+  }, [id, raceData])
 
   // Poll GDA prices during tactic mode
   useEffect(() => {

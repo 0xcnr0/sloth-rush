@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 
 type Phase = 'select' | 'lobby' | 'bidding' | 'reveal' | 'starting' | 'gp_break' | 'gp_final_bid'
@@ -107,7 +108,7 @@ export default function RaceLobby() {
         setPhase('lobby')
       }
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
     setLoading(false)
   }
@@ -123,7 +124,7 @@ export default function RaceLobby() {
       setPhase('bidding')
       startCountdown()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
     setLoading(false)
   }
@@ -165,7 +166,7 @@ export default function RaceLobby() {
               }
             }, 1000)
           } catch (err: any) {
-            alert(err.message)
+            toast.error(err.message)
           }
         }, 4000)
       } else {
@@ -175,7 +176,7 @@ export default function RaceLobby() {
         }, 4000)
       }
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
       setBidSubmitted(false)
     }
   }
@@ -576,7 +577,7 @@ export default function RaceLobby() {
                       const result = await api.simulateRace(gpFinalId)
                       navigate(`/race/${gpFinalId}`, { state: { raceResult: result, format: 'gp_final', snailId: selectedSnail?.id } })
                     } catch (err: any) {
-                      alert(err.message)
+                      toast.error(err.message)
                       setBidSubmitted(false)
                     }
                   }}

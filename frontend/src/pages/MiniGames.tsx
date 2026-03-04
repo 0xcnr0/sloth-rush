@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount } from 'wagmi'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 
 // --- Mini Game Types ---
@@ -532,7 +533,7 @@ export default function MiniGames() {
       setDailyPlays(prev => Math.max(0, prev - 1))
     } catch (err: any) {
       setResult(null)
-      alert(err.message || 'Failed to submit game result')
+      toast.error(err.message || 'Failed to submit game result')
     }
     setSubmitting(false)
   }

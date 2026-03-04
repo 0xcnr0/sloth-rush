@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
@@ -193,7 +194,7 @@ export default function Stable() {
 
   useEffect(() => {
     if (onchainUpgrade.error) {
-      alert(onchainUpgrade.error.message || 'On-chain upgrade failed')
+      toast.error(onchainUpgrade.error.message || 'On-chain upgrade failed')
       setUpgradeState('idle')
     }
   }, [onchainUpgrade.error])
@@ -222,7 +223,7 @@ export default function Stable() {
         setUpgradeState('done')
         setCoinBalance(prev => prev + data.coinBonus)
       } catch (err: any) {
-        alert(err.message)
+        toast.error(err.message)
         setUpgradeState('idle')
       }
     }
@@ -240,7 +241,7 @@ export default function Stable() {
       setUpgradeState('done')
       setCoinBalance(prev => prev + data.coinBonus)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
       setUpgradeState('idle')
     }
   }
@@ -252,7 +253,7 @@ export default function Stable() {
       setSlugs(prev => prev.map(s => s.id === snailId ? { ...s, name: editName.trim() } : s))
       setEditingId(null)
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
   }
 
@@ -266,7 +267,7 @@ export default function Stable() {
       loadTrainings()
       loadStable()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
     setTrainingLoading(null)
   }
@@ -279,7 +280,7 @@ export default function Stable() {
       loadTrainings()
       loadStable()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
     setTrainingLoading(null)
   }
@@ -292,7 +293,7 @@ export default function Stable() {
       await api.equipCosmetic(address, snailId, cosId)
       loadStable()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
   }
 
@@ -304,7 +305,7 @@ export default function Stable() {
       await api.equipAccessory(address, snailId, accId)
       loadStable()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
   }
 
@@ -314,7 +315,7 @@ export default function Stable() {
       await api.unequipAccessory(address, snailId)
       loadStable()
     } catch (err: any) {
-      alert(err.message)
+      toast.error(err.message)
     }
   }
 
