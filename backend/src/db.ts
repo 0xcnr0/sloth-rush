@@ -227,6 +227,108 @@ export async function initDB() {
     );
   `);
 
+  await pool.query(`
+    -- Mini game daily plays tracking
+    CREATE TABLE IF NOT EXISTS daily_minigame_plays (
+      id SERIAL PRIMARY KEY,
+      snail_id INTEGER NOT NULL,
+      play_date TEXT NOT NULL,
+      count INTEGER DEFAULT 0,
+      UNIQUE(snail_id, play_date)
+    );
+
+    -- Seasons
+    CREATE TABLE IF NOT EXISTS seasons (
+      id SERIAL PRIMARY KEY,
+      number INTEGER NOT NULL DEFAULT 1,
+      start_date TIMESTAMP DEFAULT NOW(),
+      end_date TIMESTAMP NOT NULL,
+      is_active INTEGER DEFAULT 1
+    );
+
+    -- GP points
+    CREATE TABLE IF NOT EXISTS gp_points (
+      id SERIAL PRIMARY KEY,
+      wallet TEXT NOT NULL,
+      season INTEGER DEFAULT 1,
+      gp_type TEXT NOT NULL,
+      points INTEGER DEFAULT 0
+    );
+
+    -- Race replays (store frame data)
+    CREATE TABLE IF NOT EXISTS race_replays (
+      race_id TEXT PRIMARY KEY,
+      frames JSONB,
+      events JSONB,
+      metadata JSONB
+    );
+
+    -- Hall of Fame
+    CREATE TABLE IF NOT EXISTS hall_of_fame (
+      id SERIAL PRIMARY KEY,
+      achievement TEXT NOT NULL,
+      wallet TEXT NOT NULL,
+      achieved_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(achievement)
+    );
+
+    -- Cosmetics catalog
+    CREATE TABLE IF NOT EXISTS cosmetics (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('hat','trail','celebration')),
+      slug_price INTEGER NOT NULL,
+      description TEXT,
+      rarity TEXT DEFAULT 'common'
+    );
+
+    -- User owned cosmetics
+    CREATE TABLE IF NOT EXISTS user_cosmetics (
+      id SERIAL PRIMARY KEY,
+      wallet TEXT NOT NULL,
+      cosmetic_id INTEGER NOT NULL,
+      equipped_snail_id INTEGER,
+      purchased_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(wallet, cosmetic_id)
+    );
+
+    -- Accessories catalog
+    CREATE TABLE IF NOT EXISTS accessories (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      stat_bonus JSONB NOT NULL DEFAULT '{}',
+      description TEXT,
+      rarity TEXT DEFAULT 'common',
+      slug_price INTEGER NOT NULL
+    );
+
+    -- User owned accessories
+    CREATE TABLE IF NOT EXISTS user_accessories (
+      id SERIAL PRIMARY KEY,
+      wallet TEXT NOT NULL,
+      accessory_id INTEGER NOT NULL,
+      UNIQUE(wallet, accessory_id)
+    );
+
+    -- Snail equipment (1 accessory per snail)
+    CREATE TABLE IF NOT EXISTS snail_equipment (
+      snail_id INTEGER PRIMARY KEY,
+      accessory_id INTEGER NOT NULL
+    );
+
+    -- Season rewards
+    CREATE TABLE IF NOT EXISTS season_rewards (
+      id SERIAL PRIMARY KEY,
+      season INTEGER NOT NULL,
+      league TEXT NOT NULL,
+      rank_min INTEGER NOT NULL,
+      rank_max INTEGER NOT NULL,
+      slug_reward INTEGER DEFAULT 0,
+      xp_reward INTEGER DEFAULT 0,
+      cosmetic_id INTEGER
+    );
+  `);
+
   // ALTER stat columns to REAL if they are still INTEGER
   // PostgreSQL: safe to run multiple times, will fail silently if already REAL
   try {
@@ -240,6 +342,70 @@ export async function initDB() {
     `);
   } catch {
     // Already REAL — ignore
+  }
+
+  // Add evolution columns to slugs table
+  try {
+    await pool.query(`
+      ALTER TABLE slugs ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0;
+      ALTER TABLE slugs ADD COLUMN IF NOT EXISTS evolution_path TEXT;
+      ALTER TABLE slugs ADD COLUMN IF NOT EXISTS passive TEXT;
+    `);
+    // Set defaults for existing rows
+    await pool.query(`UPDATE slugs SET tier = 0 WHERE type = 'free_slug' AND tier IS NULL`);
+    await pool.query(`UPDATE slugs SET tier = 1 WHERE type = 'snail' AND tier IS NULL`);
+  } catch {
+    // Columns may already exist
+  }
+
+  // Seed first season (if none exists)
+  const seasonCount = await getOne("SELECT COUNT(*) as count FROM seasons");
+  if (parseInt(seasonCount.count) === 0) {
+    await query(
+      "INSERT INTO seasons (number, start_date, end_date, is_active) VALUES (1, NOW(), NOW() + interval '4 weeks', 1)"
+    );
+  }
+
+  // Seed cosmetics (if none exist)
+  const cosmeticCount = await getOne("SELECT COUNT(*) as count FROM cosmetics");
+  if (parseInt(cosmeticCount.count) === 0) {
+    const cosmeticSeeds = [
+      ['Top Hat', 'hat', 200, 'A dapper top hat', 'common'],
+      ['Crown', 'hat', 500, 'A golden crown for champions', 'rare'],
+      ['Pirate Hat', 'hat', 300, 'Arr! A pirate hat', 'uncommon'],
+      ['Wizard Hat', 'hat', 400, 'A mystical wizard hat', 'uncommon'],
+      ['Rainbow Trail', 'trail', 300, 'Leave a rainbow behind', 'uncommon'],
+      ['Fire Trail', 'trail', 500, 'Blazing fire trail', 'rare'],
+      ['Ice Trail', 'trail', 400, 'Frosty ice trail', 'uncommon'],
+      ['Confetti Burst', 'celebration', 200, 'Confetti celebration!', 'common'],
+      ['Fireworks', 'celebration', 500, 'Spectacular fireworks', 'rare'],
+      ['Lightning Strike', 'celebration', 400, 'Electric celebration', 'uncommon'],
+    ];
+    for (const [name, type, price, desc, rarity] of cosmeticSeeds) {
+      await query(
+        "INSERT INTO cosmetics (name, type, slug_price, description, rarity) VALUES ($1, $2, $3, $4, $5)",
+        [name, type, price, desc, rarity]
+      );
+    }
+  }
+
+  // Seed accessories (if none exist)
+  const accessoryCount = await getOne("SELECT COUNT(*) as count FROM accessories");
+  if (parseInt(accessoryCount.count) === 0) {
+    const accessorySeeds = [
+      ['Speed Boots', '{"spd": 1}', 'Light boots for extra speed', 'common', 300],
+      ['Armor Shell', '{"sta": 2, "spd": -1}', 'Heavy armor for endurance', 'uncommon', 400],
+      ['Lucky Charm', '{"lck": 2}', 'A four-leaf clover charm', 'common', 350],
+      ['Light Shoes', '{"acc": 1, "agi": 1}', 'Lightweight shoes for agility', 'uncommon', 500],
+      ['Reflective Shield', '{"ref": 2}', 'A shiny reflective shield', 'common', 350],
+      ['Turbo Shell', '{"spd": 3, "sta": -2}', 'Maximum speed, less endurance', 'rare', 600],
+    ];
+    for (const [name, bonus, desc, rarity, price] of accessorySeeds) {
+      await query(
+        "INSERT INTO accessories (name, stat_bonus, description, rarity, slug_price) VALUES ($1, $2, $3, $4, $5)",
+        [name, bonus, desc, rarity, price]
+      );
+    }
   }
 
   // Seed daily quests (only if empty)
@@ -298,6 +464,15 @@ export async function initDB() {
     await query(
       "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["milestone", "First Training", "Complete your first training session", "training_complete", 1, 50, 25, "milestone"]
+    );
+  }
+
+  // Seed mini game milestone quest (if not exists)
+  const miniGameQuestCount = await getOne("SELECT COUNT(*) as count FROM quests WHERE requirement_type = 'mini_game_complete' AND period = 'milestone'");
+  if (parseInt(miniGameQuestCount.count) === 0) {
+    await query(
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      ["milestone", "First Mini Game", "Complete your first mini game", "mini_game_complete", 1, 30, 15, "milestone"]
     );
   }
 }

@@ -7,6 +7,13 @@ import { api } from '../lib/api'
 import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
 import QuestPanel from '../components/QuestPanel'
+import EvolutionModal from '../components/EvolutionModal'
+
+const EVOLUTION_PATH_ICONS: Record<string, string> = {
+  velocity: '\u26A1',
+  fortress: '\u{1F6E1}\uFE0F',
+  mystic: '\u{1F52E}',
+}
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'bg-gray-600 text-gray-200',
@@ -111,6 +118,12 @@ export default function Stable() {
   const [trainings, setTrainings] = useState<{ snailId: number; snailName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]>([])
   const [trainingStat, setTrainingStat] = useState<Record<number, string>>({})
   const [trainingLoading, setTrainingLoading] = useState<number | null>(null)
+  const [evolveSnailId, setEvolveSnailId] = useState<number | null>(null)
+  const [evolveSnailName, setEvolveSnailName] = useState<string>('')
+  const [ownedCosmetics, setOwnedCosmetics] = useState<any[]>([])
+  const [ownedAccessories, setOwnedAccessories] = useState<any[]>([])
+  const [cosmeticEquip, setCosmeticEquip] = useState<Record<number, number>>({})
+  const [accessoryEquip, setAccessoryEquip] = useState<Record<number, number>>({})
 
   async function loadStable() {
     if (!address) return
@@ -151,6 +164,17 @@ export default function Stable() {
       for (const s of data.streaks) map[s.snail_id] = s
       setStreaks(map)
     }).catch(() => {})
+  }, [address])
+
+  // Load owned cosmetics and accessories for equip dropdowns
+  useEffect(() => {
+    if (!address) return
+    api.getShopCosmetics(address)
+      .then(d => setOwnedCosmetics((d.cosmetics || []).filter((c: any) => c.owned)))
+      .catch(() => {})
+    api.getShopAccessories(address)
+      .then(d => setOwnedAccessories((d.accessories || []).filter((a: any) => a.owned)))
+      .catch(() => {})
   }, [address])
 
   const freeSlug = slugs.find(s => s.type === 'free_slug')
@@ -258,6 +282,40 @@ export default function Stable() {
       alert(err.message)
     }
     setTrainingLoading(null)
+  }
+
+  async function handleEquipCosmetic(snailId: number) {
+    if (!address) return
+    const cosId = cosmeticEquip[snailId]
+    if (!cosId) return
+    try {
+      await api.equipCosmetic(address, snailId, cosId)
+      loadStable()
+    } catch (err: any) {
+      alert(err.message)
+    }
+  }
+
+  async function handleEquipAccessory(snailId: number) {
+    if (!address) return
+    const accId = accessoryEquip[snailId]
+    if (!accId) return
+    try {
+      await api.equipAccessory(address, snailId, accId)
+      loadStable()
+    } catch (err: any) {
+      alert(err.message)
+    }
+  }
+
+  async function handleUnequipAccessory(snailId: number) {
+    if (!address) return
+    try {
+      await api.unequipAccessory(address, snailId)
+      loadStable()
+    } catch (err: any) {
+      alert(err.message)
+    }
   }
 
   function closeReveal() {
@@ -415,7 +473,22 @@ export default function Stable() {
                         </button>
                       </p>
                     )}
-                    <p className="text-gray-500 text-xs">Snail #{snail.id}</p>
+                    <p className="text-gray-500 text-xs">
+                      Snail #{snail.id}
+                      {snail.tier && snail.tier > 1 && (
+                        <span className="ml-1 text-yellow-400" title={`Tier ${snail.tier}`}>
+                          {'\u2B50'.repeat(snail.tier)}
+                        </span>
+                      )}
+                      {snail.evolution_path && EVOLUTION_PATH_ICONS[snail.evolution_path] && (
+                        <span className="ml-1" title={snail.evolution_path}>
+                          {EVOLUTION_PATH_ICONS[snail.evolution_path]}
+                        </span>
+                      )}
+                    </p>
+                    {snail.passive && (
+                      <p className="text-slug-purple text-[10px] mt-0.5">{snail.passive}</p>
+                    )}
                   </div>
                   <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${RARITY_COLORS[snail.rarity] || ''}`}>
                     {snail.rarity}
@@ -552,9 +625,25 @@ export default function Stable() {
                   )
                 })()}
 
+                {/* Equipped accessory */}
+                {snail.equipped_accessory && (
+                  <div className="mt-3 flex items-center justify-center gap-1.5 text-xs">
+                    <span className="text-gray-500">Accessory:</span>
+                    <span className="text-slug-purple font-semibold">{snail.equipped_accessory}</span>
+                  </div>
+                )}
+
+                {/* Evolve button */}
+                <button
+                  onClick={() => { setEvolveSnailId(snail.id); setEvolveSnailName(snail.name) }}
+                  className="w-full mt-3 py-2 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg hover:bg-slug-purple/30 transition-colors cursor-pointer text-sm"
+                >
+                  Evolve
+                </button>
+
                 <button
                   onClick={() => navigate('/race')}
-                  className="w-full mt-4 py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer text-sm"
+                  className="w-full mt-2 py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer text-sm"
                 >
                   Enter Race
                 </button>
@@ -568,6 +657,17 @@ export default function Stable() {
       <div className="mt-8">
         <QuestPanel />
       </div>
+
+      {/* Evolution Modal */}
+      {evolveSnailId !== null && address && (
+        <EvolutionModal
+          snailId={evolveSnailId}
+          snailName={evolveSnailName}
+          wallet={address}
+          onClose={() => setEvolveSnailId(null)}
+          onEvolved={() => loadStable()}
+        />
+      )}
 
       {/* Upgrade Overlay */}
       <AnimatePresence>

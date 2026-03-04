@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { path: '/mint', label: 'Mint' },
   { path: '/stable', label: 'Stable' },
   { path: '/race', label: 'Race' },
+  { path: '/mini-games', label: 'Games' },
+  { path: '/spectate', label: 'Spectate' },
   { path: '/leaderboard', label: 'Leaderboard' },
   { path: '/shop', label: 'Shop' },
   { path: '/history', label: 'History' },

@@ -280,6 +280,20 @@ const STAT_CAPS: Record<string, number> = {
   free_slug: 15, common: 22, uncommon: 25, rare: 28, epic: 31, legendary: 35,
 };
 
+function getStatCap(type: string, rarity: string, tier: number = 0, evolutionPath?: string, stat?: string): number {
+  let cap = type === 'free_slug' ? 15 : (STAT_CAPS[rarity] || 22);
+  if (tier >= 3 && evolutionPath && stat) {
+    const pathStats: Record<string, string[]> = {
+      velocity: ['spd', 'acc'],
+      fortress: ['sta', 'ref'],
+      mystic: ['lck', 'agi'],
+    };
+    if (pathStats[evolutionPath]?.includes(stat)) cap += 5;
+    if (tier >= 4) cap += 3;
+  }
+  return cap;
+}
+
 // POST /api/slug/train — Start a training session (6h, 10 SLUG cost)
 router.post("/train", async (req: Request, res: Response) => {
   const { wallet, snailId, stat } = req.body;
@@ -305,7 +319,7 @@ router.post("/train", async (req: Request, res: Response) => {
   }
 
   // Check stat cap
-  const cap = slug.type === 'free_slug' ? STAT_CAPS.free_slug : (STAT_CAPS[slug.rarity] || STAT_CAPS.common);
+  const cap = getStatCap(slug.type, slug.rarity, slug.tier || 0, slug.evolution_path, stat);
   if (slug[stat] >= cap) {
     res.status(400).json({ error: `${stat.toUpperCase()} is already at max (${cap}) for this rarity` });
     return;
@@ -388,7 +402,7 @@ router.post("/claim-training", async (req: Request, res: Response) => {
   }
 
   const stat = training.stat;
-  const cap = slug.type === 'free_slug' ? STAT_CAPS.free_slug : (STAT_CAPS[slug.rarity] || STAT_CAPS.common);
+  const cap = getStatCap(slug.type, slug.rarity, slug.tier || 0, slug.evolution_path, stat);
   const gain = Math.min(0.3, cap - (slug[stat] || 0));
 
   if (gain > 0) {
@@ -555,6 +569,400 @@ router.post("/free-upgrade", async (req: Request, res: Response) => {
     burnedSlugId: freeSlug.id,
     coinBonus: 500,
   });
+});
+
+// POST /api/slug/mini-game — Play a mini game for stat gain
+router.post("/mini-game", async (req: Request, res: Response) => {
+  const { wallet, snailId, gameType, score } = req.body;
+
+  if (!wallet || !snailId || !gameType || score === undefined) {
+    res.status(400).json({ error: "wallet, snailId, gameType, and score required" });
+    return;
+  }
+
+  const statMap: Record<string, string> = {
+    salt_dodge: 'agi',
+    slime_slide: 'spd',
+    shell_lift: 'sta',
+    lucky_leaf: 'lck',
+    speed_tap: 'acc',
+  };
+
+  const stat = statMap[gameType];
+  if (!stat) {
+    res.status(400).json({ error: "Invalid gameType. Must be: salt_dodge, slime_slide, shell_lift, lucky_leaf, speed_tap" });
+    return;
+  }
+
+  // Verify ownership
+  const slug = await getOne(
+    "SELECT * FROM slugs WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+    [snailId, wallet]
+  );
+  if (!slug) {
+    res.status(404).json({ error: "creature not found or not owned" });
+    return;
+  }
+
+  // Check daily limit (free: 2, snail: 5)
+  const today = new Date().toISOString().split("T")[0];
+  const dailyLimit = slug.type === 'free_slug' ? 2 : 5;
+
+  await query(
+    "INSERT INTO daily_minigame_plays (snail_id, play_date, count) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
+    [snailId, today]
+  );
+  const dailyPlays = await getOne(
+    "SELECT count FROM daily_minigame_plays WHERE snail_id = $1 AND play_date = $2",
+    [snailId, today]
+  );
+
+  if ((dailyPlays?.count || 0) >= dailyLimit) {
+    res.status(400).json({ error: `Daily mini-game limit reached (${dailyLimit}/day)` });
+    return;
+  }
+
+  // Check stat cap
+  const cap = getStatCap(slug.type, slug.rarity, slug.tier || 0, slug.evolution_path, stat);
+  if (slug[stat] >= cap) {
+    res.status(400).json({ error: `${stat.toUpperCase()} is already at max (${cap})` });
+    return;
+  }
+
+  // Calculate gain
+  const gain = Math.max(0.1, Math.min(0.5, score / 100 * 0.5));
+  const actualGain = Math.min(gain, cap - (slug[stat] || 0));
+
+  // Update stat and track play
+  await query(`UPDATE slugs SET ${stat} = ${stat} + $1 WHERE id = $2`, [actualGain, snailId]);
+  await query(
+    "UPDATE daily_minigame_plays SET count = count + 1 WHERE snail_id = $1 AND play_date = $2",
+    [snailId, today]
+  );
+
+  // Award 8 XP
+  await awardXP(wallet, 8);
+
+  // Trigger mini_game_complete quest
+  await triggerQuestProgress(wallet, "mini_game_complete");
+
+  res.json({
+    played: true,
+    snailId,
+    gameType,
+    stat,
+    gain: actualGain,
+    newStatValue: (slug[stat] || 0) + actualGain,
+    playsToday: (dailyPlays?.count || 0) + 1,
+    dailyLimit,
+  });
+});
+
+// GET /api/slug/evolution-progress/:snailId — Get evolution progress
+router.get("/evolution-progress/:snailId", async (req: Request, res: Response) => {
+  const { snailId } = req.params;
+
+  const slug = await getOne(
+    "SELECT * FROM slugs WHERE id = $1 AND is_burned = 0",
+    [snailId]
+  );
+  if (!slug) {
+    res.status(404).json({ error: "creature not found" });
+    return;
+  }
+
+  const tier = slug.tier || 0;
+  const wallet = slug.wallet;
+
+  // Get race stats
+  const totalRacesRow = await getOne(
+    "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND snail_id = $2 AND is_bot = 0",
+    [wallet, snailId]
+  );
+  const totalRaces = parseInt(totalRacesRow?.count) || 0;
+
+  const totalWinsRow = await getOne(
+    "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND snail_id = $2 AND is_bot = 0 AND finish_position = 1",
+    [wallet, snailId]
+  );
+  const totalWins = parseInt(totalWinsRow?.count) || 0;
+
+  const xp = await getXP(wallet);
+
+  const balance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
+  const slugBalance = balance?.balance || 0;
+
+  // Get highest stat
+  const stats = [slug.spd, slug.acc, slug.sta, slug.agi, slug.ref, slug.lck];
+  const maxStat = Math.max(...stats);
+
+  // Requirements per tier
+  const tierReqs: Record<number, any> = {
+    1: { xp: 2000, races: 50, wins: 18, slug: 800, stat: 20 },
+    2: { xp: 4000, races: 150, wins: 55, slug: 2000, stat: 24, pathRequired: true },
+    3: { xp: 6000, races: 300, wins: 120, slug: 3500, stat: 28 },
+  };
+
+  const nextTier = tier + 1;
+  const reqs = tierReqs[nextTier] || null;
+
+  let eligible = false;
+  if (reqs) {
+    eligible = xp >= reqs.xp &&
+      totalRaces >= reqs.races &&
+      totalWins >= reqs.wins &&
+      slugBalance >= reqs.slug &&
+      maxStat >= reqs.stat;
+  }
+
+  res.json({
+    snailId: parseInt(snailId as string),
+    currentTier: tier,
+    evolutionPath: slug.evolution_path || null,
+    passive: slug.passive || null,
+    nextTierRequirements: reqs,
+    progress: {
+      xp,
+      races: totalRaces,
+      wins: totalWins,
+      slugBalance,
+      maxStat,
+    },
+    eligible,
+  });
+});
+
+// POST /api/slug/evolve — Evolve a snail to next tier
+router.post("/evolve", async (req: Request, res: Response) => {
+  const { wallet, snailId, path } = req.body;
+
+  if (!wallet || !snailId) {
+    res.status(400).json({ error: "wallet and snailId required" });
+    return;
+  }
+
+  const slug = await getOne(
+    "SELECT * FROM slugs WHERE id = $1 AND wallet = $2 AND is_burned = 0 AND type = 'snail'",
+    [snailId, wallet]
+  );
+  if (!slug) {
+    res.status(404).json({ error: "snail not found or not owned" });
+    return;
+  }
+
+  const tier = slug.tier || 1;
+  const nextTier = tier + 1;
+
+  if (nextTier > 4) {
+    res.status(400).json({ error: "Already at max tier" });
+    return;
+  }
+
+  // Get stats
+  const totalRacesRow = await getOne(
+    "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND snail_id = $2 AND is_bot = 0",
+    [wallet, snailId]
+  );
+  const totalRaces = parseInt(totalRacesRow?.count) || 0;
+
+  const totalWinsRow = await getOne(
+    "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND snail_id = $2 AND is_bot = 0 AND finish_position = 1",
+    [wallet, snailId]
+  );
+  const totalWins = parseInt(totalWinsRow?.count) || 0;
+
+  const xp = await getXP(wallet);
+  const balance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
+  const slugBalance = balance?.balance || 0;
+
+  const stats = [slug.spd, slug.acc, slug.sta, slug.agi, slug.ref, slug.lck];
+  const maxStat = Math.max(...stats);
+
+  // Requirements per tier
+  const tierReqs: Record<number, { xp: number; races: number; wins: number; slug: number; stat: number; pathRequired?: boolean }> = {
+    2: { xp: 2000, races: 50, wins: 18, slug: 800, stat: 20 },
+    3: { xp: 4000, races: 150, wins: 55, slug: 2000, stat: 24, pathRequired: true },
+    4: { xp: 6000, races: 300, wins: 120, slug: 3500, stat: 28 },
+  };
+
+  const reqs = tierReqs[nextTier];
+  if (!reqs) {
+    res.status(400).json({ error: "Invalid evolution tier" });
+    return;
+  }
+
+  if (xp < reqs.xp || totalRaces < reqs.races || totalWins < reqs.wins || slugBalance < reqs.slug || maxStat < reqs.stat) {
+    res.status(400).json({ error: "Requirements not met", requirements: reqs, progress: { xp, races: totalRaces, wins: totalWins, slugBalance, maxStat } });
+    return;
+  }
+
+  // Tier 3 requires path selection
+  if (reqs.pathRequired && !path) {
+    res.status(400).json({ error: "Evolution path required for tier 3. Choose: velocity, fortress, or mystic" });
+    return;
+  }
+
+  const validPaths = ['velocity', 'fortress', 'mystic'];
+  if (reqs.pathRequired && !validPaths.includes(path)) {
+    res.status(400).json({ error: "Invalid path. Choose: velocity, fortress, or mystic" });
+    return;
+  }
+
+  // Determine passive ability based on path and tier
+  const passiveMap: Record<string, Record<number, string>> = {
+    velocity: { 3: 'speed_burst', 4: 'speed_overtake' },
+    fortress: { 3: 'fatigue_slow', 4: 'shell_resist' },
+    mystic: { 3: 'luck_magnet', 4: 'bad_to_good' },
+  };
+
+  const evolutionPath = path || slug.evolution_path;
+  const passive = evolutionPath && passiveMap[evolutionPath] ? passiveMap[evolutionPath][nextTier] || slug.passive : slug.passive;
+
+  await runTransaction(async (client) => {
+    // Deduct SLUG
+    await client.query(
+      "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
+      [reqs.slug, wallet]
+    );
+    await client.query(
+      "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'evolution_cost', $2, $3)",
+      [wallet, -reqs.slug, `Evolution to tier ${nextTier} for snail #${snailId}`]
+    );
+
+    // Update snail
+    await client.query(
+      "UPDATE slugs SET tier = $1, evolution_path = COALESCE($2, evolution_path), passive = $3 WHERE id = $4",
+      [nextTier, evolutionPath || null, passive || null, snailId]
+    );
+  });
+
+  res.json({
+    evolved: true,
+    snailId,
+    newTier: nextTier,
+    evolutionPath: evolutionPath || null,
+    passive: passive || null,
+  });
+});
+
+// POST /api/slug/equip-cosmetic — Equip a cosmetic to a snail
+router.post("/equip-cosmetic", async (req: Request, res: Response) => {
+  const { wallet, snailId, cosmeticId } = req.body;
+
+  if (!wallet || !snailId || !cosmeticId) {
+    res.status(400).json({ error: "wallet, snailId, and cosmeticId required" });
+    return;
+  }
+
+  // Verify ownership of snail
+  const slug = await getOne(
+    "SELECT id FROM slugs WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+    [snailId, wallet]
+  );
+  if (!slug) {
+    res.status(404).json({ error: "snail not found or not owned" });
+    return;
+  }
+
+  // Verify ownership of cosmetic
+  const owned = await getOne(
+    "SELECT id FROM user_cosmetics WHERE wallet = $1 AND cosmetic_id = $2",
+    [wallet, cosmeticId]
+  );
+  if (!owned) {
+    res.status(400).json({ error: "cosmetic not owned" });
+    return;
+  }
+
+  // Equip: set equipped_snail_id
+  await query(
+    "UPDATE user_cosmetics SET equipped_snail_id = $1 WHERE wallet = $2 AND cosmetic_id = $3",
+    [snailId, wallet, cosmeticId]
+  );
+
+  res.json({ equipped: true, snailId, cosmeticId });
+});
+
+// POST /api/slug/equip-accessory — Equip an accessory to a snail
+router.post("/equip-accessory", async (req: Request, res: Response) => {
+  const { wallet, snailId, accessoryId } = req.body;
+
+  if (!wallet || !snailId || !accessoryId) {
+    res.status(400).json({ error: "wallet, snailId, and accessoryId required" });
+    return;
+  }
+
+  // Verify ownership of snail
+  const slug = await getOne(
+    "SELECT id FROM slugs WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+    [snailId, wallet]
+  );
+  if (!slug) {
+    res.status(404).json({ error: "snail not found or not owned" });
+    return;
+  }
+
+  // Verify ownership of accessory
+  const owned = await getOne(
+    "SELECT id FROM user_accessories WHERE wallet = $1 AND accessory_id = $2",
+    [wallet, accessoryId]
+  );
+  if (!owned) {
+    res.status(400).json({ error: "accessory not owned" });
+    return;
+  }
+
+  // Equip: upsert into snail_equipment (1 per snail)
+  await query(
+    "INSERT INTO snail_equipment (snail_id, accessory_id) VALUES ($1, $2) ON CONFLICT (snail_id) DO UPDATE SET accessory_id = $2",
+    [snailId, accessoryId]
+  );
+
+  res.json({ equipped: true, snailId, accessoryId });
+});
+
+// POST /api/slug/unequip-accessory — Unequip an accessory from a snail
+router.post("/unequip-accessory", async (req: Request, res: Response) => {
+  const { wallet, snailId } = req.body;
+
+  if (!wallet || !snailId) {
+    res.status(400).json({ error: "wallet and snailId required" });
+    return;
+  }
+
+  // Verify ownership of snail
+  const slug = await getOne(
+    "SELECT id FROM slugs WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+    [snailId, wallet]
+  );
+  if (!slug) {
+    res.status(404).json({ error: "snail not found or not owned" });
+    return;
+  }
+
+  await query("DELETE FROM snail_equipment WHERE snail_id = $1", [snailId]);
+
+  res.json({ unequipped: true, snailId });
+});
+
+// GET /api/slug/cosmetics/:snailId — Get equipped cosmetics for a snail
+router.get("/cosmetics/:snailId", async (req: Request, res: Response) => {
+  const { snailId } = req.params;
+
+  const cosmetics = await getAll(
+    `SELECT c.*, uc.equipped_snail_id
+     FROM user_cosmetics uc
+     JOIN cosmetics c ON uc.cosmetic_id = c.id
+     WHERE uc.equipped_snail_id = $1`,
+    [snailId]
+  );
+
+  const equipment = await getOne(
+    `SELECT a.* FROM snail_equipment se JOIN accessories a ON se.accessory_id = a.id WHERE se.snail_id = $1`,
+    [snailId]
+  );
+
+  res.json({ cosmetics, accessory: equipment || null });
 });
 
 export default router;

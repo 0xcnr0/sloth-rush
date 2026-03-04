@@ -8,6 +8,9 @@ import RaceBroadcast from './pages/RaceBroadcast'
 import Shop from './pages/Shop'
 import RaceHistory from './pages/RaceHistory'
 import Leaderboard from './pages/Leaderboard'
+import MiniGames from './pages/MiniGames'
+import Spectate from './pages/Spectate'
+import RaceReplay from './pages/RaceReplay'
 
 export default function App() {
   return (
@@ -21,6 +24,9 @@ export default function App() {
         <Route path="/shop" element={<Shop />} />
         <Route path="/history" element={<RaceHistory />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/mini-games" element={<MiniGames />} />
+        <Route path="/spectate" element={<Spectate />} />
+        <Route path="/replay/:id" element={<RaceReplay />} />
       </Route>
     </Routes>
   )

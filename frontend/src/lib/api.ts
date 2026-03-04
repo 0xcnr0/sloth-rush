@@ -210,4 +210,82 @@ export const api = {
   // Daily race
   getDailyRace: () =>
     request<{ raceId: string; weather: string; date: string; isNew?: boolean }>('/race/daily'),
+
+  // Mini games
+  playMiniGame: (wallet: string, snailId: number, gameType: string, score: number) =>
+    request<{ gain: number; newStatValue: number; stat: string }>('/slug/mini-game', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, snailId, gameType, score }),
+    }),
+
+  // Evolution
+  getEvolutionProgress: (snailId: number) =>
+    request<{ tier: number; evolutionPath: string | null; passive: string | null; requirements: any; progress: any; eligible: boolean }>(
+      `/slug/evolution-progress/${snailId}`
+    ),
+
+  evolve: (wallet: string, snailId: number, path?: string) =>
+    request<{ evolved: boolean; tier: number; evolutionPath: string | null; passive: string | null }>('/slug/evolve', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, snailId, path }),
+    }),
+
+  // Cosmetics
+  getShopCosmetics: (wallet?: string) =>
+    request<{ cosmetics: any[] }>(`/shop/cosmetics${wallet ? `?wallet=${wallet}` : ''}`),
+
+  buyCosmetic: (wallet: string, cosmeticId: number) =>
+    request<{ purchased: boolean; newBalance: number }>('/shop/buy-cosmetic', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, cosmeticId }),
+    }),
+
+  equipCosmetic: (wallet: string, snailId: number, cosmeticId: number) =>
+    request<{ equipped: boolean }>('/slug/equip-cosmetic', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, snailId, cosmeticId }),
+    }),
+
+  // Accessories
+  getShopAccessories: (wallet?: string) =>
+    request<{ accessories: any[] }>(`/shop/accessories${wallet ? `?wallet=${wallet}` : ''}`),
+
+  buyAccessory: (wallet: string, accessoryId: number) =>
+    request<{ purchased: boolean; newBalance: number }>('/shop/buy-accessory', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, accessoryId }),
+    }),
+
+  equipAccessory: (wallet: string, snailId: number, accessoryId: number) =>
+    request<{ equipped: boolean }>('/slug/equip-accessory', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, snailId, accessoryId }),
+    }),
+
+  unequipAccessory: (wallet: string, snailId: number) =>
+    request<{ unequipped: boolean }>('/slug/unequip-accessory', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, snailId }),
+    }),
+
+  // Race replay
+  getRaceReplay: (raceId: string) =>
+    request<{ replay: any }>(`/race/${raceId}/replay`),
+
+  getActiveRaces: () =>
+    request<{ races: any[] }>('/race/active'),
+
+  // Season
+  getCurrentSeason: () =>
+    request<{ season: any }>('/season/current'),
+
+  // Leaderboard extras
+  getCareerLeaderboard: () =>
+    request<{ leaderboard: any[] }>('/leaderboard/career'),
+
+  getHallOfFame: () =>
+    request<{ entries: any[] }>('/leaderboard/hall-of-fame'),
+
+  getGPLeaderboard: (gpType: string) =>
+    request<{ leaderboard: any[] }>(`/leaderboard/gp/${gpType}`),
 }

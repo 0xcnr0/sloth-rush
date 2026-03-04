@@ -116,6 +116,12 @@ router.get("/milestones/:wallet", async (req: Request, res: Response) => {
   );
   const trainingCount = parseInt(trainingCountRow?.count) || 0;
 
+  const miniGameCountRow = await getOne(
+    "SELECT COALESCE(SUM(count), 0) as count FROM daily_minigame_plays dmp JOIN slugs s ON dmp.snail_id = s.id WHERE s.wallet = $1",
+    [wallet]
+  );
+  const miniGameCount = parseInt(miniGameCountRow?.count) || 0;
+
   const result = [];
   for (const quest of quests) {
     await query(
@@ -139,6 +145,9 @@ router.get("/milestones/:wallet", async (req: Request, res: Response) => {
         break;
       case "training_complete":
         computedProgress = trainingCount;
+        break;
+      case "mini_game_complete":
+        computedProgress = miniGameCount;
         break;
     }
 

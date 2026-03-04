@@ -399,7 +399,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
   }
 
   const participants = await getAll(
-    `SELECT rp.*, s.name, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck
+    `SELECT rp.*, s.name, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
      FROM race_participants rp
      JOIN slugs s ON rp.snail_id = s.id
      WHERE rp.race_id = $1
@@ -407,25 +407,42 @@ router.post("/simulate", async (req: Request, res: Response) => {
     [raceId]
   );
 
+  // Load accessory bonuses for each participant
+  const accessoryBonuses: Record<number, Record<string, number>> = {};
+  for (const p of participants) {
+    const equipment = await getOne(
+      "SELECT a.stat_bonus FROM snail_equipment se JOIN accessories a ON se.accessory_id = a.id WHERE se.snail_id = $1",
+      [p.snail_id]
+    );
+    if (equipment && equipment.stat_bonus) {
+      const bonus = typeof equipment.stat_bonus === 'string' ? JSON.parse(equipment.stat_bonus) : equipment.stat_bonus;
+      accessoryBonuses[p.snail_id] = bonus;
+    }
+  }
+
   // Assign grid positions based on bid (highest bid = pole position)
   for (let index = 0; index < participants.length; index++) {
     const p = participants[index];
     await query("UPDATE race_participants SET grid_position = $1 WHERE id = $2", [index + 1, p.id]);
   }
 
-  const gridded: SnailStats[] = participants.map((p: any, index: number) => ({
-    id: p.snail_id,
-    name: p.name,
-    wallet: p.wallet,
-    isBot: p.is_bot === 1,
-    spd: p.spd,
-    acc: p.acc,
-    sta: p.sta,
-    agi: p.agi,
-    ref: p.ref,
-    lck: p.lck,
-    gridPosition: index + 1,
-  }));
+  const gridded: SnailStats[] = participants.map((p: any, index: number) => {
+    const bonus = accessoryBonuses[p.snail_id] || {};
+    return {
+      id: p.snail_id,
+      name: p.name,
+      wallet: p.wallet,
+      isBot: p.is_bot === 1,
+      spd: p.spd + (bonus.spd || 0),
+      acc: p.acc + (bonus.acc || 0),
+      sta: p.sta + (bonus.sta || 0),
+      agi: p.agi + (bonus.agi || 0),
+      ref: p.ref + (bonus.ref || 0),
+      lck: p.lck + (bonus.lck || 0),
+      gridPosition: index + 1,
+      passive: p.passive || undefined,
+    };
+  });
 
   // Load tactic actions if any
   const tacticRows = await getAll(
@@ -665,10 +682,15 @@ router.post("/simulate", async (req: Request, res: Response) => {
     );
     if ((dailyGain?.total_gain || 0) >= 0.3) continue;
 
-    // Check stat cap
-    const slug = await getOne("SELECT type, rarity, " + statToGrow + " as current_val FROM slugs WHERE id = $1", [entry.id]);
+    // Check stat cap (with evolution support)
+    const slug = await getOne("SELECT type, rarity, tier, evolution_path, " + statToGrow + " as current_val FROM slugs WHERE id = $1", [entry.id]);
     if (!slug) continue;
-    const cap = slug.type === 'free_slug' ? STAT_CAPS.free_slug : (STAT_CAPS[slug.rarity] || STAT_CAPS.common);
+    let cap = slug.type === 'free_slug' ? STAT_CAPS.free_slug : (STAT_CAPS[slug.rarity] || STAT_CAPS.common);
+    if ((slug.tier || 0) >= 3 && slug.evolution_path) {
+      const pathStats: Record<string, string[]> = { velocity: ['spd', 'acc'], fortress: ['sta', 'ref'], mystic: ['lck', 'agi'] };
+      if (pathStats[slug.evolution_path]?.includes(statToGrow)) cap += 5;
+      if ((slug.tier || 0) >= 4) cap += 3;
+    }
     if (slug.current_val >= cap) continue;
 
     const gain = Math.min(0.05, cap - slug.current_val);
@@ -684,6 +706,28 @@ router.post("/simulate", async (req: Request, res: Response) => {
 
   // Send every 3rd frame for smooth animation (~100 frames for a 300-tick race)
   const animFrames = result.frames.filter((_: any, i: number) => i % 3 === 0 || i === result.frames.length - 1);
+
+  // Save replay data
+  await query(
+    "INSERT INTO race_replays (race_id, frames, events, metadata) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+    [raceId, JSON.stringify(animFrames), JSON.stringify(result.events), JSON.stringify({ weather: result.weather, trackLength: result.trackLength, finalOrder: result.finalOrder })]
+  );
+
+  // Award GP points for GP races
+  if (race.format === 'grand_prix' || race.format === 'gp_qualify' || race.format === 'gp_final') {
+    const gpPointValues = [10, 6, 3, 1];
+    for (let i = 0; i < result.finalOrder.length; i++) {
+      const entry = result.finalOrder[i];
+      if (entry.isBot) continue;
+      const pts = gpPointValues[i] || 0;
+      if (pts > 0) {
+        await query(
+          "INSERT INTO gp_points (wallet, season, gp_type, points) VALUES ($1, 1, $2, $3)",
+          [entry.wallet, race.format, pts]
+        );
+      }
+    }
+  }
 
   res.json({
     raceId,
@@ -982,6 +1026,39 @@ router.get("/history/:wallet", async (req: Request, res: Response) => {
     races,
     summary: { totalRaces, winRate, totalEarnings },
   });
+});
+
+// GET /api/race/:id/replay — Get saved replay
+router.get("/:id/replay", async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const replay = await getOne("SELECT * FROM race_replays WHERE race_id = $1", [id]);
+  if (!replay) {
+    res.status(404).json({ error: "replay not found" });
+    return;
+  }
+
+  res.json({
+    raceId: replay.race_id,
+    frames: replay.frames,
+    events: replay.events,
+    metadata: replay.metadata,
+  });
+});
+
+// GET /api/race/active — List active races
+router.get("/active/list", async (_req: Request, res: Response) => {
+  const races = await getAll(
+    `SELECT r.*, COUNT(rp.id) as participant_count
+     FROM races r
+     LEFT JOIN race_participants rp ON r.id = rp.race_id
+     WHERE r.status IN ('lobby', 'bidding')
+     GROUP BY r.id
+     ORDER BY r.created_at DESC
+     LIMIT 20`
+  );
+
+  res.json({ races });
 });
 
 // GET /api/race/:id — Get race status

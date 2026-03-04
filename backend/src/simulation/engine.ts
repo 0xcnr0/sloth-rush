@@ -37,6 +37,7 @@ export interface SnailStats {
   ref: number;
   lck: number;
   gridPosition: number; // 1 = pole, 4 = last
+  passive?: string;
 }
 
 export interface RaceFrame {
@@ -165,6 +166,7 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
     wallet: p.wallet,
     name: p.name,
     isBot: p.isBot,
+    passive: p.passive || undefined,
     distance: 0,
     speed: 0,
     maxSpeed: (3 + p.spd * 0.15) * weatherMods.speedMul,
@@ -178,6 +180,8 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
     finishTick: MAX_TICKS,
     slowdown: 0,
     boost: 0,
+    overtakeBoostEnd: 0,
+    prevPosition: p.gridPosition,
   }));
 
   // Grid position affects starting delay (pole = no delay, 4th = small delay)
@@ -222,7 +226,8 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
             const weights = activeSnails.map((s) => {
               const distBehind = maxDist - s.distance;
               const rubberBand = 1 + distBehind * 0.02; // +2% weight per unit behind
-              return s.luck * rubberBand;
+              const luckMagnetMul = s.passive === 'luck_magnet' ? 1.20 : 1;
+              return s.luck * rubberBand * luckMagnetMul;
             });
             const totalWeight = weights.reduce((a, b) => a + b, 0);
             let pick = rng() * totalWeight;
@@ -246,6 +251,23 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
                 s2.slowdown = Math.max(5, 15 - s2.reflex);
                 affectedIds.push(s1.id, s2.id);
                 break;
+              }
+            }
+          }
+
+          // bad_to_good passive: after a bad event, 30% chance to convert to boost
+          if (affectedIds.length > 0 && (event.type === 'slime_burst' || event.type === 'rain' || event.type === 'clash')) {
+            for (const aid of affectedIds) {
+              const affectedSnail = state.find(s => s.id === aid);
+              if (affectedSnail && affectedSnail.passive === 'bad_to_good' && rng() < 0.30) {
+                affectedSnail.slowdown = 0;
+                affectedSnail.boost = 15;
+                events.push({
+                  tick,
+                  type: 'bad_to_good',
+                  description: `${affectedSnail.name} turned misfortune into speed!`,
+                  affectedIds: [aid],
+                });
               }
             }
           }
@@ -285,8 +307,9 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
           : activeSnails.reduce((a, b) => (a.distance > b.distance ? a : b));
         const shooter = state.find((s) => s.id === action.snailId);
         if (leader && shooter && leader.id !== shooter.id && !leader.finished) {
-          leader.slowdown = 10; // speed drops for 10 ticks
-          leader.speed = 1;
+          const shellSlowdown = leader.passive === 'shell_resist' ? 5 : 10;
+          leader.slowdown = shellSlowdown; // speed drops for ticks (reduced by shell_resist)
+          leader.speed = leader.passive === 'shell_resist' ? leader.speed * 0.5 : 1;
           events.push({
             tick,
             type: "tactic_shell",
@@ -297,18 +320,38 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
       }
     }
 
+    // Track positions for overtake detection
+    const positionsBeforeTick = state
+      .filter(s => !s.finished)
+      .sort((a, b) => b.distance - a.distance)
+      .map(s => s.id);
+
     // Update each snail
     for (const s of state) {
       if (s.finished) continue;
 
       // Stamina degradation (after 60% of race) — tripled STA impact, weather affects decay
-      const staDecay = Math.max(0.05, 0.35 - s.stamina * 0.015 * weatherMods.staMul);
+      const fatigueMul = s.passive === 'fatigue_slow' ? 0.5 : 1;
+      const staDecay = Math.max(0.05, (0.35 - s.stamina * 0.015 * weatherMods.staMul) * fatigueMul);
       const staminaFactor = s.distance > TRACK_LENGTH * 0.6
         ? 1 - ((s.distance - TRACK_LENGTH * 0.6) / (TRACK_LENGTH * 0.4)) * staDecay
         : 1;
 
+      // Passive abilities — speed multiplier
+      let passiveSpeedMul = 1;
+
+      // speed_burst: last 33% of track +10% speed
+      if (s.passive === 'speed_burst' && s.distance > TRACK_LENGTH * 0.67) {
+        passiveSpeedMul *= 1.10;
+      }
+
+      // speed_overtake: after overtaking, 10 tick speed burst
+      if (s.overtakeBoostEnd > tick) {
+        passiveSpeedMul *= 1.15;
+      }
+
       // Acceleration toward max speed
-      const targetSpeed = s.maxSpeed * staminaFactor;
+      const targetSpeed = s.maxSpeed * staminaFactor * passiveSpeedMul;
       if (s.speed < targetSpeed) {
         s.speed = Math.min(targetSpeed, s.speed + s.acceleration * 0.1);
       } else {
@@ -337,6 +380,20 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
         s.finished = true;
         s.finishTick = tick;
         s.distance = TRACK_LENGTH;
+      }
+    }
+
+    // Detect overtakes for speed_overtake passive
+    const positionsAfterTick = state
+      .filter(s => !s.finished)
+      .sort((a, b) => b.distance - a.distance)
+      .map(s => s.id);
+    for (const s of state) {
+      if (s.finished || s.passive !== 'speed_overtake') continue;
+      const prevRank = positionsBeforeTick.indexOf(s.id);
+      const newRank = positionsAfterTick.indexOf(s.id);
+      if (prevRank >= 0 && newRank >= 0 && newRank < prevRank) {
+        s.overtakeBoostEnd = tick + 10;
       }
     }
 
