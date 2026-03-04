@@ -1,12 +1,16 @@
 import { Pool, PoolClient } from "pg";
 
+const isProduction =
+  process.env.NODE_ENV === "production" ||
+  process.env.RAILWAY_ENVIRONMENT === "production";
+
+if (!process.env.DATABASE_URL) {
+  console.warn("WARNING: DATABASE_URL not set. Falling back to individual PG env vars or localhost.");
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl:
-    process.env.NODE_ENV === "production" ||
-    process.env.RAILWAY_ENVIRONMENT === "production"
-      ? { rejectUnauthorized: false }
-      : undefined,
+  connectionString: process.env.DATABASE_URL || undefined,
+  ssl: isProduction ? { rejectUnauthorized: false } : undefined,
 });
 
 // Helper: run any query (INSERT/UPDATE/DELETE or SELECT)
