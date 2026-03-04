@@ -34,6 +34,7 @@ export default function RaceLobby() {
   const [gpFinalId, setGpFinalId] = useState('')
   const [gpQualifiers, setGpQualifiers] = useState<any[]>([])
   const [gpBreakCountdown, setGpBreakCountdown] = useState(30)
+  const [dailyRace, setDailyRace] = useState<{ raceId: string; weather: string; date: string } | null>(null)
 
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -46,6 +47,11 @@ export default function RaceLobby() {
       setCoinBalance(data.coinBalance)
     }).catch(() => {})
   }, [address])
+
+  // Load daily race info
+  useEffect(() => {
+    api.getDailyRace().then(setDailyRace).catch(() => {})
+  }, [])
 
   // Filter creatures based on format: exhibition → all, others → snails only
   useEffect(() => {
@@ -195,6 +201,30 @@ export default function RaceLobby() {
             exit={{ opacity: 0, y: -20 }}
           >
             <h1 className="text-3xl font-bold mb-6">Race Lobby</h1>
+
+            {/* Daily Race Banner */}
+            {dailyRace && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-slug-purple/20 to-slug-green/20 border border-slug-purple/30 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-bold text-sm">Daily Race</p>
+                    <p className="text-gray-400 text-xs">
+                      Weather: <span className="text-slug-green font-semibold capitalize">{dailyRace.weather}</span>
+                      {' \u2022 '}2x Exhibition Rewards
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedFormat(FORMATS[0]) // Exhibition
+                      setRaceId(dailyRace.raceId)
+                    }}
+                    className="px-4 py-1.5 bg-slug-purple text-white font-bold rounded-lg text-sm cursor-pointer hover:bg-slug-purple/80"
+                  >
+                    Join Daily
+                  </button>
+                </div>
+              </div>
+            )}
 
             {snails.length === 0 ? (
               <div className="text-center py-16">

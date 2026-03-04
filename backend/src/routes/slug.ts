@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { query, getOne, getAll, runTransaction } from "../db";
 import { awardXP, getXP, XP_AMOUNTS } from "../xp";
+import { triggerQuestProgress } from "./race";
 
 const router = Router();
 
@@ -272,6 +273,158 @@ router.post("/daily-login", async (req: Request, res: Response) => {
   const newBalance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
 
   res.json({ claimed: true, bonus, newBalance: newBalance?.balance || 0 });
+});
+
+// Stat caps
+const STAT_CAPS: Record<string, number> = {
+  free_slug: 15, common: 22, uncommon: 25, rare: 28, epic: 31, legendary: 35,
+};
+
+// POST /api/slug/train — Start a training session (6h, 10 SLUG cost)
+router.post("/train", async (req: Request, res: Response) => {
+  const { wallet, snailId, stat } = req.body;
+  if (!wallet || !snailId || !stat) {
+    res.status(400).json({ error: "wallet, snailId, and stat required" });
+    return;
+  }
+
+  const validStats = ['spd', 'acc', 'sta', 'agi', 'ref', 'lck'];
+  if (!validStats.includes(stat)) {
+    res.status(400).json({ error: "Invalid stat. Must be: spd, acc, sta, agi, ref, lck" });
+    return;
+  }
+
+  // Verify ownership
+  const slug = await getOne(
+    "SELECT * FROM slugs WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+    [snailId, wallet]
+  );
+  if (!slug) {
+    res.status(404).json({ error: "creature not found or not owned" });
+    return;
+  }
+
+  // Check stat cap
+  const cap = slug.type === 'free_slug' ? STAT_CAPS.free_slug : (STAT_CAPS[slug.rarity] || STAT_CAPS.common);
+  if (slug[stat] >= cap) {
+    res.status(400).json({ error: `${stat.toUpperCase()} is already at max (${cap}) for this rarity` });
+    return;
+  }
+
+  // Check if already in training (unclaimed)
+  const activeTraining = await getOne(
+    "SELECT id FROM trainings WHERE snail_id = $1 AND claimed = 0",
+    [snailId]
+  );
+  if (activeTraining) {
+    res.status(400).json({ error: "This creature is already in training" });
+    return;
+  }
+
+  // Check daily training limit (free_slug: 1/day, snail: 2/day)
+  const today = new Date().toISOString().split("T")[0];
+  const dailyLimit = slug.type === 'free_slug' ? 1 : 2;
+  const todayTrainings = await getOne(
+    "SELECT COUNT(*) as count FROM trainings WHERE snail_id = $1 AND started_at::date = $2::date",
+    [snailId, today]
+  );
+  if (parseInt(todayTrainings?.count || 0) >= dailyLimit) {
+    res.status(400).json({ error: `Daily training limit reached (${dailyLimit}/day)` });
+    return;
+  }
+
+  // Check balance (10 SLUG cost)
+  const balance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
+  if ((balance?.balance || 0) < 10) {
+    res.status(400).json({ error: "Need 10 SLUG for training" });
+    return;
+  }
+
+  // Deduct cost and start training (6 hours)
+  await query(
+    "UPDATE coin_balances SET balance = balance - 10, updated_at = NOW() WHERE wallet = $1",
+    [wallet]
+  );
+  await query(
+    "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'training_cost', -10, $2)",
+    [wallet, `Training ${stat.toUpperCase()} for snail #${snailId}`]
+  );
+
+  const completedAt = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
+  await query(
+    "INSERT INTO trainings (snail_id, wallet, stat, completed_at) VALUES ($1, $2, $3, $4)",
+    [snailId, wallet, stat, completedAt]
+  );
+
+  res.json({ started: true, snailId, stat, completedAt });
+});
+
+// POST /api/slug/claim-training — Claim training reward
+router.post("/claim-training", async (req: Request, res: Response) => {
+  const { wallet, snailId } = req.body;
+  if (!wallet || !snailId) {
+    res.status(400).json({ error: "wallet and snailId required" });
+    return;
+  }
+
+  const training = await getOne(
+    "SELECT * FROM trainings WHERE snail_id = $1 AND wallet = $2 AND claimed = 0",
+    [snailId, wallet]
+  );
+  if (!training) {
+    res.status(404).json({ error: "No active training found" });
+    return;
+  }
+
+  if (new Date(training.completed_at) > new Date()) {
+    res.status(400).json({ error: "Training not completed yet" });
+    return;
+  }
+
+  const slug = await getOne("SELECT * FROM slugs WHERE id = $1", [snailId]);
+  if (!slug) {
+    res.status(404).json({ error: "creature not found" });
+    return;
+  }
+
+  const stat = training.stat;
+  const cap = slug.type === 'free_slug' ? STAT_CAPS.free_slug : (STAT_CAPS[slug.rarity] || STAT_CAPS.common);
+  const gain = Math.min(0.3, cap - (slug[stat] || 0));
+
+  if (gain > 0) {
+    await query(`UPDATE slugs SET ${stat} = ${stat} + $1 WHERE id = $2`, [gain, snailId]);
+  }
+  await query("UPDATE trainings SET claimed = 1 WHERE id = $1", [training.id]);
+  await awardXP(wallet, 5);
+
+  // Trigger training_complete quest
+  await triggerQuestProgress(wallet, "training_complete");
+
+  res.json({ claimed: true, snailId, stat, gain, newStatValue: (slug[stat] || 0) + gain });
+});
+
+// GET /api/slug/training-status/:wallet — Get active trainings
+router.get("/training-status/:wallet", async (req: Request, res: Response) => {
+  const wallet = req.params.wallet as string;
+
+  const trainings = await getAll(
+    `SELECT t.*, s.name as snail_name FROM trainings t
+     JOIN slugs s ON t.snail_id = s.id
+     WHERE t.wallet = $1 AND t.claimed = 0
+     ORDER BY t.started_at DESC`,
+    [wallet]
+  );
+
+  const result = trainings.map((t: any) => ({
+    snailId: t.snail_id,
+    snailName: t.snail_name,
+    stat: t.stat,
+    startedAt: t.started_at,
+    completedAt: t.completed_at,
+    isReady: new Date(t.completed_at) <= new Date(),
+  }));
+
+  res.json({ trainings: result });
 });
 
 // GET /api/slug/upgrade-progress/:wallet — Check free upgrade eligibility

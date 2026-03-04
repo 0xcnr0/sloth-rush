@@ -6,26 +6,47 @@ import { awardXP, XP_AMOUNTS } from "../xp";
 
 const router = Router();
 
+// Get the reset date for a quest based on its period
+function getResetDate(period: string): string {
+  if (period === "weekly") {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - diff);
+    return monday.toISOString().split("T")[0];
+  }
+  if (period === "milestone") {
+    return "milestone";
+  }
+  // daily
+  return new Date().toISOString().split("T")[0];
+}
+
 // Quest progress trigger — used after race simulate
 export async function triggerQuestProgress(wallet: string, requirementType: string): Promise<void> {
-  const today = new Date().toISOString().split("T")[0];
   const quests = await getAll(
     "SELECT * FROM quests WHERE requirement_type = $1",
     [requirementType]
   );
 
   for (const quest of quests) {
-    // Ensure progress row exists for today
+    // Skip milestones — they are computed on read
+    if (quest.period === "milestone") continue;
+
+    const resetDate = getResetDate(quest.period || "daily");
+
+    // Ensure progress row exists
     await query(
       `INSERT INTO user_quest_progress (wallet, quest_id, progress, completed, reset_date)
        VALUES ($1, $2, 0, 0, $3) ON CONFLICT DO NOTHING`,
-      [wallet, quest.id, today]
+      [wallet, quest.id, resetDate]
     );
 
     // Get current progress
     const progress = await getOne(
       "SELECT * FROM user_quest_progress WHERE wallet = $1 AND quest_id = $2 AND reset_date = $3",
-      [wallet, quest.id, today]
+      [wallet, quest.id, resetDate]
     );
 
     if (progress && !progress.completed) {
@@ -35,7 +56,7 @@ export async function triggerQuestProgress(wallet: string, requirementType: stri
       await query(
         `UPDATE user_quest_progress SET progress = $1, completed = $2, completed_at = $3
          WHERE wallet = $4 AND quest_id = $5 AND reset_date = $6`,
-        [newProgress, isComplete ? 1 : 0, isComplete ? new Date().toISOString() : null, wallet, quest.id, today]
+        [newProgress, isComplete ? 1 : 0, isComplete ? new Date().toISOString() : null, wallet, quest.id, resetDate]
       );
 
       // Award rewards on completion
@@ -58,6 +79,24 @@ export async function triggerQuestProgress(wallet: string, requirementType: stri
     }
   }
 }
+
+// Stat caps by rarity (and type)
+const STAT_CAPS: Record<string, number> = {
+  free_slug: 15,
+  common: 22,
+  uncommon: 25,
+  rare: 28,
+  epic: 31,
+  legendary: 35,
+};
+
+// Position-based stat rewards for organic growth
+const POSITION_STAT: Record<number, string> = {
+  1: 'spd',
+  2: 'acc',
+  3: 'sta',
+  4: 'ref',
+};
 
 // Bot snail templates with diverse stat distributions (total ~60 each)
 const BOT_TEMPLATES = [
@@ -140,6 +179,16 @@ router.post("/join", async (req: Request, res: Response) => {
   // Free slugs can only join exhibition races
   if (snail.type === "free_slug" && race.format !== "exhibition") {
     res.status(400).json({ error: "Free Slugs can only join Exhibition races. Upgrade to a Snail for other formats!" });
+    return;
+  }
+
+  // Training lock: snail in active (unclaimed) training cannot race
+  const activeTraining = await getOne(
+    "SELECT id FROM trainings WHERE snail_id = $1 AND claimed = 0",
+    [snailId]
+  );
+  if (activeTraining) {
+    res.status(400).json({ error: "This creature is in training and cannot race!" });
     return;
   }
 
@@ -576,6 +625,63 @@ router.post("/simulate", async (req: Request, res: Response) => {
     if (i <= 1) await triggerQuestProgress(entry.wallet, "top_2_finish");
   }
 
+  // Log weather for weekly quest (weather_variety)
+  if (result.weather) {
+    const weekStart = getResetDate("weekly");
+    for (const entry of result.finalOrder) {
+      if (entry.isBot) continue;
+      await query(
+        "INSERT INTO weather_log (wallet, weather, week_start) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        [entry.wallet, result.weather, weekStart]
+      );
+      // Check how many distinct weathers this week
+      const weatherCount = await getOne(
+        "SELECT COUNT(*) as count FROM weather_log WHERE wallet = $1 AND week_start = $2",
+        [entry.wallet, weekStart]
+      );
+      const count = parseInt(weatherCount?.count) || 0;
+      if (count <= 3) {
+        await triggerQuestProgress(entry.wallet, "weather_variety");
+      }
+    }
+  }
+
+  // Organic stat growth: +0.05 to position-based stat, max +0.3/day
+  const today = new Date().toISOString().split("T")[0];
+  for (let i = 0; i < result.finalOrder.length; i++) {
+    const entry = result.finalOrder[i];
+    if (entry.isBot) continue;
+    const statToGrow = POSITION_STAT[i + 1];
+    if (!statToGrow) continue;
+
+    // Check daily cap
+    await query(
+      "INSERT INTO daily_stat_gains (snail_id, gain_date, total_gain) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
+      [entry.id, today]
+    );
+    const dailyGain = await getOne(
+      "SELECT total_gain FROM daily_stat_gains WHERE snail_id = $1 AND gain_date = $2",
+      [entry.id, today]
+    );
+    if ((dailyGain?.total_gain || 0) >= 0.3) continue;
+
+    // Check stat cap
+    const slug = await getOne("SELECT type, rarity, " + statToGrow + " as current_val FROM slugs WHERE id = $1", [entry.id]);
+    if (!slug) continue;
+    const cap = slug.type === 'free_slug' ? STAT_CAPS.free_slug : (STAT_CAPS[slug.rarity] || STAT_CAPS.common);
+    if (slug.current_val >= cap) continue;
+
+    const gain = Math.min(0.05, cap - slug.current_val);
+    await query(
+      `UPDATE slugs SET ${statToGrow} = ${statToGrow} + $1 WHERE id = $2`,
+      [gain, entry.id]
+    );
+    await query(
+      "UPDATE daily_stat_gains SET total_gain = total_gain + $1 WHERE snail_id = $2 AND gain_date = $3",
+      [gain, entry.id, today]
+    );
+  }
+
   // Send every 3rd frame for smooth animation (~100 frames for a 300-tick race)
   const animFrames = result.frames.filter((_: any, i: number) => i % 3 === 0 || i === result.frames.length - 1);
 
@@ -812,6 +918,43 @@ router.get("/:id/prices", async (req: Request, res: Response) => {
     boostPurchases: gdaState.boostPurchases,
     shellPurchases: gdaState.shellPurchases,
   });
+});
+
+// GET /api/race/daily — Get today's daily race (deterministic weather, 2x exhibition rewards)
+router.get("/daily", async (req: Request, res: Response) => {
+  const today = new Date().toISOString().split("T")[0];
+
+  // Weather rotation based on day of year
+  const weatherOptions = ["sunny", "rainy", "windy", "foggy", "stormy"];
+  const dayOfYear = Math.floor(
+    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
+  );
+  const weather = weatherOptions[dayOfYear % weatherOptions.length];
+
+  // Check if daily race exists
+  const existing = await getOne(
+    "SELECT * FROM daily_races WHERE race_date = $1",
+    [today]
+  );
+
+  if (existing) {
+    const race = await getOne("SELECT * FROM races WHERE id = $1", [existing.race_id]);
+    res.json({ raceId: existing.race_id, weather, date: today, race });
+    return;
+  }
+
+  // Create daily race (exhibition format, auto-created)
+  const raceId = `daily_${today}_${crypto.randomBytes(4).toString("hex")}`;
+  await query(
+    "INSERT INTO races (id, format, entry_fee, max_raise, status) VALUES ($1, 'exhibition', 0, 0, 'lobby')",
+    [raceId]
+  );
+  await query(
+    "INSERT INTO daily_races (race_date, race_id) VALUES ($1, $2)",
+    [today, raceId]
+  );
+
+  res.json({ raceId, weather, date: today, isNew: true });
 });
 
 // GET /api/race/history/:wallet — Race history for a wallet

@@ -177,4 +177,37 @@ export const api = {
     request<{ rank: number; wallet: string; total_rp: number } | null>(
       `/leaderboard/me/${wallet}`
     ),
+
+  // Training
+  startTraining: (wallet: string, snailId: number, stat: string) =>
+    request<{ started: boolean; snailId: number; stat: string; completedAt: string }>('/slug/train', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, snailId, stat }),
+    }),
+
+  claimTraining: (wallet: string, snailId: number) =>
+    request<{ claimed: boolean; snailId: number; stat: string; gain: number; newStatValue: number }>('/slug/claim-training', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, snailId }),
+    }),
+
+  getTrainingStatus: (wallet: string) =>
+    request<{ trainings: { snailId: number; snailName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[] }>(
+      `/slug/training-status/${wallet}`
+    ),
+
+  // Weekly & Milestone quests
+  getWeeklyQuests: (wallet: string) =>
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; slug_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+      `/quests/weekly/${wallet}`
+    ),
+
+  getMilestones: (wallet: string) =>
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; slug_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+      `/quests/milestones/${wallet}`
+    ),
+
+  // Daily race
+  getDailyRace: () =>
+    request<{ raceId: string; weather: string; date: string; isNew?: boolean }>('/race/daily'),
 }

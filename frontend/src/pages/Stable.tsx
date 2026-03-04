@@ -6,7 +6,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { api } from '../lib/api'
 import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
-import DailyQuests from '../components/DailyQuests'
+import QuestPanel from '../components/QuestPanel'
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'bg-gray-600 text-gray-200',
@@ -108,6 +108,9 @@ export default function Stable() {
   const [editName, setEditName] = useState('')
   const [streaks, setStreaks] = useState<Record<number, { current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }>>({})
   const [upgradeProgress, setUpgradeProgress] = useState<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean } | null>(null)
+  const [trainings, setTrainings] = useState<{ snailId: number; snailName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]>([])
+  const [trainingStat, setTrainingStat] = useState<Record<number, string>>({})
+  const [trainingLoading, setTrainingLoading] = useState<number | null>(null)
 
   async function loadStable() {
     if (!address) return
@@ -133,6 +136,13 @@ export default function Stable() {
     if (!address) return
     api.getUpgradeProgress(address).then(setUpgradeProgress).catch(() => {})
   }, [address])
+
+  // Load training status
+  function loadTrainings() {
+    if (!address) return
+    api.getTrainingStatus(address).then(d => setTrainings(d.trainings)).catch(() => {})
+  }
+  useEffect(() => { loadTrainings() }, [address])
 
   useEffect(() => {
     if (!address) return
@@ -220,6 +230,34 @@ export default function Stable() {
     } catch (err: any) {
       alert(err.message)
     }
+  }
+
+  async function handleStartTraining(snailId: number) {
+    if (!address) return
+    const stat = trainingStat[snailId]
+    if (!stat) return
+    setTrainingLoading(snailId)
+    try {
+      await api.startTraining(address, snailId, stat)
+      loadTrainings()
+      loadStable()
+    } catch (err: any) {
+      alert(err.message)
+    }
+    setTrainingLoading(null)
+  }
+
+  async function handleClaimTraining(snailId: number) {
+    if (!address) return
+    setTrainingLoading(snailId)
+    try {
+      await api.claimTraining(address, snailId)
+      loadTrainings()
+      loadStable()
+    } catch (err: any) {
+      alert(err.message)
+    }
+    setTrainingLoading(null)
   }
 
   function closeReveal() {
@@ -428,7 +466,7 @@ export default function Stable() {
                   ].map(s => (
                     <div key={s.label} className="bg-slug-dark rounded px-1 py-1">
                       <span className="text-gray-500">{s.label} </span>
-                      <span className="text-white font-bold">{s.val}</span>
+                      <span className="text-white font-bold">{Number(s.val) % 1 === 0 ? s.val : Number(s.val).toFixed(1)}</span>
                     </div>
                   ))}
                 </div>
@@ -462,6 +500,58 @@ export default function Stable() {
                   </div>
                 )}
 
+                {/* Training UI */}
+                {(() => {
+                  const active = trainings.find(t => t.snailId === snail.id)
+                  if (active) {
+                    return (
+                      <div className="mt-3 p-3 bg-slug-dark rounded-lg border border-slug-border">
+                        <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
+                        {active.isReady ? (
+                          <button
+                            onClick={() => handleClaimTraining(snail.id)}
+                            disabled={trainingLoading === snail.id}
+                            className="w-full py-1.5 bg-slug-green text-slug-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                          >
+                            {trainingLoading === snail.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
+                          </button>
+                        ) : (
+                          <p className="text-xs text-slug-purple">
+                            Ready at {new Date(active.completedAt).toLocaleTimeString()}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="mt-3 p-3 bg-slug-dark rounded-lg border border-slug-border">
+                      <p className="text-xs text-gray-400 mb-2">Train a stat (6h, 10 SLUG)</p>
+                      <div className="flex gap-1 mb-2">
+                        {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
+                          <button
+                            key={stat}
+                            onClick={() => setTrainingStat(prev => ({ ...prev, [snail.id]: stat }))}
+                            className={`flex-1 py-1 rounded text-[10px] font-bold cursor-pointer ${
+                              trainingStat[snail.id] === stat
+                                ? 'bg-slug-purple text-white'
+                                : 'bg-slug-card text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            {stat.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => handleStartTraining(snail.id)}
+                        disabled={!trainingStat[snail.id] || trainingLoading === snail.id}
+                        className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                      >
+                        {trainingLoading === snail.id ? 'Starting...' : 'Start Training'}
+                      </button>
+                    </div>
+                  )
+                })()}
+
                 <button
                   onClick={() => navigate('/race')}
                   className="w-full mt-4 py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer text-sm"
@@ -474,9 +564,9 @@ export default function Stable() {
         </div>
       )}
 
-      {/* Daily Quests */}
+      {/* Quest Panel */}
       <div className="mt-8">
-        <DailyQuests />
+        <QuestPanel />
       </div>
 
       {/* Upgrade Overlay */}
