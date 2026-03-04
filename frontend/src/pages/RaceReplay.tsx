@@ -31,10 +31,6 @@ export default function RaceReplay() {
   const finalOrder = replay?.finalOrder || []
   const totalFrames = frames.length
 
-  const _currentEvents = events.filter((e: any) =>
-    e.tick === (frames[currentFrame]?.tick ?? -1)
-  )
-
   const play = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
     if (currentFrame >= totalFrames - 1) setCurrentFrame(0)
