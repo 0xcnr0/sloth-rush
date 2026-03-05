@@ -123,12 +123,11 @@ export default function Profile() {
 
 function RaceHistorySection({ wallet }: { wallet: string }) {
   const [races, setRaces] = useState<any[]>([])
-  const [summary, setSummary] = useState({ totalRaces: 0, winRate: 0, totalEarnings: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.getRaceHistory(wallet)
-      .then(d => { setRaces(d.races); setSummary(d.summary) })
+      .then(d => { setRaces(d.races) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [wallet])

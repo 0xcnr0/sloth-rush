@@ -62,8 +62,6 @@ export default function Stable() {
   const [evolveSnailName, setEvolveSnailName] = useState<string>('')
   const [ownedCosmetics, setOwnedCosmetics] = useState<any[]>([])
   const [ownedAccessories, setOwnedAccessories] = useState<any[]>([])
-  const [cosmeticEquip, setCosmeticEquip] = useState<Record<number, number>>({})
-  const [accessoryEquip, setAccessoryEquip] = useState<Record<number, number>>({})
 
   async function loadStable() {
     if (!address) return
@@ -222,30 +220,6 @@ export default function Stable() {
       toast.error(err.message)
     }
     setTrainingLoading(null)
-  }
-
-  async function handleEquipCosmetic(snailId: number) {
-    if (!address) return
-    const cosId = cosmeticEquip[snailId]
-    if (!cosId) return
-    try {
-      await api.equipCosmetic(address, snailId, cosId)
-      loadStable()
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-  }
-
-  async function handleEquipAccessory(snailId: number) {
-    if (!address) return
-    const accId = accessoryEquip[snailId]
-    if (!accId) return
-    try {
-      await api.equipAccessory(address, snailId, accId)
-      loadStable()
-    } catch (err: any) {
-      toast.error(err.message)
-    }
   }
 
   async function handleUnequipAccessory(snailId: number) {
