@@ -7,14 +7,10 @@ import OnboardingTutorial from './OnboardingTutorial'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home' },
-  { path: '/mint', label: 'Mint' },
   { path: '/stable', label: 'Stable' },
   { path: '/race', label: 'Race' },
-  { path: '/mini-games', label: 'Games' },
-  { path: '/spectate', label: 'Spectate' },
-  { path: '/leaderboard', label: 'Leaderboard' },
   { path: '/shop', label: 'Shop' },
-  { path: '/history', label: 'History' },
+  { path: '/leaderboard', label: 'Leaderboard' },
 ]
 
 export default function Layout() {
@@ -66,23 +62,23 @@ export default function Layout() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {address && balance > 0 && (
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-slug-green/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
+                <span className="text-slug-green font-bold text-xs sm:text-sm">{balance}</span>
+                <span className="text-slug-green/70 text-[10px] sm:text-xs hidden sm:inline">SLUG</span>
+              </div>
+            )}
             {address && xp > 0 && (
               <div className="hidden sm:flex items-center gap-1.5 bg-slug-purple/10 px-3 py-1.5 rounded-lg">
                 <span className="text-slug-purple font-bold text-sm">{xp}</span>
                 <span className="text-slug-purple/70 text-xs">XP</span>
               </div>
             )}
-            {address && balance > 0 && (
-              <div className="hidden sm:flex items-center gap-1.5 bg-slug-green/10 px-3 py-1.5 rounded-lg">
-                <span className="text-slug-green font-bold text-sm">{balance}</span>
-                <span className="text-slug-green/70 text-xs">SLUG</span>
-              </div>
-            )}
             <ConnectButton
               showBalance={false}
               chainStatus="icon"
-              accountStatus="address"
+              accountStatus={{ smallScreen: 'avatar', largeScreen: 'address' }}
             />
           </div>
         </div>
@@ -112,8 +108,13 @@ export default function Layout() {
                 </Link>
               ))}
             </nav>
+            <div className="mt-4 pt-4 border-t border-slate-700 flex flex-col gap-2">
+              <Link to="/mint" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors">Mint</Link>
+              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors">Profile</Link>
+              <Link to="/guide" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors">How to Play</Link>
+            </div>
             {address && (
-              <div className="mt-6 pt-4 border-t border-slate-700 space-y-2">
+              <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
                 {xp > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5">
                     <span className="text-slug-purple font-bold text-sm">{xp}</span>
@@ -136,8 +137,15 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-slug-border py-4 text-center text-gray-500 text-xs">
-        Slug Rush — Base L2 Blockchain Racing Game
+      <footer className="border-t border-slug-border py-4 px-4">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-gray-500 text-xs">
+          <span>Slug Rush — Base L2 Blockchain Racing Game</span>
+          <div className="flex items-center gap-4">
+            <Link to="/mint" className="hover:text-white transition-colors">Mint</Link>
+            <Link to="/guide" className="hover:text-white transition-colors">How to Play</Link>
+            <Link to="/profile" className="hover:text-white transition-colors">Profile</Link>
+          </div>
+        </div>
       </footer>
 
       <OnboardingTutorial />

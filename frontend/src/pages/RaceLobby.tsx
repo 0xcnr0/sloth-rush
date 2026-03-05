@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import Spinner from '../components/Spinner'
 
 type Phase = 'select' | 'lobby' | 'bidding' | 'reveal' | 'starting' | 'gp_break' | 'gp_final_bid'
 
@@ -18,6 +19,10 @@ const FORMATS = [
 export default function RaceLobby() {
   const { address, isConnected } = useAccount()
   const navigate = useNavigate()
+
+  const [mainTab, setMainTab] = useState<'create' | 'live'>('create')
+  const [liveRaces, setLiveRaces] = useState<any[]>([])
+  const [liveLoading, setLiveLoading] = useState(false)
 
   const [phase, setPhase] = useState<Phase>('select')
   const [snails, setSnails] = useState<any[]>([])
@@ -63,6 +68,21 @@ export default function RaceLobby() {
     }
     setSelectedSnail(null)
   }, [selectedFormat, allCreatures])
+
+  // Poll live races when on the Live Races tab
+  useEffect(() => {
+    if (mainTab !== 'live') return
+    setLiveLoading(true)
+    function loadLive() {
+      api.getActiveRaces()
+        .then(d => setLiveRaces(d.races))
+        .catch(() => setLiveRaces([]))
+        .finally(() => setLiveLoading(false))
+    }
+    loadLive()
+    const interval = setInterval(loadLive, 5000)
+    return () => clearInterval(interval)
+  }, [mainTab])
 
   // Countdown timer for bidding
   const startCountdown = useCallback(() => {
@@ -191,7 +211,95 @@ export default function RaceLobby() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div>
+      {/* Tab selector - only show when in select phase */}
+      {phase === 'select' && (
+        <div className="max-w-5xl mx-auto px-4 pt-6">
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setMainTab('create')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                mainTab === 'create' ? 'bg-slug-green/20 text-slug-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Create Race
+            </button>
+            <button
+              onClick={() => setMainTab('live')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                mainTab === 'live' ? 'bg-slug-green/20 text-slug-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Live Races
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Live Races view */}
+      {mainTab === 'live' && phase === 'select' && (
+        <div className="max-w-3xl mx-auto px-4 pb-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">Live Races</h2>
+            <p className="text-gray-400 text-sm mt-1">Watch races in progress</p>
+          </div>
+
+          {liveLoading && <Spinner text="Loading active races..." />}
+
+          {!liveLoading && liveRaces.length === 0 && (
+            <div className="text-center py-16">
+              <div className="text-5xl mb-4">{'\u{1F3C1}'}</div>
+              <p className="text-gray-400 mb-2">No active races right now</p>
+              <p className="text-gray-500 text-sm">Races appear here when in progress. Check back soon!</p>
+            </div>
+          )}
+
+          {!liveLoading && liveRaces.length > 0 && (
+            <div className="space-y-3">
+              {liveRaces.map((race: any, i: number) => (
+                <motion.div
+                  key={race.raceId || race.id || i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="bg-slug-card border border-slug-border rounded-xl p-4 flex items-center justify-between hover:border-slug-green/30 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-slug-green/10 rounded-lg flex items-center justify-center">
+                      <span className="text-xl">{'\u{1F40C}'}</span>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">
+                        {race.format ? race.format.charAt(0).toUpperCase() + race.format.slice(1) : 'Standard'} Race
+                      </p>
+                      <p className="text-gray-500 text-xs">
+                        {race.participantCount || race.participants?.length || '?'} participants
+                        {race.status && <span> &middot; {race.status}</span>}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      <span className="text-green-400 text-xs font-semibold">LIVE</span>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/race/${race.raceId || race.id}`)}
+                      className="px-4 py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer text-sm"
+                    >
+                      Watch
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create Race flow (existing content) */}
+      {(mainTab === 'create' || phase !== 'select') && (
+      <div className="max-w-3xl mx-auto px-4 py-8">
       <AnimatePresence mode="wait">
         {/* Phase 1: Snail & Format Selection */}
         {phase === 'select' && (
@@ -305,7 +413,7 @@ export default function RaceLobby() {
                   className="w-full py-3 bg-slug-green text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-green/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {loading ? 'Creating Race...' :
-                    selectedFormat.fee > coinBalance ? `Need ${selectedFormat.fee} SLUG` :
+                    selectedFormat.fee > coinBalance ? `Insufficient balance (need ${selectedFormat.fee}, have ${coinBalance} SLUG)` :
                     `Enter Race (${selectedFormat.fee > 0 ? selectedFormat.fee + ' SLUG' : 'Free'})`
                   }
                 </button>
@@ -364,7 +472,8 @@ export default function RaceLobby() {
             className="text-center"
           >
             <h1 className="text-2xl font-bold mb-2">SEALED BID</h1>
-            <p className="text-gray-400 mb-6">Place your raise to fight for Pole Position!</p>
+            <p className="text-gray-400 mb-2">Place your raise to fight for Pole Position!</p>
+            <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">All bids are hidden until time runs out. Highest bidder starts in pole position with a small lead. You get your bid back — it only determines starting order.</p>
 
             {/* Big countdown */}
             <motion.div
@@ -596,6 +705,8 @@ export default function RaceLobby() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+      )}
     </div>
   )
 }

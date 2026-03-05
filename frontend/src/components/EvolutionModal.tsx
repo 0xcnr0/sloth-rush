@@ -60,6 +60,13 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
     if (evolving) return
     // For tier 2->3 a path must be chosen
     if (progress?.tier === 2 && !selectedPath) return
+    // Confirmation dialog
+    const slugCost = requirements?.slug || 0
+    const pathLabel = selectedPath ? ` via ${selectedPath.charAt(0).toUpperCase() + selectedPath.slice(1)} path` : ''
+    const confirmed = window.confirm(
+      `Evolve ${snailName} to Tier ${tier + 1}${pathLabel}?\n\nThis will cost ${slugCost} SLUG Coins. This action cannot be undone.`
+    )
+    if (!confirmed) return
     setEvolving(true)
     try {
       const result = await api.evolve(wallet, snailId, selectedPath || undefined)

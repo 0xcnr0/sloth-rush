@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
+import Spinner from '../components/Spinner'
 
 export default function Spectate() {
   const navigate = useNavigate()
@@ -29,7 +30,9 @@ export default function Spectate() {
       </div>
 
       {loading && (
-        <div className="text-center py-12 text-gray-500">Loading active races...</div>
+        <div className="text-center py-12">
+          <Spinner text="Loading active races..." />
+        </div>
       )}
 
       {!loading && races.length === 0 && (

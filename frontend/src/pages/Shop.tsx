@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import Spinner from '../components/Spinner'
 
 const PACKAGE_STYLES: Record<string, { border: string; bg: string; icon: string }> = {
   starter: { border: 'border-gray-500', bg: 'bg-gray-500/10', icon: '\u{1F331}' },
@@ -257,7 +258,7 @@ export default function Shop() {
       {tab === 'cosmetics' && (
         <>
           {cosmeticsLoading ? (
-            <div className="text-center py-12 text-gray-500">Loading cosmetics...</div>
+            <div className="text-center py-12"><Spinner text="Loading cosmetics..." /></div>
           ) : cosmetics.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-3">{'\u{1F3A8}'}</div>
@@ -337,7 +338,7 @@ export default function Shop() {
       {tab === 'accessories' && (
         <>
           {accessoriesLoading ? (
-            <div className="text-center py-12 text-gray-500">Loading accessories...</div>
+            <div className="text-center py-12"><Spinner text="Loading accessories..." /></div>
           ) : accessories.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-3">{'\u{1F451}'}</div>

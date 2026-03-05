@@ -9,6 +9,7 @@ import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
 import QuestPanel from '../components/QuestPanel'
 import EvolutionModal from '../components/EvolutionModal'
+import Spinner from '../components/Spinner'
 
 const EVOLUTION_PATH_ICONS: Record<string, string> = {
   velocity: '\u26A1',
@@ -40,68 +41,6 @@ const SNAIL_EMOJI: Record<string, string> = {
 }
 
 type UpgradeState = 'idle' | 'paying' | 'burning' | 'revealing' | 'done'
-
-function RadarChart({ stats }: { stats: { spd: number; acc: number; sta: number; agi: number; ref: number; lck: number } }) {
-  const labels = ['SPD', 'ACC', 'STA', 'AGI', 'REF', 'LCK']
-  const values = [stats.spd, stats.acc, stats.sta, stats.agi, stats.ref, stats.lck]
-  const max = 30
-  const cx = 60, cy = 60, r = 45
-
-  const points = values.map((v, i) => {
-    const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2
-    const ratio = Math.min(v / max, 1)
-    return {
-      x: cx + r * ratio * Math.cos(angle),
-      y: cy + r * ratio * Math.sin(angle),
-    }
-  })
-
-  const gridLevels = [0.33, 0.66, 1]
-
-  return (
-    <svg viewBox="0 0 120 120" className="w-full max-w-[160px]">
-      {gridLevels.map((level, li) => (
-        <polygon
-          key={li}
-          points={Array.from({ length: 6 }, (_, i) => {
-            const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2
-            return `${cx + r * level * Math.cos(angle)},${cy + r * level * Math.sin(angle)}`
-          }).join(' ')}
-          fill="none"
-          stroke="#374151"
-          strokeWidth="0.5"
-        />
-      ))}
-      <polygon
-        points={points.map(p => `${p.x},${p.y}`).join(' ')}
-        fill="rgba(34, 197, 94, 0.2)"
-        stroke="#22c55e"
-        strokeWidth="1.5"
-      />
-      {labels.map((label, i) => {
-        const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2
-        const lx = cx + (r + 12) * Math.cos(angle)
-        const ly = cy + (r + 12) * Math.sin(angle)
-        return (
-          <text
-            key={label}
-            x={lx}
-            y={ly}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            className="fill-gray-400"
-            fontSize="6"
-          >
-            {label}
-          </text>
-        )
-      })}
-      {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="2" fill="#22c55e" />
-      ))}
-    </svg>
-  )
-}
 
 export default function Stable() {
   const { address, isConnected } = useAccount()
@@ -335,11 +274,7 @@ export default function Stable() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-400">Loading stable...</div>
-      </div>
-    )
+    return <Spinner fullPage text="Loading stable..." />
   }
 
   return (
@@ -437,6 +372,11 @@ export default function Stable() {
         </div>
       )}
 
+      {/* Quest Panel */}
+      <div className="mb-6">
+        <QuestPanel />
+      </div>
+
       {/* Snail Cards */}
       {snails.length > 0 && (
         <div>
@@ -524,11 +464,6 @@ export default function Stable() {
                   {snail.race?.replace('_', ' ')}
                 </p>
 
-                <RadarChart stats={{
-                  spd: snail.spd, acc: snail.acc, sta: snail.sta,
-                  agi: snail.agi, ref: snail.ref, lck: snail.lck,
-                }} />
-
                 <div className="grid grid-cols-3 gap-1 mt-3 text-center text-xs">
                   {[
                     { label: 'SPD', val: snail.spd },
@@ -605,7 +540,7 @@ export default function Stable() {
                           <button
                             key={stat}
                             onClick={() => setTrainingStat(prev => ({ ...prev, [snail.id]: stat }))}
-                            className={`flex-1 py-1 rounded text-[10px] font-bold cursor-pointer ${
+                            className={`flex-1 py-2 rounded text-[11px] font-bold cursor-pointer min-h-[44px] flex items-center justify-center ${
                               trainingStat[snail.id] === stat
                                 ? 'bg-slug-purple text-white'
                                 : 'bg-slug-card text-gray-400 hover:text-white'
@@ -642,53 +577,51 @@ export default function Stable() {
                   </div>
                 )}
 
-                {/* Equip cosmetic / accessory dropdowns */}
+                {/* Equip cosmetic / accessory — auto-equip on select */}
                 {(ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
                   <div className="mt-3 p-3 bg-slug-dark rounded-lg border border-slug-border space-y-2">
                     {ownedCosmetics.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <select
-                          value={cosmeticEquip[snail.id] || ''}
-                          onChange={e => setCosmeticEquip(prev => ({ ...prev, [snail.id]: Number(e.target.value) }))}
-                          className="flex-1 bg-slug-card border border-slug-border rounded px-2 py-1 text-white text-[10px] outline-none"
-                        >
-                          <option value="">Cosmetic...</option>
-                          {ownedCosmetics.map((c: any) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => handleEquipCosmetic(snail.id)}
-                          disabled={!cosmeticEquip[snail.id]}
-                          className="px-2 py-1 bg-pink-500/20 text-pink-400 rounded text-[10px] font-bold cursor-pointer disabled:opacity-40"
-                        >
-                          Equip
-                        </button>
-                      </div>
+                      <select
+                        value=""
+                        onChange={async e => {
+                          const cosId = Number(e.target.value)
+                          if (!cosId || !address) return
+                          try {
+                            await api.equipCosmetic(address, snail.id, cosId)
+                            loadStable()
+                          } catch (err: any) { toast.error(err.message) }
+                        }}
+                        className="w-full bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                      >
+                        <option value="">{snail.cosmetic ? `Cosmetic: ${typeof snail.cosmetic === 'string' ? snail.cosmetic : snail.cosmetic.name}` : 'Equip Cosmetic...'}</option>
+                        {ownedCosmetics.map((c: any) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
                     )}
                     {ownedAccessories.length > 0 && (
                       <div className="flex items-center gap-1">
                         <select
-                          value={accessoryEquip[snail.id] || ''}
-                          onChange={e => setAccessoryEquip(prev => ({ ...prev, [snail.id]: Number(e.target.value) }))}
-                          className="flex-1 bg-slug-card border border-slug-border rounded px-2 py-1 text-white text-[10px] outline-none"
+                          value=""
+                          onChange={async e => {
+                            const accId = Number(e.target.value)
+                            if (!accId || !address) return
+                            try {
+                              await api.equipAccessory(address, snail.id, accId)
+                              loadStable()
+                            } catch (err: any) { toast.error(err.message) }
+                          }}
+                          className="flex-1 bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                         >
-                          <option value="">Accessory...</option>
+                          <option value="">{(snail.equipped_accessory || snail.accessory) ? `Accessory: ${snail.equipped_accessory || (typeof snail.accessory === 'string' ? snail.accessory : snail.accessory?.name)}` : 'Equip Accessory...'}</option>
                           {ownedAccessories.map((a: any) => (
                             <option key={a.id} value={a.id}>{a.name}</option>
                           ))}
                         </select>
-                        <button
-                          onClick={() => handleEquipAccessory(snail.id)}
-                          disabled={!accessoryEquip[snail.id]}
-                          className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-[10px] font-bold cursor-pointer disabled:opacity-40"
-                        >
-                          Equip
-                        </button>
                         {(snail.equipped_accessory || snail.accessory) && (
                           <button
                             onClick={() => handleUnequipAccessory(snail.id)}
-                            className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded text-[10px] font-bold cursor-pointer"
+                            className="px-3 py-2 bg-gray-500/20 text-gray-400 rounded text-xs font-bold cursor-pointer min-h-[44px]"
                           >
                             &#x2715;
                           </button>
@@ -718,10 +651,23 @@ export default function Stable() {
         </div>
       )}
 
-      {/* Quest Panel */}
-      <div className="mt-8">
-        <QuestPanel />
-      </div>
+      {/* Mini Games Quick Access */}
+      {snails.length > 0 && (
+        <div className="mt-6 bg-slug-card border border-slug-border rounded-xl p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-white font-semibold">Mini Games</h3>
+              <p className="text-gray-400 text-sm">Train your snails with fun challenges</p>
+            </div>
+            <button
+              onClick={() => navigate('/mini-games')}
+              className="px-4 py-2 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg hover:bg-slug-purple/30 transition-colors cursor-pointer text-sm"
+            >
+              Play Games
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Evolution Modal */}
       {evolveSnailId !== null && address && (

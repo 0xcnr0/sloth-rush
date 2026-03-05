@@ -25,11 +25,11 @@ const STEPS = [
     path: '/race',
   },
   {
-    title: 'Training (Coming Soon)',
-    description: 'Train your Snail to improve stats. Training will be available in a future update!',
+    title: 'Train & Evolve',
+    description: 'Train your Snail to boost stats, play mini games, and evolve through 4 tiers! Check your Stable for training options.',
     icon: '\u{1F4AA}',
-    cta: 'Got it!',
-    path: null,
+    cta: 'Start Playing!',
+    path: '/stable',
   },
 ]
 

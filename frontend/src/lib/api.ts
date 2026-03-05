@@ -6,7 +6,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   })
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'API error')
+  if (!res.ok) {
+    const message = data.error || 'Something went wrong'
+    // Provide friendlier messages for common errors
+    if (res.status === 429) throw new Error('Too many requests. Please wait a moment and try again.')
+    if (res.status === 503) throw new Error('Server is temporarily unavailable. Please try again later.')
+    throw new Error(message)
+  }
   return data
 }
 
@@ -267,6 +273,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ wallet, snailId }),
     }),
+
+  // Profile
+  getProfile: (wallet: string) =>
+    request<{ wallet: string; balance: number; xp: number; totalRaces: number; totalWins: number; totalEarnings: number; loginDays: number; slugCount: number; snailCount: number }>(
+      `/slug/profile/${wallet}`
+    ),
+
+  getProfileTransactions: (wallet: string) =>
+    request<{ transactions: { type: string; amount: number; description: string; created_at: string }[] }>(
+      `/slug/profile/transactions/${wallet}`
+    ),
 
   // Race replay
   getRaceReplay: (raceId: string) =>

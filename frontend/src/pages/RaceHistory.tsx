@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { api } from '../lib/api'
+import Spinner from '../components/Spinner'
 
 interface RaceEntry {
   raceId: string
@@ -54,11 +55,7 @@ export default function RaceHistory() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-400">Loading race history...</div>
-      </div>
-    )
+    return <Spinner fullPage text="Loading race history..." />
   }
 
   return (

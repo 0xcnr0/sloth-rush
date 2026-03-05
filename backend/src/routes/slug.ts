@@ -1156,6 +1156,75 @@ router.post("/unequip-accessory", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/slug/profile/:wallet — Aggregated profile data
+router.get("/profile/:wallet", async (req: Request, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    if (!isValidWallet(wallet as string)) {
+      res.status(400).json({ error: "Invalid wallet address format" });
+      return;
+    }
+
+    // Get all creatures
+    const slugs = await getAll("SELECT * FROM slugs WHERE wallet = $1 AND is_burned = false ORDER BY id", [wallet]);
+
+    // Get coin balance
+    const balRow = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
+    const balance = balRow?.balance || 0;
+
+    // Get XP
+    const xpRow = await getOne("SELECT total_xp FROM user_xp WHERE wallet = $1", [wallet]);
+    const xp = xpRow?.total_xp || 0;
+
+    // Get race stats
+    const raceStats = await getOne(
+      `SELECT COUNT(*) as total_races,
+       COALESCE(SUM(CASE WHEN finish_position = 1 THEN 1 ELSE 0 END), 0) as total_wins,
+       COALESCE(SUM(payout), 0) as total_earnings
+       FROM race_participants WHERE wallet = $1 AND is_bot = 0`, [wallet]
+    );
+
+    // Get login streak
+    const loginCount = await getOne(
+      "SELECT COUNT(DISTINCT login_date) as days FROM daily_logins WHERE wallet = $1", [wallet]
+    );
+
+    res.json({
+      wallet,
+      balance,
+      xp: parseInt(String(xp)) || 0,
+      totalRaces: parseInt(String(raceStats?.total_races)) || 0,
+      totalWins: parseInt(String(raceStats?.total_wins)) || 0,
+      totalEarnings: parseInt(String(raceStats?.total_earnings)) || 0,
+      loginDays: parseInt(String(loginCount?.days)) || 0,
+      slugCount: slugs.filter((s: any) => s.type === 'free_slug').length,
+      snailCount: slugs.filter((s: any) => s.type === 'snail').length,
+    });
+  } catch (err) {
+    console.error("GET /profile/:wallet error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/slug/profile/transactions/:wallet — Recent transactions
+router.get("/profile/transactions/:wallet", async (req: Request, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    if (!isValidWallet(wallet as string)) {
+      res.status(400).json({ error: "Invalid wallet address format" });
+      return;
+    }
+    const txns = await getAll(
+      "SELECT type, amount, description, created_at FROM transactions WHERE wallet = $1 ORDER BY created_at DESC LIMIT 20",
+      [wallet]
+    );
+    res.json({ transactions: txns });
+  } catch (err) {
+    console.error("GET /profile/transactions/:wallet error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /api/slug/cosmetics/:snailId — Get equipped cosmetics for a snail
 router.get("/cosmetics/:snailId", async (req: Request, res: Response) => {
   try {

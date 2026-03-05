@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import Spinner from '../components/Spinner'
 
 // --- Mini Game Types ---
 
@@ -553,11 +554,7 @@ export default function MiniGames() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-400">Loading...</div>
-      </div>
-    )
+    return <Spinner fullPage text="Loading mini games..." />
   }
 
   return (
