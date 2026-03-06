@@ -217,8 +217,8 @@ export default function Shop() {
                 <p className="text-gray-500">Standard: 50 SLUG / Grand Prix: 150 SLUG</p>
               </div>
               <div>
-                <p className="text-gray-300 font-medium">Sealed Bids</p>
-                <p className="text-gray-500">Raise up to 100-300 SLUG for Pole Position</p>
+                <p className="text-gray-300 font-medium">Grid Boost</p>
+                <p className="text-gray-500">Boost up to 100-300 SLUG for Pole Position</p>
               </div>
               <div>
                 <p className="text-gray-300 font-medium">Daily Free Race</p>
