@@ -35,7 +35,7 @@ const RARITY_BORDER: Record<string, string> = {
 }
 
 const SLOTH_EMOJI: Record<string, string> = {
-  caffeine_junkie: '\u{1F40C}',
+  caffeine_junkie: '\u{1F9A5}',
   pillow_knight: '\u{1F6E1}\uFE0F',
   dream_weaver: '\u{2728}',
   thunder_nap: '\u{26A1}',
@@ -300,7 +300,7 @@ export default function Treehouse() {
           <div className="bg-sloth-card border border-sloth-border rounded-xl p-5">
             {/* Header */}
             <div className="flex items-center gap-4 mb-4">
-              <div className="text-5xl">{'\u{1F40C}'}</div>
+              <div className="text-5xl">{'\u{1F9A5}'}</div>
               <div className="flex-1">
                 <p className="text-white font-semibold text-lg">{freeSloth.name}</p>
                 <p className="text-gray-500 text-sm">Free Sloth #{freeSloth.id}</p>
@@ -624,7 +624,7 @@ export default function Treehouse() {
                 )}
 
                 <div className="text-4xl text-center mb-3">
-                  {SLOTH_EMOJI[sloth.race] || '\u{1F40C}'}
+                  {SLOTH_EMOJI[sloth.race] || '\u{1F9A5}'}
                 </div>
 
                 <p className="text-gray-400 text-xs text-center mb-3 capitalize">
@@ -922,7 +922,7 @@ export default function Treehouse() {
                     animate={{ scale: [1, 1.3, 0], opacity: [1, 1, 0] }}
                     transition={{ duration: 1.5 }}
                     className="text-6xl mb-4 inline-block"
-                  >&#x1f40c;</motion.div>
+                  >&#x1f9a5;</motion.div>
                   <motion.div
                     animate={{ scale: [0, 1.5, 1] }}
                     transition={{ delay: 0.5, duration: 1 }}

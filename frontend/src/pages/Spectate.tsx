@@ -59,7 +59,7 @@ export default function Spectate() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-sloth-green/10 rounded-lg flex items-center justify-center">
-                  <span className="text-xl">{'\u{1F40C}'}</span>
+                  <span className="text-xl">{'\u{1F9A5}'}</span>
                 </div>
                 <div>
                   <p className="text-white font-semibold">

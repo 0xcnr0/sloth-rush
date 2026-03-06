@@ -165,7 +165,7 @@ router.post("/upgrade", async (req: Request, res: Response) => {
 
     res.status(201).json({
       sloth,
-      burnedSlugId: freeSloth.id,
+      burnedSlothId: freeSloth.id,
       coinBonus: 500,
     });
   } catch (err) {
@@ -368,7 +368,7 @@ router.post("/daily-login", async (req: Request, res: Response) => {
 
 // Stat caps
 const STAT_CAPS: Record<string, number> = {
-  free_slug: 15, common: 22, uncommon: 25, rare: 28, epic: 31, legendary: 35,
+  free_sloth: 15, common: 22, uncommon: 25, rare: 28, epic: 31, legendary: 35,
 };
 
 function getStatCap(type: string, rarity: string, tier: number = 0, evolutionPath?: string, stat?: string): number {
@@ -439,7 +439,7 @@ router.post("/train", async (req: Request, res: Response) => {
       return;
     }
 
-    // Check weekly training limit (free_slug: 1/week, sloth: 2/week)
+    // Check weekly training limit (free_sloth: 1/week, sloth: 2/week)
     const weeklyLimit = sloth.type === 'free_sloth' ? 1 : 2;
     const weekTrainings = await getOne(
       "SELECT COUNT(*) as count FROM trainings WHERE sloth_id = $1 AND started_at >= date_trunc('week', CURRENT_TIMESTAMP)",
@@ -723,7 +723,7 @@ router.post("/free-upgrade", async (req: Request, res: Response) => {
 
     res.status(201).json({
       sloth,
-      burnedSlugId: freeSloth.id,
+      burnedSlothId: freeSloth.id,
       coinBonus: 500,
     });
   } catch (err) {
@@ -755,15 +755,15 @@ router.post("/mini-game", async (req: Request, res: Response) => {
 
     const statMap: Record<string, string> = {
       salt_dodge: 'agi',
-      slime_slide: 'spd',
-      shell_lift: 'sta',
+      yawn_stretch: 'spd',
+      pillow_lift: 'sta',
       lucky_leaf: 'lck',
       speed_tap: 'acc',
     };
 
     const stat = statMap[gameType];
     if (!stat) {
-      res.status(400).json({ error: "Invalid gameType. Must be: salt_dodge, slime_slide, shell_lift, lucky_leaf, speed_tap" });
+      res.status(400).json({ error: "Invalid gameType. Must be: salt_dodge, yawn_stretch, pillow_lift, lucky_leaf, speed_tap" });
       return;
     }
 
@@ -1181,7 +1181,7 @@ router.get("/profile/:wallet", async (req: Request, res: Response) => {
     }
 
     // Get all creatures
-    const slugs = await getAll("SELECT * FROM sloths WHERE wallet = $1 AND is_burned = false ORDER BY id", [wallet]);
+    const sloths = await getAll("SELECT * FROM sloths WHERE wallet = $1 AND is_burned = false ORDER BY id", [wallet]);
 
     // Get coin balance
     const balRow = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
@@ -1212,8 +1212,8 @@ router.get("/profile/:wallet", async (req: Request, res: Response) => {
       totalWins: parseInt(String(raceStats?.total_wins)) || 0,
       totalEarnings: parseInt(String(raceStats?.total_earnings)) || 0,
       loginDays: parseInt(String(loginCount?.days)) || 0,
-      slugCount: slugs.filter((s: any) => s.type === 'free_sloth').length,
-      slothCount: slugs.filter((s: any) => s.type === 'sloth').length,
+      freeSlothCount: sloths.filter((s: any) => s.type === 'free_sloth').length,
+      slothCount: sloths.filter((s: any) => s.type === 'sloth').length,
     });
   } catch (err) {
     console.error("GET /profile/:wallet error:", err);

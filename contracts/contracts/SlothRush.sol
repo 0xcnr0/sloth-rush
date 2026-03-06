@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./FreeSlug.sol";
-import "./Snail.sol";
+import "./FreeSloth.sol";
+import "./Sloth.sol";
 
 /**
- * @title SlugRush
+ * @title SlothRush
  * @notice Main game contract — upgrade, race result recording
  */
-contract SlugRush {
-    FreeSlug public freeSlug;
-    Snail public snail;
+contract SlothRush {
+    FreeSloth public freeSloth;
+    Sloth public sloth;
     address public owner;
 
     struct RaceResult {
@@ -22,7 +22,7 @@ contract SlugRush {
     mapping(bytes32 => RaceResult) public raceResults;
     bytes32[] public raceIds;
 
-    event Upgraded(address indexed player, uint256 freeSlugId, uint256 snailId, uint8 rarity);
+    event Upgraded(address indexed player, uint256 freeSlothId, uint256 slothId, uint8 rarity);
     event RaceRecorded(bytes32 indexed raceId, bytes32 resultHash, address winner);
 
     modifier onlyOwner() {
@@ -30,18 +30,18 @@ contract SlugRush {
         _;
     }
 
-    constructor(address _freeSlug, address _snail) {
-        freeSlug = FreeSlug(_freeSlug);
-        snail = Snail(_snail);
+    constructor(address _freeSloth, address _sloth) {
+        freeSloth = FreeSloth(_freeSloth);
+        sloth = Sloth(_sloth);
         owner = msg.sender;
     }
 
-    /// @notice Upgrade a Free Slug to a Snail
-    /// @dev Burns the Free Slug and mints a new Snail with given stats
-    /// @param freeSlugId The token ID of the Free Slug to burn
+    /// @notice Upgrade a Free Sloth to a Sloth
+    /// @dev Burns the Free Sloth and mints a new Sloth with given stats
+    /// @param freeSlothId The token ID of the Free Sloth to burn
     /// @param rarity Rarity level (0=Common, 4=Legendary)
     function upgrade(
-        uint256 freeSlugId,
+        uint256 freeSlothId,
         uint8 rarity,
         uint8 spd,
         uint8 acc,
@@ -51,15 +51,15 @@ contract SlugRush {
         uint8 lck
     ) external {
         // Verify ownership
-        require(freeSlug.ownerOf(freeSlugId) == msg.sender, "Not slug owner");
+        require(freeSloth.ownerOf(freeSlothId) == msg.sender, "Not sloth owner");
 
-        // Burn the Free Slug
-        freeSlug.burn(freeSlugId);
+        // Burn the Free Sloth
+        freeSloth.burn(freeSlothId);
 
-        // Mint new Snail
-        uint256 snailId = snail.mint(msg.sender, rarity, spd, acc, sta, agi, ref_, lck);
+        // Mint new Sloth
+        uint256 slothId = sloth.mint(msg.sender, rarity, spd, acc, sta, agi, ref_, lck);
 
-        emit Upgraded(msg.sender, freeSlugId, snailId, rarity);
+        emit Upgraded(msg.sender, freeSlothId, slothId, rarity);
     }
 
     /// @notice Record a race result on-chain

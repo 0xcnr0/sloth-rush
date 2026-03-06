@@ -194,7 +194,7 @@ export default function RaceBroadcast() {
     const TRACK_MARGIN = 60
     const TRACK_WIDTH = width - TRACK_MARGIN * 2
     const LANE_HEIGHT = (height - 100) / 4
-    const SNAIL_SIZE = 28
+    const SLOTH_SIZE = 28
     const FRAME_DELAY = 280 // ~65s animation for a typical race (~230 frames * 280ms)
 
     function drawFrame(fi: number) {
@@ -269,14 +269,14 @@ export default function RaceBroadcast() {
         ctx.shadowBlur = 8
         ctx.fillStyle = color
         ctx.beginPath()
-        ctx.arc(x, y, SNAIL_SIZE / 2, 0, Math.PI * 2)
+        ctx.arc(x, y, SLOTH_SIZE / 2, 0, Math.PI * 2)
         ctx.fill()
         ctx.shadowBlur = 0
 
-        ctx.font = `${SNAIL_SIZE - 4}px sans-serif`
+        ctx.font = `${SLOTH_SIZE - 4}px sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText('\u{1F40C}', x, y)
+        ctx.fillText('\u{1F9A5}', x, y)
 
         const name = names.get(pos.id) || `#${pos.id}`
         ctx.fillStyle = '#e5e7eb'
@@ -358,7 +358,7 @@ export default function RaceBroadcast() {
           yawn_wave: { emoji: '\u{1F4A5}', color: '#f59e0b' },
           rain: { emoji: '\u{1F327}\uFE0F', color: '#3b82f6' },
           luck_orb: { emoji: '\u{2728}', color: '#a855f7' },
-          clash: { emoji: '\u{1F4A2}', color: '#ef4444' },
+          pillow_fight: { emoji: '\u{1F4A2}', color: '#ef4444' },
         }
         const feedStyle = emojiMap[nearEvent.type] || { emoji: '\u{26A1}', color: '#9ca3af' }
         killFeedIdRef.current++
@@ -632,7 +632,7 @@ export default function RaceBroadcast() {
                   transition={{ delay: i * 1.0 }}
                   className="text-center"
                 >
-                  <div className="text-5xl mb-2">{'\u{1F40C}'}</div>
+                  <div className="text-5xl mb-2">{'\u{1F9A5}'}</div>
                   <p className="text-white font-bold text-sm mb-1">{gp.name}</p>
                   <p className="text-gray-500 text-xs mb-2">P{gp.position}</p>
                   <motion.div

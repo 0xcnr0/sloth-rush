@@ -12,7 +12,7 @@ export default function WalletGuard({ children, message = 'Connect your wallet t
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-5xl mb-2">{'\u{1F40C}'}</div>
+        <div className="text-5xl mb-2">{'\u{1F9A5}'}</div>
         <p className="text-gray-400 text-center">{message}</p>
         <ConnectButton />
       </div>

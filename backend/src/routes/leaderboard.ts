@@ -136,7 +136,7 @@ router.get("/:league", async (req: Request, res: Response) => {
     let extraCondition = "";
 
     if (league === "bronze") {
-      slothTypeFilter = "free_slug";
+      slothTypeFilter = "free_sloth";
     } else if (league === "gold") {
       slothTypeFilter = "sloth";
       extraCondition = " AND EXISTS (SELECT 1 FROM sloths WHERE wallet = rp.wallet AND type = 'sloth' AND tier >= 2 AND is_burned = 0)";

@@ -1,5 +1,5 @@
 /**
- * Slug Rush — Deterministic Race Simulation Engine
+ * Sloth Rush — Deterministic Race Simulation Engine
  *
  * Given a seed and participant stats, produces identical results every time.
  * This engine will be open-sourced for anyone-can-verify.
@@ -25,7 +25,7 @@ function seedFromString(str: string): number {
   return hash;
 }
 
-export interface SnailStats {
+export interface SlothStats {
   id: number;
   name: string;
   wallet: string;
@@ -54,9 +54,9 @@ export interface RaceEvent {
 
 export interface TacticAction {
   tick: number;
-  type: "boost" | "shell";
-  snailId: number;   // who performs the action
-  targetId?: number; // for shell — which snail gets hit (leader if omitted)
+  type: "boost" | "pillow";
+  slothId: number;   // who performs the action
+  targetId?: number; // for pillow — which sloth gets hit (leader if omitted)
 }
 
 export type Weather = 'sunny' | 'rainy' | 'windy' | 'foggy' | 'stormy';
@@ -86,21 +86,21 @@ export function getWeatherFromSeed(seed: string): Weather {
 
 export interface GDAState {
   boostBasePrice: number;
-  shellBasePrice: number;
+  pillowBasePrice: number;
   boostPurchases: number;
-  shellPurchases: number;
+  pillowPurchases: number;
   lastBoostTick: number;
-  lastShellTick: number;
+  lastPillowTick: number;
 }
 
 export function createGDAState(): GDAState {
   return {
     boostBasePrice: 60,   // lowered from 100 — makes tactic mode viable
-    shellBasePrice: 150,  // lowered from 250 — shell is now ~50% of pot, not 100%
+    pillowBasePrice: 150, // lowered from 250 — pillow is now ~50% of pot, not 100%
     boostPurchases: 0,
-    shellPurchases: 0,
+    pillowPurchases: 0,
     lastBoostTick: 0,
-    lastShellTick: 0,
+    lastPillowTick: 0,
   };
 }
 
@@ -109,9 +109,9 @@ export function createGDAState(): GDAState {
  * currentPrice = basePrice * (scaleFactor ^ totalPurchases) * (decayFactor ^ ticksSinceLastPurchase)
  *
  * Boost: scaleFactor = 1.3 (30% increase per purchase), decayFactor = 0.995 per tick
- * Shell: scaleFactor = 1.5 (50% increase per purchase), decayFactor = 0.993 per tick
+ * Pillow: scaleFactor = 1.5 (50% increase per purchase), decayFactor = 0.993 per tick
  */
-export function getGDAPrice(state: GDAState, actionType: "boost" | "shell", currentTick: number, chaosMode: boolean = false): number {
+export function getGDAPrice(state: GDAState, actionType: "boost" | "pillow", currentTick: number, chaosMode: boolean = false): number {
   const chaosMul = chaosMode ? 0.5 : 1;
   if (actionType === "boost") {
     const scaleFactor = Math.pow(1.3, state.boostPurchases);
@@ -119,18 +119,18 @@ export function getGDAPrice(state: GDAState, actionType: "boost" | "shell", curr
     const decayFactor = Math.pow(0.995, ticksSince);
     return Math.max(15, Math.round(state.boostBasePrice * scaleFactor * decayFactor * chaosMul));
   } else {
-    const scaleFactor = Math.pow(1.5, state.shellPurchases);
-    const ticksSince = currentTick - state.lastShellTick;
+    const scaleFactor = Math.pow(1.5, state.pillowPurchases);
+    const ticksSince = currentTick - state.lastPillowTick;
     const decayFactor = Math.pow(0.993, ticksSince);
-    return Math.max(30, Math.round(state.shellBasePrice * scaleFactor * decayFactor * chaosMul));
+    return Math.max(30, Math.round(state.pillowBasePrice * scaleFactor * decayFactor * chaosMul));
   }
 }
 
-export function applyGDAPurchase(state: GDAState, actionType: "boost" | "shell", currentTick: number): GDAState {
+export function applyGDAPurchase(state: GDAState, actionType: "boost" | "pillow", currentTick: number): GDAState {
   if (actionType === "boost") {
     return { ...state, boostPurchases: state.boostPurchases + 1, lastBoostTick: currentTick };
   } else {
-    return { ...state, shellPurchases: state.shellPurchases + 1, lastShellTick: currentTick };
+    return { ...state, pillowPurchases: state.pillowPurchases + 1, lastPillowTick: currentTick };
   }
 }
 
@@ -140,13 +140,13 @@ const MAX_TICKS = 1500; // 150 seconds max
 
 // Random events from GDD
 const RANDOM_EVENTS = [
-  { type: "slime_burst", chance: 0.003, description: "Slime Burst! Leader left a trail!", stat: "agi" as const },
+  { type: "yawn_wave", chance: 0.003, description: "Yawn Wave! Leader spread drowsiness!", stat: "agi" as const },
   { type: "rain", chance: 0.002, description: "Sudden Rain! All speeds dropping!", stat: "sta" as const },
   { type: "luck_orb", chance: 0.0025, description: "Luck Orb appeared!", stat: "lck" as const },
-  { type: "clash", chance: 0.0015, description: "Clash! Two snails collided!", stat: "ref" as const },
+  { type: "pillow_fight", chance: 0.0015, description: "Pillow Fight! Two sloths collided!", stat: "ref" as const },
 ];
 
-export function simulateRace(participants: SnailStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false): RaceResult {
+export function simulateRace(participants: SlothStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false): RaceResult {
   const rng = mulberry32(seedFromString(seed));
   const frames: RaceFrame[] = [];
   const events: RaceEvent[] = [];
@@ -160,7 +160,7 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
     staMul: weather === 'rainy' ? 1.5 : 1.0, // STA matters more in rain
   };
 
-  // State per snail
+  // State per sloth
   const state = participants.map((p) => ({
     id: p.id,
     wallet: p.wallet,
@@ -197,15 +197,15 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
     if (tick > 30 && tick % eventInterval === 0) {
       for (const event of RANDOM_EVENTS) {
         if (rng() < event.chance * 10 * chaosMultiplier * weatherMods.eventFreqMul) {
-          const activeSnails = state.filter((s) => !s.finished);
-          if (activeSnails.length < 2) continue;
+          const activeSloths = state.filter((s) => !s.finished);
+          if (activeSloths.length < 2) continue;
 
           const affectedIds: number[] = [];
 
-          if (event.type === "slime_burst") {
-            // Leader leaves slime, others behind slip
-            const leader = activeSnails.reduce((a, b) => (a.distance > b.distance ? a : b));
-            const others = activeSnails.filter((s) => s.id !== leader.id);
+          if (event.type === "yawn_wave") {
+            // Leader spreads yawn, others behind get drowsy
+            const leader = activeSloths.reduce((a, b) => (a.distance > b.distance ? a : b));
+            const others = activeSloths.filter((s) => s.id !== leader.id);
             for (const other of others) {
               const resist = other.agility * 0.1;
               if (rng() > resist / 10) {
@@ -215,24 +215,24 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
             }
           } else if (event.type === "rain") {
             // All speeds drop, STA resists (doubled resistance)
-            for (const s of activeSnails) {
+            for (const s of activeSloths) {
               const resist = s.stamina * 0.1;
               s.speed *= 0.7 + resist / 10;
               affectedIds.push(s.id);
             }
           } else if (event.type === "luck_orb") {
-            // Random snail gets speed boost — rubber band: trailing snails get higher weight
-            const maxDist = Math.max(...activeSnails.map(s => s.distance));
-            const weights = activeSnails.map((s) => {
+            // Random sloth gets speed boost — rubber band: trailing sloths get higher weight
+            const maxDist = Math.max(...activeSloths.map(s => s.distance));
+            const weights = activeSloths.map((s) => {
               const distBehind = maxDist - s.distance;
               const rubberBand = 1 + distBehind * 0.02; // +2% weight per unit behind
-              const luckMagnetMul = s.passive === 'luck_magnet' ? 1.20 : 1;
-              return s.luck * rubberBand * luckMagnetMul;
+              const dreamCatcherMul = s.passive === 'dream_catcher' ? 1.20 : 1;
+              return s.luck * rubberBand * dreamCatcherMul;
             });
             const totalWeight = weights.reduce((a, b) => a + b, 0);
             let pick = rng() * totalWeight;
-            for (let wi = 0; wi < activeSnails.length; wi++) {
-              const s = activeSnails[wi];
+            for (let wi = 0; wi < activeSloths.length; wi++) {
+              const s = activeSloths[wi];
               pick -= weights[wi];
               if (pick <= 0) {
                 s.boost = Math.round(20 * weatherMods.boostDurMul);
@@ -240,9 +240,9 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
                 break;
               }
             }
-          } else if (event.type === "clash") {
-            // Two closest snails clash, REF determines recovery
-            const sorted = [...activeSnails].sort((a, b) => a.distance - b.distance);
+          } else if (event.type === "pillow_fight") {
+            // Two closest sloths clash, REF determines recovery
+            const sorted = [...activeSloths].sort((a, b) => a.distance - b.distance);
             for (let i = 0; i < sorted.length - 1; i++) {
               if (Math.abs(sorted[i].distance - sorted[i + 1].distance) < 15) {
                 const s1 = sorted[i];
@@ -255,17 +255,17 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
             }
           }
 
-          // bad_to_good passive: after a bad event, 30% chance to convert to boost
-          if (affectedIds.length > 0 && (event.type === 'slime_burst' || event.type === 'rain' || event.type === 'clash')) {
+          // lucid_dream passive: after a bad event, 30% chance to convert to boost
+          if (affectedIds.length > 0 && (event.type === 'yawn_wave' || event.type === 'rain' || event.type === 'pillow_fight')) {
             for (const aid of affectedIds) {
-              const affectedSnail = state.find(s => s.id === aid);
-              if (affectedSnail && affectedSnail.passive === 'bad_to_good' && rng() < 0.30) {
-                affectedSnail.slowdown = 0;
-                affectedSnail.boost = 15;
+              const affectedSloth = state.find(s => s.id === aid);
+              if (affectedSloth && affectedSloth.passive === 'lucid_dream' && rng() < 0.30) {
+                affectedSloth.slowdown = 0;
+                affectedSloth.boost = 15;
                 events.push({
                   tick,
-                  type: 'bad_to_good',
-                  description: `${affectedSnail.name} turned misfortune into speed!`,
+                  type: 'lucid_dream',
+                  description: `${affectedSloth.name} turned misfortune into speed!`,
                   affectedIds: [aid],
                 });
               }
@@ -288,32 +288,32 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
     // Apply tactic actions for this tick
     const tickActions = actions.filter((a) => a.tick === tick);
     for (const action of tickActions) {
-      const activeSnails = state.filter((s) => !s.finished);
+      const activeSloths = state.filter((s) => !s.finished);
       if (action.type === "boost") {
-        const snail = state.find((s) => s.id === action.snailId);
-        if (snail && !snail.finished) {
-          snail.boost = Math.round(15 * weatherMods.boostDurMul); // 1.5x speed, weather affects duration
+        const sloth = state.find((s) => s.id === action.slothId);
+        if (sloth && !sloth.finished) {
+          sloth.boost = Math.round(15 * weatherMods.boostDurMul); // 1.5x speed, weather affects duration
           events.push({
             tick,
             type: "tactic_boost",
-            description: `${snail.name} activated BOOST!`,
-            affectedIds: [snail.id],
+            description: `${sloth.name} activated BOOST!`,
+            affectedIds: [sloth.id],
           });
         }
-      } else if (action.type === "shell") {
-        // Shell hits the leader (or targetId)
+      } else if (action.type === "pillow") {
+        // Pillow hits the leader (or targetId)
         const leader = action.targetId
           ? state.find((s) => s.id === action.targetId)
-          : activeSnails.reduce((a, b) => (a.distance > b.distance ? a : b));
-        const shooter = state.find((s) => s.id === action.snailId);
+          : activeSloths.reduce((a, b) => (a.distance > b.distance ? a : b));
+        const shooter = state.find((s) => s.id === action.slothId);
         if (leader && shooter && leader.id !== shooter.id && !leader.finished) {
-          const shellSlowdown = leader.passive === 'shell_resist' ? 5 : 10;
-          leader.slowdown = shellSlowdown; // speed drops for ticks (reduced by shell_resist)
-          leader.speed = leader.passive === 'shell_resist' ? leader.speed * 0.5 : 1;
+          const pillowSlowdown = leader.passive === 'thick_fur' ? 5 : 10;
+          leader.slowdown = pillowSlowdown; // speed drops for ticks (reduced by thick_fur)
+          leader.speed = leader.passive === 'thick_fur' ? leader.speed * 0.5 : 1;
           events.push({
             tick,
-            type: "tactic_shell",
-            description: `${shooter.name} threw a SHELL at ${leader.name}!`,
+            type: "tactic_pillow",
+            description: `${shooter.name} threw a PILLOW at ${leader.name}!`,
             affectedIds: [leader.id, shooter.id],
           });
         }
@@ -326,12 +326,12 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
       .sort((a, b) => b.distance - a.distance)
       .map(s => s.id);
 
-    // Update each snail
+    // Update each sloth
     for (const s of state) {
       if (s.finished) continue;
 
       // Stamina degradation (after 60% of race) — tripled STA impact, weather affects decay
-      const fatigueMul = s.passive === 'fatigue_slow' ? 0.5 : 1;
+      const fatigueMul = s.passive === 'deep_sleep' ? 0.5 : 1;
       const staDecay = Math.max(0.05, (0.35 - s.stamina * 0.015 * weatherMods.staMul) * fatigueMul);
       const staminaFactor = s.distance > TRACK_LENGTH * 0.6
         ? 1 - ((s.distance - TRACK_LENGTH * 0.6) / (TRACK_LENGTH * 0.4)) * staDecay
@@ -340,12 +340,12 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
       // Passive abilities — speed multiplier
       let passiveSpeedMul = 1;
 
-      // speed_burst: last 33% of track +10% speed
-      if (s.passive === 'speed_burst' && s.distance > TRACK_LENGTH * 0.67) {
+      // caffeine_rush: last 33% of track +10% speed
+      if (s.passive === 'caffeine_rush' && s.distance > TRACK_LENGTH * 0.67) {
         passiveSpeedMul *= 1.10;
       }
 
-      // speed_overtake: after overtaking, 10 tick speed burst
+      // adrenaline_wake: after overtaking, 10 tick speed burst
       if (s.overtakeBoostEnd > tick) {
         passiveSpeedMul *= 1.15;
       }
@@ -383,13 +383,13 @@ export function simulateRace(participants: SnailStats[], seed: string, actions: 
       }
     }
 
-    // Detect overtakes for speed_overtake passive
+    // Detect overtakes for adrenaline_wake passive
     const positionsAfterTick = state
       .filter(s => !s.finished)
       .sort((a, b) => b.distance - a.distance)
       .map(s => s.id);
     for (const s of state) {
-      if (s.finished || s.passive !== 'speed_overtake') continue;
+      if (s.finished || s.passive !== 'adrenaline_wake') continue;
       const prevRank = positionsBeforeTick.indexOf(s.id);
       const newRank = positionsAfterTick.indexOf(s.id);
       if (prevRank >= 0 && newRank >= 0 && newRank < prevRank) {

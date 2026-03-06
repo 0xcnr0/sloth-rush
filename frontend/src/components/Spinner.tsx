@@ -16,7 +16,7 @@ export default function Spinner({ text = 'Loading...', size = 'md', fullPage = f
         transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
         className={sizeMap[size]}
       >
-        {'\u{1F40C}'}
+        {'\u{1F9A5}'}
       </motion.div>
       {text && <p className="text-gray-400 text-sm">{text}</p>}
     </div>

@@ -71,15 +71,15 @@ export async function triggerQuestProgress(wallet: string, requirementType: stri
 
       // Award rewards on completion
       if (isComplete) {
-        if (quest.slug_reward > 0) {
+        if (quest.sloth_reward > 0) {
           await query(
             `INSERT INTO coin_balances (wallet, balance) VALUES ($1, $2)
              ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + $3, updated_at = NOW()`,
-            [wallet, quest.slug_reward, quest.slug_reward]
+            [wallet, quest.sloth_reward, quest.sloth_reward]
           );
           await query(
             "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'quest_reward', $2, $3)",
-            [wallet, quest.slug_reward, `Quest: ${quest.title}`]
+            [wallet, quest.sloth_reward, `Quest: ${quest.title}`]
           );
         }
         if (quest.xp_reward > 0) {
@@ -203,7 +203,7 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
-    // Free slugs can only join exhibition races
+    // Free sloths can only join exhibition races
     if (sloth.type === "free_sloth" && race.format !== "exhibition") {
       res.status(400).json({ error: "Free Sloths can only join Exhibition races. Upgrade to a Sloth for other formats!" });
       return;

@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title Snail
- * @notice Snail ERC-721 with dynamic metadata — 6 stats + rarity on-chain
+ * @title Sloth
+ * @notice Sloth ERC-721 with dynamic metadata — 6 stats + rarity on-chain
  */
-contract Snail is ERC721, Ownable {
+contract Sloth is ERC721, Ownable {
     uint256 private _nextTokenId;
     string private _baseTokenURI;
 
@@ -23,19 +23,19 @@ contract Snail is ERC721, Ownable {
         uint8 lck;
     }
 
-    struct SnailData {
+    struct SlothData {
         Rarity rarity;
         Stats stats;
     }
 
-    mapping(uint256 => SnailData) public snailData;
+    mapping(uint256 => SlothData) public slothData;
 
-    // Only SlugRush contract can mint
+    // Only SlothRush contract can mint
     address public minter;
 
-    constructor() ERC721("Slug Rush: Snail", "SNAIL") Ownable(msg.sender) {}
+    constructor() ERC721("Sloth Rush: Sloth", "SLOTH") Ownable(msg.sender) {}
 
-    /// @notice Mint a new Snail (only minter — SlugRush contract)
+    /// @notice Mint a new Sloth (only minter — SlothRush contract)
     function mint(
         address to,
         uint8 rarity,
@@ -52,7 +52,7 @@ contract Snail is ERC721, Ownable {
         uint256 tokenId = _nextTokenId++;
         _mint(to, tokenId);
 
-        snailData[tokenId] = SnailData({
+        slothData[tokenId] = SlothData({
             rarity: Rarity(rarity),
             stats: Stats({
                 spd: spd,
@@ -80,17 +80,17 @@ contract Snail is ERC721, Ownable {
         require(msg.sender == minter, "Only minter can update");
         require(ownerOf(tokenId) != address(0), "Token does not exist");
 
-        snailData[tokenId].stats = Stats({
+        slothData[tokenId].stats = Stats({
             spd: spd, acc: acc, sta: sta,
             agi: agi, ref: ref_, lck: lck
         });
     }
 
-    /// @notice Get snail stats
+    /// @notice Get sloth stats
     function getStats(uint256 tokenId) external view returns (
         uint8 rarity, uint8 spd, uint8 acc, uint8 sta, uint8 agi, uint8 ref_, uint8 lck
     ) {
-        SnailData storage data = snailData[tokenId];
+        SlothData storage data = slothData[tokenId];
         return (
             uint8(data.rarity),
             data.stats.spd,
@@ -102,7 +102,7 @@ contract Snail is ERC721, Ownable {
         );
     }
 
-    /// @notice Set the minter address (SlugRush contract)
+    /// @notice Set the minter address (SlothRush contract)
     function setMinter(address _minter) external onlyOwner {
         minter = _minter;
     }

@@ -144,8 +144,8 @@ export default function Layout() {
             <Link to="/mint" className="hover:text-white transition-colors">Mint</Link>
             <Link to="/guide" className="hover:text-white transition-colors">How to Play</Link>
             <Link to="/profile" className="hover:text-white transition-colors">Profile</Link>
-            <a href="https://twitter.com/SlugRushGame" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a>
-            <a href="https://discord.gg/slugrush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Discord</a>
+            <a href="https://twitter.com/SlothRushGame" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a>
+            <a href="https://discord.gg/slothrush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Discord</a>
           </div>
         </div>
       </footer>

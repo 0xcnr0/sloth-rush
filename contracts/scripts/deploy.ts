@@ -1,34 +1,34 @@
 import hre from "hardhat";
 
 async function main() {
-  console.log("Deploying Slug Rush contracts to", hre.network.name);
+  console.log("Deploying Sloth Rush contracts to", hre.network.name);
 
-  // Deploy FreeSlug
-  const freeSlug = await hre.viem.deployContract("FreeSlug");
-  console.log("FreeSlug deployed to:", freeSlug.address);
+  // Deploy FreeSloth
+  const freeSloth = await hre.viem.deployContract("FreeSloth");
+  console.log("FreeSloth deployed to:", freeSloth.address);
 
-  // Deploy Snail
-  const snail = await hre.viem.deployContract("Snail");
-  console.log("Snail deployed to:", snail.address);
+  // Deploy Sloth
+  const sloth = await hre.viem.deployContract("Sloth");
+  console.log("Sloth deployed to:", sloth.address);
 
-  // Deploy SlugRush (main game contract)
-  const slugRush = await hre.viem.deployContract("SlugRush", [
-    freeSlug.address,
-    snail.address,
+  // Deploy SlothRush (main game contract)
+  const slothRush = await hre.viem.deployContract("SlothRush", [
+    freeSloth.address,
+    sloth.address,
   ]);
-  console.log("SlugRush deployed to:", slugRush.address);
+  console.log("SlothRush deployed to:", slothRush.address);
 
   // Set permissions
-  await freeSlug.write.setUpgradeContract([slugRush.address]);
-  console.log("FreeSlug.upgradeContract set to SlugRush");
+  await freeSloth.write.setUpgradeContract([slothRush.address]);
+  console.log("FreeSloth.upgradeContract set to SlothRush");
 
-  await snail.write.setMinter([slugRush.address]);
-  console.log("Snail.minter set to SlugRush");
+  await sloth.write.setMinter([slothRush.address]);
+  console.log("Sloth.minter set to SlothRush");
 
   console.log("\n--- Deployment Complete ---");
-  console.log("FreeSlug:", freeSlug.address);
-  console.log("Snail:   ", snail.address);
-  console.log("SlugRush:", slugRush.address);
+  console.log("FreeSloth:", freeSloth.address);
+  console.log("Sloth:    ", sloth.address);
+  console.log("SlothRush:", slothRush.address);
 }
 
 main().catch((error) => {

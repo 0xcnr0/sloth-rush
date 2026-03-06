@@ -282,7 +282,7 @@ export default function RaceLobby() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-sloth-green/10 rounded-lg flex items-center justify-center">
-                      <span className="text-xl">{'\u{1F40C}'}</span>
+                      <span className="text-xl">{'\u{1F9A5}'}</span>
                     </div>
                     <div>
                       <p className="text-white font-semibold">
@@ -365,7 +365,7 @@ export default function RaceLobby() {
 
             {sloths.length === 0 ? (
               <div className="text-center py-16">
-                <div className="text-6xl mb-4">&#x1f40c;</div>
+                <div className="text-6xl mb-4">&#x1f9a5;</div>
                 <p className="text-gray-400 mb-4">You need a Sloth to race</p>
                 <button
                   onClick={() => navigate('/treehouse')}
@@ -418,7 +418,7 @@ export default function RaceLobby() {
                           : 'border-sloth-border bg-sloth-card hover:border-gray-500'
                       }`}
                     >
-                      <span className="text-3xl">&#x1f40c;</span>
+                      <span className="text-3xl">&#x1f9a5;</span>
                       <div className="text-left">
                         <p className="text-white font-semibold flex items-center gap-2">
                           {sloth.name}
@@ -468,7 +468,7 @@ export default function RaceLobby() {
             <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
               {/* Player slot */}
               <div className="bg-sloth-card border-2 border-sloth-green rounded-xl p-4 text-center">
-                <div className="text-3xl mb-2">&#x1f40c;</div>
+                <div className="text-3xl mb-2">&#x1f9a5;</div>
                 <p className="text-white font-semibold text-sm">{selectedSloth?.name}</p>
                 <p className="text-sloth-green text-xs">YOU</p>
               </div>
@@ -526,7 +526,7 @@ export default function RaceLobby() {
                     p.wallet === address ? 'border-sloth-green' : 'border-sloth-border'
                   }`}
                 >
-                  <div className="text-2xl mb-1">{p.is_bot ? '\u{1F916}' : '\u{1F40C}'}</div>
+                  <div className="text-2xl mb-1">{p.is_bot ? '\u{1F916}' : '\u{1F9A5}'}</div>
                   <p className="text-xs text-gray-400 truncate">{p.name}</p>
                 </div>
               ))}
@@ -606,7 +606,7 @@ export default function RaceLobby() {
                   <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-sloth-gold' : 'text-gray-500'}`}>
                     P{gp.position}
                   </span>
-                  <span className="text-2xl">&#x1f40c;</span>
+                  <span className="text-2xl">&#x1f9a5;</span>
                   <div className="flex-1 text-left">
                     <p className="text-white font-semibold">{gp.name}</p>
                     <p className="text-gray-500 text-xs">Boost: {gp.bid} ZZZ</p>
