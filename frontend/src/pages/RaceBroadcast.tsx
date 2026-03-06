@@ -574,7 +574,7 @@ export default function RaceBroadcast() {
       {!raceFinished && !predictionSubmitted && raceData.gridPositions && currentTick < 20 && (
         <div className="bg-slug-card border border-slug-border rounded-xl p-3 mb-3">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-gray-400 text-sm font-bold">Tahmin:</span>
+            <span className="text-gray-400 text-sm font-bold">Predict:</span>
             {raceData.gridPositions.map((gp: any) => (
               <button
                 key={gp.id}
@@ -595,14 +595,14 @@ export default function RaceBroadcast() {
                 {gp.name}
               </button>
             ))}
-            <span className="text-gray-500 text-xs ml-auto">Dogru tahmin = 15 SLUG!</span>
+            <span className="text-gray-500 text-xs ml-auto">Correct prediction = 15 SLUG!</span>
           </div>
         </div>
       )}
       {predictionSubmitted && (
         <div className="bg-slug-green/10 border border-slug-green/30 rounded-xl p-2 mb-3 text-center">
           <span className="text-slug-green text-sm font-semibold">
-            Tahmin yapildi! Dogru tahmin = +15 SLUG &#x1F3AF;
+            Prediction submitted! Correct = +15 SLUG &#x1F3AF;
           </span>
         </div>
       )}
@@ -809,7 +809,7 @@ export default function RaceBroadcast() {
           <div className="flex gap-3">
             <button
               onClick={() => handleTacticAction('boost')}
-              disabled={boostUsed || energy < boostPrice}
+              disabled={boostUsed || energy < boostPrice || !isConnected}
               className="flex-1 py-3 bg-slug-green/20 border border-slug-green text-slug-green font-bold rounded-xl hover:bg-slug-green/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
               BOOST (1.5x Speed) — {boostPrice} SLUG
@@ -817,7 +817,7 @@ export default function RaceBroadcast() {
             </button>
             <button
               onClick={() => handleTacticAction('shell')}
-              disabled={shellUsed || energy < shellPrice}
+              disabled={shellUsed || energy < shellPrice || !isConnected}
               className="flex-1 py-3 bg-slug-red/20 border border-slug-red text-slug-red font-bold rounded-xl hover:bg-slug-red/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
               SHELL (Hit Leader) — {shellPrice} SLUG

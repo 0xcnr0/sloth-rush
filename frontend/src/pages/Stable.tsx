@@ -59,6 +59,7 @@ export default function Stable() {
   const [trainings, setTrainings] = useState<{ snailId: number; snailName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]>([])
   const [trainingStat, setTrainingStat] = useState<Record<number, string>>({})
   const [trainingLoading, setTrainingLoading] = useState<number | null>(null)
+  const [weeklyTrainingCounts, setWeeklyTrainingCounts] = useState<Record<number, number>>({})
   const [evolveSnailId, setEvolveSnailId] = useState<number | null>(null)
   const [evolveSnailName, setEvolveSnailName] = useState<string>('')
   const [ownedCosmetics, setOwnedCosmetics] = useState<any[]>([])
@@ -95,7 +96,10 @@ export default function Stable() {
   // Load training status
   function loadTrainings() {
     if (!address) return
-    api.getTrainingStatus(address).then(d => setTrainings(d.trainings)).catch((err) => { console.error('Failed to load trainings:', err) })
+    api.getTrainingStatus(address).then(d => {
+      setTrainings(d.trainings)
+      if (d.weeklyCounts) setWeeklyTrainingCounts(d.weeklyCounts)
+    }).catch((err) => { console.error('Failed to load trainings:', err) })
   }
   useEffect(() => { loadTrainings() }, [address])
 
@@ -532,31 +536,45 @@ export default function Stable() {
                         </div>
                       )
                     }
+                    const weeklyCount = weeklyTrainingCounts[snail.id] || 0
+                    const weeklyLimit = snail.type === 'free_slug' ? 1 : 2
+                    const limitReached = weeklyCount >= weeklyLimit
                     return (
                       <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
-                        <p className="text-xs text-gray-400 mb-2">Train a stat (6h, 10 SLUG)</p>
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2">
-                          {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
-                            <button
-                              key={stat}
-                              onClick={() => setTrainingStat(prev => ({ ...prev, [snail.id]: stat }))}
-                              className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
-                                trainingStat[snail.id] === stat
-                                  ? 'bg-slug-purple text-white'
-                                  : 'bg-slug-card text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              {stat.toUpperCase()}
-                            </button>
-                          ))}
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs text-gray-400">Train a stat (6h, 10 SLUG)</p>
+                          <span className={`text-[10px] font-bold ${limitReached ? 'text-red-400' : 'text-gray-500'}`}>
+                            {weeklyCount}/{weeklyLimit} this week
+                          </span>
                         </div>
-                        <button
-                          onClick={() => handleStartTraining(snail.id)}
-                          disabled={!trainingStat[snail.id] || trainingLoading === snail.id}
-                          className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
-                        >
-                          {trainingLoading === snail.id ? 'Starting...' : 'Start Training'}
-                        </button>
+                        {limitReached ? (
+                          <p className="text-xs text-red-400 text-center py-2">Weekly training limit reached</p>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2">
+                              {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
+                                <button
+                                  key={stat}
+                                  onClick={() => setTrainingStat(prev => ({ ...prev, [snail.id]: stat }))}
+                                  className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
+                                    trainingStat[snail.id] === stat
+                                      ? 'bg-slug-purple text-white'
+                                      : 'bg-slug-card text-gray-400 hover:text-white'
+                                  }`}
+                                >
+                                  {stat.toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => handleStartTraining(snail.id)}
+                              disabled={!trainingStat[snail.id] || trainingLoading === snail.id}
+                              className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                            >
+                              {trainingLoading === snail.id ? 'Starting...' : 'Start Training'}
+                            </button>
+                          </>
+                        )}
                       </div>
                     )
                   })()}

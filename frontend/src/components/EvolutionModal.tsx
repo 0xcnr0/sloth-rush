@@ -27,8 +27,8 @@ const EVOLUTION_PATHS = [
     icon: '\u{1F6E1}\uFE0F',
     color: 'text-blue-400 border-blue-400 bg-blue-400/10',
     statBonus: 'STA/REF +5 cap',
-    passive: 'Shell damage -30%',
-    description: 'The path of resilience. Your snail becomes an unstoppable tank, shrugging off shell attacks.',
+    passive: 'Fatigue builds up 50% slower',
+    description: 'The path of resilience. Your snail becomes an unstoppable tank, shrugging off fatigue and shell attacks.',
   },
   {
     id: 'mystic',

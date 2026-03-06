@@ -59,10 +59,17 @@ export default function RaceLobby() {
     api.getDailyRace().then(setDailyRace).catch((err) => { console.error('Failed to load daily race:', err) })
   }, [])
 
-  // Filter creatures based on format: exhibition → all, others → snails only
+  // Filter creatures based on format: exhibition → all, others → snails only, GP → tier gate
   useEffect(() => {
     if (selectedFormat.id === 'exhibition') {
       setSnails(allCreatures)
+    } else if (selectedFormat.id === 'grand_prix') {
+      // GP: no free slugs, Gold GP (fee > 150) requires tier >= 2
+      setSnails(allCreatures.filter((s: any) => {
+        if (s.type === 'free_slug') return false
+        if (selectedFormat.fee > 150 && (s.tier || 0) < 2) return false
+        return true
+      }))
     } else {
       setSnails(allCreatures.filter((s: any) => s.type === 'snail'))
     }
@@ -137,12 +144,21 @@ export default function RaceLobby() {
     if (!raceId) return
     setLoading(true)
     try {
-      await api.startBidding(raceId)
+      const biddingResult = await api.startBidding(raceId)
       // Load participants
       const raceData = await api.getRace(raceId)
       setParticipants(raceData.participants || [])
-      setPhase('bidding')
-      startCountdown()
+
+      // Exhibition races skip bidding — go straight to simulation
+      if (biddingResult.skipBidding || selectedFormat.maxRaise === 0) {
+        setPhase('starting')
+        const result = await api.simulateRace(raceId)
+        setGridPositions(result.gridPositions)
+        navigate(`/race/${raceId}`, { state: { raceResult: result, format: selectedFormat.id, snailId: selectedSnail?.id } })
+      } else {
+        setPhase('bidding')
+        startCountdown()
+      }
     } catch (err: any) {
       toast.error(err.message)
     }
@@ -319,8 +335,9 @@ export default function RaceLobby() {
                     <p className="text-white font-bold text-sm">Daily Race</p>
                     <p className="text-gray-400 text-xs">
                       Weather: <span className="text-slug-green font-semibold capitalize">{dailyRace.weather}</span>
-                      {' \u2022 '}2x Exhibition Rewards
+                      {' \u2022 '}Daily Exhibition Race
                     </p>
+                    <p className="text-gray-500 text-[10px] mt-0.5">Free exhibition race with today's weather. Play as many times as you want.</p>
                   </div>
                   <button
                     onClick={() => {
@@ -683,7 +700,7 @@ export default function RaceLobby() {
                 <input
                   type="range"
                   min={0}
-                  max={Math.min(300, coinBalance)}
+                  max={Math.min(selectedFormat?.maxRaise || 300, coinBalance)}
                   value={bidAmount}
                   onChange={e => setBidAmount(Number(e.target.value))}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slug-border accent-slug-green"

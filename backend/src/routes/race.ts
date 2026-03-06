@@ -209,6 +209,18 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
+    // GP tier gate: free slugs blocked, Gold GP requires tier >= 2
+    if (race.format === "gp_qualify") {
+      if (snail.type === "free_slug") {
+        res.status(400).json({ error: "GP requires at least a Snail" });
+        return;
+      }
+      if (race.entry_fee > 150 && (snail.tier || 0) < 2) {
+        res.status(400).json({ error: "Gold GP requires Elite snail (Tier 2+)" });
+        return;
+      }
+    }
+
     // Training lock: snail in active (unclaimed) training cannot race
     const activeTraining = await getOne(
       "SELECT id FROM trainings WHERE snail_id = $1 AND claimed = 0",
@@ -335,8 +347,8 @@ router.post("/start-bidding", async (req: Request, res: Response) => {
       [raceId]
     );
 
-    // Fill remaining slots with bots (8 for GP qualifying, 4 for normal)
-    const maxSlots = race.format === "gp_qualify" ? 8 : 4;
+    // Fill remaining slots with bots (4 for all races including GP qualifying)
+    const maxSlots = 4;
     const botsNeeded = maxSlots - participants.length;
     if (botsNeeded > 0) {
       // Shuffle templates for variety
@@ -355,6 +367,13 @@ router.post("/start-bidding", async (req: Request, res: Response) => {
           [raceId, botSnail.id, `bot_${i}`]
         );
       }
+    }
+
+    // Exhibition races skip bidding — go straight to racing
+    if (race.format === "exhibition") {
+      await query("UPDATE races SET status = 'racing' WHERE id = $1", [raceId]);
+      res.json({ raceId, status: "racing", botsAdded: botsNeeded, skipBidding: true });
+      return;
     }
 
     await query("UPDATE races SET status = 'bidding' WHERE id = $1", [raceId]);
@@ -390,6 +409,12 @@ router.post("/bid", async (req: Request, res: Response) => {
     const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
     if (!race || race.status !== "bidding") {
       res.status(400).json({ error: "race not in bidding phase" });
+      return;
+    }
+
+    // Exhibition races don't allow bidding
+    if (race.format === "exhibition") {
+      res.status(400).json({ error: "Exhibition races do not have bidding" });
       return;
     }
 
@@ -732,7 +757,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
           [entry.wallet, weekStart]
         );
         const count = parseInt(weatherCount?.count) || 0;
-        if (count <= 3) {
+        if (count === 5) {
           await triggerQuestProgress(entry.wallet, "weather_variety");
         }
       }
@@ -853,6 +878,13 @@ router.post("/action", async (req: Request, res: Response) => {
       return;
     }
 
+    // Verify snail ownership
+    const snailOwner = await getOne("SELECT id FROM slugs WHERE id = $1 AND wallet = $2", [snailId, wallet]);
+    if (snailOwner === null) {
+      res.status(403).json({ error: "Not your snail" });
+      return;
+    }
+
     const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
     if (!race) {
       res.status(404).json({ error: "race not found" });
@@ -863,22 +895,25 @@ router.post("/action", async (req: Request, res: Response) => {
       return;
     }
 
-    // Calculate GDA cost: load all prior actions for this race to rebuild GDA state
-    const priorActions = await getAll(
-      "SELECT action_type, tick FROM tactic_actions WHERE race_id = $1 ORDER BY id ASC",
-      [raceId]
-    );
-
-    let gdaState = createGDAState();
-    for (const pa of priorActions) {
-      gdaState = applyGDAPurchase(gdaState, pa.action_type, pa.tick);
-    }
+    // GDA price calculation + action insert + balance deduction all inside transaction
     const isChaos = race.format === "gp_final";
-    const cost = getGDAPrice(gdaState, actionType, parsedTick, isChaos);
+    let cost = 0;
 
-    // Balance check inside transaction with FOR UPDATE lock
     try {
       await runTransaction(async (client) => {
+        // Lock tactic_actions rows for this race to prevent concurrent price drift
+        const priorActionsResult = await client.query(
+          "SELECT action_type, tick FROM tactic_actions WHERE race_id = $1 ORDER BY id ASC FOR UPDATE",
+          [raceId]
+        );
+        const priorActions = priorActionsResult.rows;
+
+        let gdaState = createGDAState();
+        for (const pa of priorActions) {
+          gdaState = applyGDAPurchase(gdaState, pa.action_type, pa.tick);
+        }
+        cost = getGDAPrice(gdaState, actionType, parsedTick, isChaos);
+
         const balanceRow = (await client.query(
           "SELECT balance FROM coin_balances WHERE wallet = $1 FOR UPDATE",
           [wallet]

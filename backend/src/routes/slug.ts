@@ -439,15 +439,14 @@ router.post("/train", async (req: Request, res: Response) => {
       return;
     }
 
-    // Check daily training limit (free_slug: 1/day, snail: 2/day)
-    const today = new Date().toISOString().split("T")[0];
-    const dailyLimit = slug.type === 'free_slug' ? 1 : 2;
-    const todayTrainings = await getOne(
-      "SELECT COUNT(*) as count FROM trainings WHERE snail_id = $1 AND started_at::date = $2::date",
-      [parsedSnailId, today]
+    // Check weekly training limit (free_slug: 1/week, snail: 2/week)
+    const weeklyLimit = slug.type === 'free_slug' ? 1 : 2;
+    const weekTrainings = await getOne(
+      "SELECT COUNT(*) as count FROM trainings WHERE snail_id = $1 AND started_at >= date_trunc('week', CURRENT_TIMESTAMP)",
+      [parsedSnailId]
     );
-    if (parseInt(todayTrainings?.count || 0) >= dailyLimit) {
-      res.status(400).json({ error: `Daily training limit reached (${dailyLimit}/day)` });
+    if (parseInt(weekTrainings?.count || 0) >= weeklyLimit) {
+      res.status(400).json({ error: `Weekly training limit reached (${weeklyLimit}/week)` });
       return;
     }
 
@@ -517,7 +516,7 @@ router.post("/claim-training", async (req: Request, res: Response) => {
 
     const stat = training.stat;
     const cap = getStatCap(slug.type, slug.rarity, slug.tier || 0, slug.evolution_path, stat);
-    const gain = Math.min(0.3, cap - (slug[stat] || 0));
+    const gain = Math.min(0.3, Math.max(0, cap - (slug[stat] || 0)));
 
     if (gain > 0) {
       assertValidStat(stat);
@@ -563,7 +562,20 @@ router.get("/training-status/:wallet", async (req: Request, res: Response) => {
       isReady: new Date(t.completed_at) <= new Date(),
     }));
 
-    res.json({ trainings: result });
+    // Get weekly training counts per snail
+    const weeklyCounts = await getAll(
+      `SELECT s.id as snail_id, COUNT(t.id) as count FROM slugs s
+       LEFT JOIN trainings t ON t.snail_id = s.id AND t.started_at >= date_trunc('week', CURRENT_TIMESTAMP)
+       WHERE s.wallet = $1 AND s.is_burned = 0
+       GROUP BY s.id`,
+      [wallet]
+    );
+    const weeklyMap: Record<number, number> = {};
+    for (const wc of weeklyCounts) {
+      weeklyMap[wc.snail_id] = parseInt(wc.count) || 0;
+    }
+
+    res.json({ trainings: result, weeklyCounts: weeklyMap });
   } catch (err) {
     console.error("GET /training-status/:wallet error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -765,21 +777,24 @@ router.post("/mini-game", async (req: Request, res: Response) => {
       return;
     }
 
-    // Check daily limit (free: 2, snail: 5)
+    // Check daily limit — wallet-based (5/day total across all creatures)
     const today = new Date().toISOString().split("T")[0];
-    const dailyLimit = slug.type === 'free_slug' ? 2 : 5;
+    const dailyLimit = 5;
 
     await query(
       "INSERT INTO daily_minigame_plays (snail_id, play_date, count) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
       [snailId, today]
     );
-    const dailyPlays = await getOne(
-      "SELECT count FROM daily_minigame_plays WHERE snail_id = $1 AND play_date = $2",
-      [snailId, today]
+    const walletPlays = await getOne(
+      `SELECT COALESCE(SUM(dmp.count), 0) as total_count
+       FROM daily_minigame_plays dmp
+       JOIN slugs s ON dmp.snail_id = s.id
+       WHERE s.wallet = $1 AND dmp.play_date = $2`,
+      [wallet, today]
     );
 
-    if ((dailyPlays?.count || 0) >= dailyLimit) {
-      res.status(400).json({ error: `Daily mini-game limit reached (${dailyLimit}/day)` });
+    if ((walletPlays?.total_count || 0) >= dailyLimit) {
+      res.status(400).json({ error: `Daily mini-game limit reached (${dailyLimit}/day across all creatures)` });
       return;
     }
 
@@ -792,7 +807,7 @@ router.post("/mini-game", async (req: Request, res: Response) => {
 
     // Calculate gain
     const gain = Math.max(0.1, Math.min(0.5, parsedScore / 100 * 0.5));
-    const actualGain = Math.min(gain, cap - (slug[stat] || 0));
+    const actualGain = Math.min(gain, Math.max(0, cap - (slug[stat] || 0)));
 
     // Update stat and track play
     assertValidStat(stat);
@@ -815,7 +830,7 @@ router.post("/mini-game", async (req: Request, res: Response) => {
       stat,
       gain: actualGain,
       newStatValue: (slug[stat] || 0) + actualGain,
-      playsToday: (dailyPlays?.count || 0) + 1,
+      playsToday: (walletPlays?.total_count || 0) + 1,
       dailyLimit,
     });
   } catch (err) {
