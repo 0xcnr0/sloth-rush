@@ -89,6 +89,16 @@ export async function initDB() {
     `UPDATE sloths SET passive = 'dream_catcher' WHERE passive = 'luck_magnet'`,
     `UPDATE sloths SET passive = 'lucid_dream' WHERE passive = 'bad_to_good'`,
     `UPDATE tactic_actions SET action_type = 'pillow' WHERE action_type = 'shell'`,
+    // Drop old CHECK constraints and add new ones
+    `ALTER TABLE sloths DROP CONSTRAINT IF EXISTS slugs_type_check`,
+    `ALTER TABLE sloths DROP CONSTRAINT IF EXISTS sloths_type_check`,
+    `ALTER TABLE sloths ADD CONSTRAINT sloths_type_check CHECK(type IN ('free_sloth', 'sloth'))`,
+    `ALTER TABLE tactic_actions DROP CONSTRAINT IF EXISTS tactic_actions_action_type_check`,
+    `ALTER TABLE tactic_actions ADD CONSTRAINT tactic_actions_action_type_check CHECK(action_type IN ('boost', 'pillow'))`,
+    // Update evolution paths
+    `UPDATE sloths SET evolution_path = 'caffeine' WHERE evolution_path = 'velocity'`,
+    `UPDATE sloths SET evolution_path = 'hibernate' WHERE evolution_path = 'fortress'`,
+    `UPDATE sloths SET evolution_path = 'dreamwalk' WHERE evolution_path = 'mystic'`,
   ];
 
   for (const sql of migrations) {
