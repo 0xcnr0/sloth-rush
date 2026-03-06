@@ -1,0 +1,311 @@
+Slug Rush — Mega Fix Prompt: 41 madde (mantik hatalari + branding + UX tamamlama). PostgreSQL (pg), async/await, $1,$2... params. db.ts'den import: import { query, getOne, getAll, runTransaction } from "../db". Frontend: React 19, TypeScript, Tailwind CSS, Framer Motion. react-hot-toast zaten kurulu.
+
+Plan dosyasi: .claude/plans/noble-napping-flame.md — detayli bilgi icin "OYUN MANTIK HATALARI", "BRANDING & FREE SLUG", "UX DENETIM RAPORU" bolumlerini oku.
+
+4 fazda calis. Her faz sonunda npx tsc --noEmit ile 0 hata dogrula.
+
+==========================================================
+FAZ 1: KRITIK MANTIK HATALARI (Oncelik: en yuksek)
+==========================================================
+
+### 1.1 Exhibition/Daily Race'te Bidding Atla
+Dosya: backend/src/routes/race.ts
+
+startBidding fonksiyonunda format kontrolu ekle. Eger race.format === 'exhibition' ise bidding fazini ATLA — direkt status='racing' yap ve simulasyonu baslat.
+
+Ayrica /bid endpoint'inde: eger race format exhibition ise bid kabul etme, 400 dondur.
+
+Frontend (RaceLobby.tsx): Bidding fazinda eger maxRaise === 0 ise bid UI gosterme. "Race starting..." mesaji goster.
+
+### 1.2 Training Limitini Haftalik Yap
+Dosya: backend/src/routes/slug.ts — /train endpoint
+
+Mevcut: Gunluk 2 training limiti
+Yeni: Haftalik limit (free slug 1/hafta, snail 2/hafta)
+
+Training limit sorgusunu degistir:
+Eski: WHERE snail_id = $1 AND DATE(started_at) = CURRENT_DATE
+Yeni: WHERE snail_id = $1 AND started_at >= date_trunc('week', CURRENT_TIMESTAMP)
+
+### 1.3 Mini-Game Limitini Wallet Bazli Yap
+Dosya: backend/src/routes/slug.ts — /mini-game endpoint
+
+Mevcut: Snail bazli gunluk limit
+Yeni: Wallet bazli gunluk 5 limit (herkes icin ayni)
+
+Limit sorgusunu degistir:
+SELECT COALESCE(SUM(dmp.count), 0) as total_count
+FROM daily_minigame_plays dmp
+JOIN slugs s ON dmp.snail_id = s.id
+WHERE s.wallet = $1 AND dmp.play_date = $2
+
+dailyLimit = 5 (free slug farki kaldirilsin)
+
+### 1.4 Tactic Action Snail Sahipligi Dogrula
+Dosya: backend/src/routes/race.ts — /action endpoint
+
+Action submit edildiginde snail'in wallet'a ait oldugunu dogrula:
+const owner = await getOne("SELECT id FROM slugs WHERE id = $1 AND wallet = $2", [snailId, wallet]);
+if (owner === null) { res.status(403).json({ error: "Not your snail" }); return; }
+
+### 1.5 GP Tier Gate Ekle
+Dosya: backend/src/routes/race.ts — /join endpoint
+
+GP katiliminda tier kontrolu:
+- GP ve free_slug ise: red ("GP requires at least a Snail")
+- GP ve entry_fee > 150 ve tier < 2 ise: red ("Gold GP requires Elite snail (Tier 2+)")
+
+Frontend (RaceLobby.tsx): GP secildiginde snail listesini filtrele — free slug'lari cikar, Gold GP'de tier<2 cikar.
+
+### 1.6 Stat Cap Guvenlik Kontrolu
+Dosya: backend/src/routes/slug.ts
+
+Training claim ve mini-game stat gain hesaplarinda:
+Mevcut: Math.min(gain, cap - current)
+Yeni: Math.min(gain, Math.max(0, cap - (current || 0)))
+
+Bu degisikligi /claim-training ve /mini-game endpoint'lerine uygula.
+
+### 1.7 Weather Quest Tetikleme Duzelt
+Dosya: backend/src/routes/race.ts — quest tetikleme bolumu
+
+Weather variety quest kosulunu bul.
+Mevcut: if (count <= 3) ...
+Yeni: if (count === 5) — 5 farkli hava durumu goruldugunde tetiklensin.
+
+### 1.8 GDA Race Condition Fix
+Dosya: backend/src/routes/race.ts — /action endpoint
+
+GDA fiyat hesabini runTransaction icine al. Ayni tick'te iki action gelirse ikincisi guncellenmis fiyati gorsun.
+
+==========================================================
+FAZ 2: BRANDING & FREE SLUG
+==========================================================
+
+### 2.1 "Sealed Bid" -> "Grid Boost" Yeniden Adlandirma
+Asagidaki dosyalarda kullaniciya gorunen text'leri degistir (backend API/degisken isimleri DEGISMEYECEK):
+
+RaceLobby.tsx:
+- "SEALED BID" -> "GRID BOOST"
+- "Place your raise to fight for Pole Position!" -> "Boost your starting position!"
+- "Raise Amount" -> "Boost Amount"
+- "CONFIRM BID" -> "CONFIRM BOOST"
+- Aciklama text'i: "Spend SLUG Coins to boost your grid position. Highest boost starts in pole position with a small lead. Coins are returned — it only determines starting order."
+
+Guide.tsx:
+- "What is sealed bidding?" -> "What is Grid Boost?"
+- Aciklama icindeki "sealed bid/bidding" -> "grid boost"
+
+Landing.tsx:
+- "compete in sealed-bid races on Base L2" -> "compete in races to earn SLUG Coins"
+
+### 2.2 Blockchain/Base L2 Referanslarini Kaldir
+Kullaniciya gorunen text'lerden:
+
+Layout.tsx footer:
+- "Slug Rush — Base L2 Blockchain Racing Game" -> "Slug Rush — Snail Racing Game"
+
+Landing.tsx:
+- "on Base L2" ifadesini kaldir
+
+Guide.tsx:
+- "blockchain snail racing game on Base L2" -> "snail racing game"
+- Diger "blockchain" gecen yerleri temizle
+
+### 2.3 "2x Exhibition Rewards" Kaldir
+Dosya: RaceLobby.tsx — Daily Race banner
+
+"2x Exhibition Rewards" -> "Exhibition Race"
+Banner aciklamasini ekle: "Free exhibition race with today's weather. Play as many times as you want."
+
+### 2.4 Free Slug Kartini Genislet
+Dosya: frontend/src/pages/Stable.tsx
+
+SORUN: Free slug karti (satir 297-359) sadece upgrade butonu gosteriyor. Mini-game, training, equip, stat grid, enter race butonu YOK. Backend hepsine izin veriyor ama frontend gostermiyor.
+
+COZUM: Free slug kartini snail kartiyla ayni ozellikleri icerecek sekilde genislet:
+
+1. Stat grid ekle (6 stat: SPD/ACC/STA/AGI/REF/LCK, cap: 15 gosterilsin)
+2. Training UI ekle (1/hafta limit, snail'deki ayni pattern)
+3. Mini-game butonu ekle ("Play Mini Games (N left today)")
+4. Equipment dropdown'lari ekle (kozmetik + aksesuar, eger owned varsa)
+5. Enter Race butonu ekle (sadece Exhibition format icin)
+6. Mevcut upgrade bolumu KALSIN (hem paid hem free upgrade)
+
+En kolay yontem: Free slug kartini snail kart component'iyla birlestir. type==='free_slug' kontroluyle:
+- Evrim butonu gosterme (sadece snail)
+- Race butonu Exhibition'a yonlendirsin
+- Training limiti 1/hafta gostersin
+- Stat cap 15 olarak gostersin
+
+### 2.5 Passive Ability Aciklamalari Duzelt
+Dosya: frontend/src/components/EvolutionModal.tsx
+
+Backend passive map ile frontend aciklamalarini esle:
+- Fortress Tier 3: "fatigue_slow" = "Fatigue builds 50% slower" (SU AN YANLIS: "Shell damage -30%" yaziyor)
+- Fortress Tier 4: "shell_resist" = "Shell damage reduced by 30%" (SU AN YANLIS: "Fatigue -50%" yaziyor)
+- Tier 3 ve 4 aciklamalari YER DEGISTIRMIS — duzelt.
+
+Diger path'leri de dogrula:
+- Velocity Tier 3: speed_burst = "Last 100m: +10% speed bonus"
+- Velocity Tier 4: speed_overtake = "Overtake burst: 1s speed boost when passing"
+- Mystic Tier 3: luck_magnet = "Luck Orbs appear 20% more often"
+- Mystic Tier 4: bad_to_good = "30% chance to convert bad events to good"
+
+### 2.6 Turkce Text'leri Ingilizce'ye Cevir
+Dosya: frontend/src/pages/RaceBroadcast.tsx
+
+- "Tahmin:" -> "Predict:"
+- "Dogru tahmin = 15 SLUG!" -> "Correct prediction = 15 SLUG!"
+- "Tahmin yapildi!" -> "Prediction submitted!"
+- Diger Turkce text varsa Ingilizce'ye cevir
+
+Dosya: frontend/src/pages/NotFound.tsx
+- "Bu salyangoz yolunu kaybetti..." -> "This snail got lost..." (zaten Ingilizce mi kontrol et)
+
+==========================================================
+FAZ 3: UI/UX IYILESTIRMELER
+==========================================================
+
+### 3.1 XP Bakiyesi Mobilde Gorunur (S17)
+Dosya: Layout.tsx — XP badge'indeki hidden sm:flex -> flex
+
+### 3.2 Training Butonlari Mobil Grid (S23)
+Dosya: Stable.tsx — training stat secici
+flex gap-1 -> grid grid-cols-3 sm:grid-cols-6 gap-1.5
+Buton padding: py-1 -> py-2, font: text-xs, min-h-[36px]
+
+### 3.3 Touch Target Buyutme (S24)
+Dosya: Layout.tsx
+Hamburger: p-2 -> p-3
+Menu linkleri: px-3 py-2 -> px-4 py-3, min-h-[44px]
+
+### 3.4 Training ve Equip Accordion (S20)
+Dosya: Stable.tsx
+Training UI ve Equip bolumlerini collapsible accordion yap.
+expandedSections state ile toggle. Default kapali (aktif training varsa acik).
+
+### 3.5 QuestPanel Collapsible (S29)
+Dosya: Stable.tsx
+QuestPanel'i collapsible wrapper'a al. questsOpen state, default true.
+
+### 3.6 Enter Race Butonu One Cikar (S20)
+Dosya: Stable.tsx
+w-full py-3 text-lg font-bold bg-slug-green shadow-lg
+
+### 3.7 Wallet Disconnect Overlay (S19)
+Dosya: RaceBroadcast.tsx
+isConnected false ise fullscreen overlay goster: uyari + ConnectButton.
+Tactic butonlarini da disable et.
+
+### 3.8 Yetersiz Bakiye Mesaji (S26)
+Dosya: RaceLobby.tsx
+Buton text'ini "Enter Race" yap. Altina kirmizi text: "Need X SLUG — you have Y."
+
+### 3.9 Race Canvas Text Sadelestirme (S25)
+Dosya: RaceBroadcast.tsx
+Kill feed'i canvas disina tasi (sag taraf sabit panel, hidden lg:block).
+Emote max 2 ayni anda. Commentary gizle eger speech bubble aktifse.
+
+### 3.10 Shop'tan Equip Kaldir (S7)
+Dosya: Shop.tsx
+Owned item'larda equip dropdown kaldir. Yerine "Owned — Equip in Stable" yaz.
+Satin alma sonrasi: toast.success("Purchased! Equip in Stable.")
+
+### 3.11 Bos Catch Bloklarini Duzelt (S27)
+Tum frontend dosyalarinda .catch(() => {}) bul:
+- Veri fetch: toast.error('Failed to load data. Please refresh.')
+- Aksiyon (POST): toast.error('Something went wrong. Please try again.')
+- Layout balance: sadece console.error (toast spam onle)
+
+### 3.12 Profile Ayarlar Bolumu (S14)
+Dosya: Profile.tsx
+Sayfa altina Settings bolumu: Sound Effects toggle (localStorage key: slug-rush-sound)
+
+### 3.13 Profile Inventory Tab (S11)
+Dosya: Profile.tsx
+3. tab: "Inventory" — owned cosmetics + accessories grid.
+API'den mevcut endpoint'leri kullan: /api/shop/cosmetics, /api/shop/accessories (wallet ile filtrele)
+
+### 3.14 Footer Twitter/Discord (S30)
+Dosya: Layout.tsx
+Placeholder linkler ekle: Twitter (https://twitter.com/SlugRushGame), Discord (https://discord.gg/slugrush)
+
+### 3.15 GP Takvimi Banner (S12)
+Dosya: RaceLobby.tsx
+Daily Race banner altina statik GP banner: "Upcoming Grand Prix — Stay tuned!"
+
+### 3.16 Mini Games -> Stable Entegrasyonu (S1)
+MiniGames.tsx'den oyun component'larini frontend/src/components/MiniGameModal.tsx'e cikar.
+Stable'da her snail kartina (ve free slug kartina) "Play Mini Games" butonu ekle.
+Buton tiklayinca MiniGameModal acilsin (snail zaten secili).
+MiniGames.tsx'i Navigate to="/stable" redirect yap.
+
+==========================================================
+FAZ 4: KUCUK DUZELTMELER
+==========================================================
+
+### 4.1 Training Limiti UI Goster (HATA 13)
+Dosya: Stable.tsx
+Training bolumund: "Training (1/2 this week)" sayac goster.
+Backend'den haftalik count bilgisi al.
+
+### 4.2 Shop Owned Item Badge (HATA 14)
+Dosya: Shop.tsx
+Owned item'larda "Buy" butonunu gizle, yesil "Owned" badge goster.
+
+### 4.3 GP Final Bid Hardcode Duzelt (HATA 19)
+Dosya: RaceLobby.tsx
+GP Final bidding: max={Math.min(300, coinBalance)} -> max={Math.min(selectedFormat?.maxRaise || 300, coinBalance)}
+
+### 4.4 GP Qualifying Slot Uyumu (HATA 16)
+Dosya: race.ts
+GP qualifying maxSlots=8 ise 4'e dusur. Veya 4 slot creation'i 8'e cikar. Tutarli olsun.
+
+### 4.5 Daily Race Aciklamasi
+Dosya: RaceLobby.tsx
+Daily Race banner'ina aciklama ekle: "Free exhibition race with today's weather."
+Bu "daily" nin "gunluk hava durumu" anlamina geldigini aciklar.
+
+==========================================================
+DOGRULAMA
+==========================================================
+
+Her faz sonunda:
+1. cd backend && npx tsc --noEmit — 0 hata
+2. cd frontend && npx tsc --noEmit — 0 hata
+
+Tum fazlar bittikten sonra kontrol listesi:
+- Exhibition'da bid UI gorunmuyor, direkt yaris basliyor mu?
+- Training limiti haftalik mi?
+- Mini-game limiti wallet bazli 5/gun mu?
+- Tactic action'da snail sahipligi dogrulaniyor mu?
+- GP'ye free slug giremez mi? Gold GP'ye tier<2 giremez mi?
+- Stat cap asmiyor mu?
+- "SEALED BID" yerine "GRID BOOST" mi yaziyor?
+- "Base L2 Blockchain" kaldirildi mi?
+- "2x Exhibition Rewards" kaldirildi mi?
+- Free slug kartinda mini-game, training, stat grid, equip, enter race var mi?
+- Passive aciklamalari dogru mu (Fortress tier 3=fatigue, tier 4=shell)?
+- Turkce text'ler Ingilizce mi?
+- XP mobilde gorunuyor mu?
+- Training butonlari mobilde grid mi?
+- Accordion'lar calisiyor mu?
+- QuestPanel collapsible mi?
+- Wallet disconnect overlay var mi?
+- Kill feed canvas disinda mi?
+- Shop'ta owned item "Owned" badge mi?
+- Bos catch'ler toast ile mi?
+- Profile'da Settings + Inventory var mi?
+- Mini Games Stable'da mi?
+
+KURALLAR:
+- PostgreSQL, async/await, $1,$2... params
+- Backend API/degisken isimleri degistirme — sadece kullaniciya gorunen text
+- alert() kullanma, toast kullan
+- Exhibition = fee 0, maxRaise 0, bid yok
+- Training: haftalik (free slug 1, snail 2)
+- Mini-game: wallet bazli gunluk 5
+- Stat gain: Math.min(gain, Math.max(0, cap - (current || 0)))
+- npx tsc --noEmit her iki proje 0 hata
+- Bitince commit + push

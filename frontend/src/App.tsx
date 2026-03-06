@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import Mint from './pages/Mint'
-import Stable from './pages/Stable'
+import Treehouse from './pages/Treehouse'
 import RaceLobby from './pages/RaceLobby'
 import RaceBroadcast from './pages/RaceBroadcast'
 import Shop from './pages/Shop'
@@ -19,17 +19,18 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Landing />} />
         <Route path="/mint" element={<Mint />} />
-        <Route path="/stable" element={<Stable />} />
+        <Route path="/treehouse" element={<Treehouse />} />
         <Route path="/race" element={<RaceLobby />} />
         <Route path="/race/:id" element={<RaceBroadcast />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/mini-games" element={<Navigate to="/stable" replace />} />
+        <Route path="/mini-games" element={<Navigate to="/treehouse" replace />} />
         <Route path="/spectate" element={<Spectate />} />
         <Route path="/replay/:id" element={<RaceReplay />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/guide" element={<Guide />} />
         {/* Redirects for old routes */}
+        <Route path="/stable" element={<Navigate to="/treehouse" replace />} />
         <Route path="/history" element={<Navigate to="/profile" replace />} />
         <Route path="*" element={<NotFound />} />
       </Route>

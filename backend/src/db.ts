@@ -55,12 +55,53 @@ export async function runTransaction<T>(
 }
 
 export async function initDB() {
+  // === MIGRATION BLOCK: rename old schema to new (safe to re-run) ===
+  console.log("initDB: running migration from slug to sloth schema...");
+
+  const migrations = [
+    `ALTER TABLE IF EXISTS slugs RENAME TO sloths`,
+    `ALTER TABLE IF EXISTS sloths RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS race_participants RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS tactic_actions RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS streaks RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS predictions RENAME COLUMN predicted_snail_id TO predicted_sloth_id`,
+    `ALTER TABLE IF EXISTS race_points RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS trainings RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS daily_stat_gains RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS daily_minigame_plays RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS user_cosmetics RENAME COLUMN equipped_snail_id TO equipped_sloth_id`,
+    `ALTER TABLE IF EXISTS snail_equipment RENAME TO sloth_equipment`,
+    `ALTER TABLE IF EXISTS sloth_equipment RENAME COLUMN snail_id TO sloth_id`,
+    `ALTER TABLE IF EXISTS cosmetics RENAME COLUMN slug_price TO sloth_price`,
+    `ALTER TABLE IF EXISTS accessories RENAME COLUMN slug_price TO sloth_price`,
+    `ALTER TABLE IF EXISTS season_rewards RENAME COLUMN slug_reward TO sloth_reward`,
+    `ALTER TABLE IF EXISTS quests RENAME COLUMN slug_reward TO sloth_reward`,
+    `UPDATE sloths SET type = 'free_sloth' WHERE type = 'free_slug'`,
+    `UPDATE sloths SET type = 'sloth' WHERE type = 'snail'`,
+    `UPDATE sloths SET race = 'caffeine_junkie' WHERE race = 'turbo_slug'`,
+    `UPDATE sloths SET race = 'pillow_knight' WHERE race = 'shell_knight'`,
+    `UPDATE sloths SET race = 'dream_weaver' WHERE race = 'goo_mage'`,
+    `UPDATE sloths SET race = 'thunder_nap' WHERE race = 'storm_racer'`,
+    `UPDATE sloths SET passive = 'caffeine_rush' WHERE passive = 'speed_burst'`,
+    `UPDATE sloths SET passive = 'adrenaline_wake' WHERE passive = 'speed_overtake'`,
+    `UPDATE sloths SET passive = 'deep_sleep' WHERE passive = 'fatigue_slow'`,
+    `UPDATE sloths SET passive = 'thick_fur' WHERE passive = 'shell_resist'`,
+    `UPDATE sloths SET passive = 'dream_catcher' WHERE passive = 'luck_magnet'`,
+    `UPDATE sloths SET passive = 'lucid_dream' WHERE passive = 'bad_to_good'`,
+    `UPDATE tactic_actions SET action_type = 'pillow' WHERE action_type = 'shell'`,
+  ];
+
+  for (const sql of migrations) {
+    try { await pool.query(sql); } catch { /* already migrated */ }
+  }
+
+  // === CREATE TABLES ===
   console.log("initDB: creating core tables...");
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS slugs (
+    CREATE TABLE IF NOT EXISTS sloths (
       id SERIAL PRIMARY KEY,
       wallet TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('free_slug', 'snail')),
+      type TEXT NOT NULL CHECK(type IN ('free_sloth', 'sloth')),
       name TEXT,
       rarity TEXT CHECK(rarity IN ('common', 'uncommon', 'rare', 'epic', 'legendary')),
       race TEXT,
@@ -102,27 +143,27 @@ export async function initDB() {
     CREATE TABLE IF NOT EXISTS race_participants (
       id SERIAL PRIMARY KEY,
       race_id TEXT NOT NULL REFERENCES races(id),
-      snail_id INTEGER NOT NULL,
+      sloth_id INTEGER NOT NULL,
       wallet TEXT NOT NULL,
       is_bot INTEGER DEFAULT 0,
       bid_amount INTEGER DEFAULT 0,
       grid_position INTEGER,
       finish_position INTEGER,
       payout INTEGER DEFAULT 0,
-      UNIQUE(race_id, snail_id)
+      UNIQUE(race_id, sloth_id)
     );
 
     CREATE TABLE IF NOT EXISTS tactic_actions (
       id SERIAL PRIMARY KEY,
       race_id TEXT NOT NULL REFERENCES races(id),
-      snail_id INTEGER NOT NULL,
+      sloth_id INTEGER NOT NULL,
       wallet TEXT NOT NULL,
-      action_type TEXT NOT NULL CHECK(action_type IN ('boost', 'shell')),
+      action_type TEXT NOT NULL CHECK(action_type IN ('boost', 'pillow')),
       tick INTEGER NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS streaks (
-      snail_id INTEGER PRIMARY KEY,
+      sloth_id INTEGER PRIMARY KEY,
       current_wins INTEGER DEFAULT 0,
       max_wins INTEGER DEFAULT 0,
       current_losses INTEGER DEFAULT 0,
@@ -135,7 +176,7 @@ export async function initDB() {
       id SERIAL PRIMARY KEY,
       race_id TEXT NOT NULL REFERENCES races(id),
       wallet TEXT NOT NULL,
-      predicted_snail_id INTEGER NOT NULL,
+      predicted_sloth_id INTEGER NOT NULL,
       correct INTEGER DEFAULT 0,
       rewarded INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW(),
@@ -173,7 +214,7 @@ export async function initDB() {
       description TEXT,
       requirement_type TEXT NOT NULL,
       requirement_value INTEGER DEFAULT 1,
-      slug_reward INTEGER DEFAULT 0,
+      sloth_reward INTEGER DEFAULT 0,
       xp_reward INTEGER DEFAULT 0,
       period TEXT DEFAULT 'daily'
     );
@@ -192,7 +233,7 @@ export async function initDB() {
     CREATE TABLE IF NOT EXISTS race_points (
       id SERIAL PRIMARY KEY,
       wallet TEXT NOT NULL,
-      snail_id INTEGER NOT NULL,
+      sloth_id INTEGER NOT NULL,
       season INTEGER DEFAULT 1,
       rp INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
@@ -203,7 +244,7 @@ export async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS trainings (
       id SERIAL PRIMARY KEY,
-      snail_id INTEGER NOT NULL,
+      sloth_id INTEGER NOT NULL,
       wallet TEXT NOT NULL,
       stat TEXT NOT NULL,
       started_at TIMESTAMP DEFAULT NOW(),
@@ -213,10 +254,10 @@ export async function initDB() {
 
     CREATE TABLE IF NOT EXISTS daily_stat_gains (
       id SERIAL PRIMARY KEY,
-      snail_id INTEGER NOT NULL,
+      sloth_id INTEGER NOT NULL,
       gain_date TEXT NOT NULL,
       total_gain REAL DEFAULT 0,
-      UNIQUE(snail_id, gain_date)
+      UNIQUE(sloth_id, gain_date)
     );
 
     CREATE TABLE IF NOT EXISTS daily_races (
@@ -238,10 +279,10 @@ export async function initDB() {
     -- Mini game daily plays tracking
     CREATE TABLE IF NOT EXISTS daily_minigame_plays (
       id SERIAL PRIMARY KEY,
-      snail_id INTEGER NOT NULL,
+      sloth_id INTEGER NOT NULL,
       play_date TEXT NOT NULL,
       count INTEGER DEFAULT 0,
-      UNIQUE(snail_id, play_date)
+      UNIQUE(sloth_id, play_date)
     );
 
     -- Seasons
@@ -284,7 +325,7 @@ export async function initDB() {
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       type TEXT NOT NULL CHECK(type IN ('hat','trail','celebration')),
-      slug_price INTEGER NOT NULL,
+      sloth_price INTEGER NOT NULL,
       description TEXT,
       rarity TEXT DEFAULT 'common'
     );
@@ -294,7 +335,7 @@ export async function initDB() {
       id SERIAL PRIMARY KEY,
       wallet TEXT NOT NULL,
       cosmetic_id INTEGER NOT NULL,
-      equipped_snail_id INTEGER,
+      equipped_sloth_id INTEGER,
       purchased_at TIMESTAMP DEFAULT NOW(),
       UNIQUE(wallet, cosmetic_id)
     );
@@ -306,7 +347,7 @@ export async function initDB() {
       stat_bonus JSONB NOT NULL DEFAULT '{}',
       description TEXT,
       rarity TEXT DEFAULT 'common',
-      slug_price INTEGER NOT NULL
+      sloth_price INTEGER NOT NULL
     );
 
     -- User owned accessories
@@ -317,9 +358,9 @@ export async function initDB() {
       UNIQUE(wallet, accessory_id)
     );
 
-    -- Snail equipment (1 accessory per snail)
-    CREATE TABLE IF NOT EXISTS snail_equipment (
-      snail_id INTEGER PRIMARY KEY,
+    -- Sloth equipment (1 accessory per sloth)
+    CREATE TABLE IF NOT EXISTS sloth_equipment (
+      sloth_id INTEGER PRIMARY KEY,
       accessory_id INTEGER NOT NULL
     );
 
@@ -330,7 +371,7 @@ export async function initDB() {
       league TEXT NOT NULL,
       rank_min INTEGER NOT NULL,
       rank_max INTEGER NOT NULL,
-      slug_reward INTEGER DEFAULT 0,
+      sloth_reward INTEGER DEFAULT 0,
       xp_reward INTEGER DEFAULT 0,
       cosmetic_id INTEGER
     );
@@ -338,30 +379,29 @@ export async function initDB() {
 
   console.log("initDB: altering columns and seeding data...");
   // ALTER stat columns to REAL if they are still INTEGER
-  // PostgreSQL: safe to run multiple times, will fail silently if already REAL
   try {
     await pool.query(`
-      ALTER TABLE slugs ALTER COLUMN spd TYPE REAL;
-      ALTER TABLE slugs ALTER COLUMN acc TYPE REAL;
-      ALTER TABLE slugs ALTER COLUMN sta TYPE REAL;
-      ALTER TABLE slugs ALTER COLUMN agi TYPE REAL;
-      ALTER TABLE slugs ALTER COLUMN ref TYPE REAL;
-      ALTER TABLE slugs ALTER COLUMN lck TYPE REAL;
+      ALTER TABLE sloths ALTER COLUMN spd TYPE REAL;
+      ALTER TABLE sloths ALTER COLUMN acc TYPE REAL;
+      ALTER TABLE sloths ALTER COLUMN sta TYPE REAL;
+      ALTER TABLE sloths ALTER COLUMN agi TYPE REAL;
+      ALTER TABLE sloths ALTER COLUMN ref TYPE REAL;
+      ALTER TABLE sloths ALTER COLUMN lck TYPE REAL;
     `);
   } catch {
     // Already REAL — ignore
   }
 
-  // Add evolution columns to slugs table
+  // Add evolution columns to sloths table
   try {
     await pool.query(`
-      ALTER TABLE slugs ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0;
-      ALTER TABLE slugs ADD COLUMN IF NOT EXISTS evolution_path TEXT;
-      ALTER TABLE slugs ADD COLUMN IF NOT EXISTS passive TEXT;
+      ALTER TABLE sloths ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0;
+      ALTER TABLE sloths ADD COLUMN IF NOT EXISTS evolution_path TEXT;
+      ALTER TABLE sloths ADD COLUMN IF NOT EXISTS passive TEXT;
     `);
     // Set defaults for existing rows
-    await pool.query(`UPDATE slugs SET tier = 0 WHERE type = 'free_slug' AND tier IS NULL`);
-    await pool.query(`UPDATE slugs SET tier = 1 WHERE type = 'snail' AND tier IS NULL`);
+    await pool.query(`UPDATE sloths SET tier = 0 WHERE type = 'free_sloth' AND tier IS NULL`);
+    await pool.query(`UPDATE sloths SET tier = 1 WHERE type = 'sloth' AND tier IS NULL`);
   } catch {
     // Columns may already exist
   }
@@ -391,7 +431,7 @@ export async function initDB() {
     ];
     for (const [name, type, price, desc, rarity] of cosmeticSeeds) {
       await query(
-        "INSERT INTO cosmetics (name, type, slug_price, description, rarity) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO cosmetics (name, type, sloth_price, description, rarity) VALUES ($1, $2, $3, $4, $5)",
         [name, type, price, desc, rarity]
       );
     }
@@ -401,16 +441,16 @@ export async function initDB() {
   const accessoryCount = await getOne("SELECT COUNT(*) as count FROM accessories");
   if (parseInt(accessoryCount.count) === 0) {
     const accessorySeeds = [
-      ['Speed Boots', '{"spd": 1}', 'Light boots for extra speed', 'common', 300],
-      ['Armor Shell', '{"sta": 2, "spd": -1}', 'Heavy armor for endurance', 'uncommon', 400],
-      ['Lucky Charm', '{"lck": 2}', 'A four-leaf clover charm', 'common', 350],
-      ['Light Shoes', '{"acc": 1, "agi": 1}', 'Lightweight shoes for agility', 'uncommon', 500],
-      ['Reflective Shield', '{"ref": 2}', 'A shiny reflective shield', 'common', 350],
-      ['Turbo Shell', '{"spd": 3, "sta": -2}', 'Maximum speed, less endurance', 'rare', 600],
+      ['Running Slippers', '{"spd": 1}', 'Comfy slippers for extra speed', 'common', 300],
+      ['Cozy Blanket', '{"sta": 2, "spd": -1}', 'Warm blanket for endurance', 'uncommon', 400],
+      ['Dream Catcher Charm', '{"lck": 2}', 'A dream catcher for luck', 'common', 350],
+      ['Cloud Sandals', '{"acc": 1, "agi": 1}', 'Lightweight sandals for agility', 'uncommon', 500],
+      ['Sleep Mask', '{"ref": 2}', 'A reflective sleep mask', 'common', 350],
+      ['Double Espresso', '{"spd": 3, "sta": -2}', 'Max speed, less endurance', 'rare', 600],
     ];
     for (const [name, bonus, desc, rarity, price] of accessorySeeds) {
       await query(
-        "INSERT INTO accessories (name, stat_bonus, description, rarity, slug_price) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO accessories (name, stat_bonus, description, rarity, sloth_price) VALUES ($1, $2, $3, $4, $5)",
         [name, bonus, desc, rarity, price]
       );
     }
@@ -420,16 +460,16 @@ export async function initDB() {
   const questCount = await getOne("SELECT COUNT(*) as count FROM quests");
   if (parseInt(questCount.count) === 0) {
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
       ["daily", "Complete 1 Race", "Finish any race to earn rewards", "race_complete", 1, 5, 10]
     );
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
       ["daily", "Finish Top 2", "Place 1st or 2nd in a race", "top_2_finish", 1, 10, 10]
     );
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      ["daily", "Visit Stable", "Check on your slugs in the stable", "stable_visit", 1, 5, 10]
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      ["daily", "Visit Treehouse", "Check on your sloths in the treehouse", "stable_visit", 1, 5, 10]
     );
   }
 
@@ -437,15 +477,15 @@ export async function initDB() {
   const weeklyCount = await getOne("SELECT COUNT(*) as count FROM quests WHERE period = 'weekly'");
   if (parseInt(weeklyCount.count) === 0) {
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["weekly", "Complete 5 Races", "Finish 5 races this week", "race_complete", 5, 25, 25, "weekly"]
     );
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["weekly", "Race in 3 Weather Types", "Race in 3 different weather conditions", "weather_variety", 3, 25, 25, "weekly"]
     );
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["weekly", "Complete 1 Training", "Finish a training session", "training_complete", 1, 25, 25, "weekly"]
     );
   }
@@ -454,23 +494,23 @@ export async function initDB() {
   const milestoneCount = await getOne("SELECT COUNT(*) as count FROM quests WHERE period = 'milestone'");
   if (parseInt(milestoneCount.count) === 0) {
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["milestone", "First Race", "Complete your first race", "race_complete", 1, 50, 25, "milestone"]
     );
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["milestone", "First Victory", "Win your first race", "milestone_wins", 1, 100, 50, "milestone"]
     );
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["milestone", "10 Races Completed", "Complete 10 races total", "milestone_races", 10, 200, 100, "milestone"]
     );
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["milestone", "3 Win Streak", "Win 3 races in a row", "milestone_streak", 3, 150, 75, "milestone"]
     );
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["milestone", "First Training", "Complete your first training session", "training_complete", 1, 50, 25, "milestone"]
     );
   }
@@ -479,22 +519,22 @@ export async function initDB() {
   const miniGameQuestCount = await getOne("SELECT COUNT(*) as count FROM quests WHERE requirement_type = 'mini_game_complete' AND period = 'milestone'");
   if (parseInt(miniGameQuestCount.count) === 0) {
     await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, slug_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       ["milestone", "First Mini Game", "Complete your first mini game", "mini_game_complete", 1, 30, 15, "milestone"]
     );
   }
 
   console.log("initDB: creating indexes...");
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_slugs_wallet ON slugs(wallet);
-    CREATE INDEX IF NOT EXISTS idx_slugs_wallet_burned ON slugs(wallet, is_burned);
+    CREATE INDEX IF NOT EXISTS idx_sloths_wallet ON sloths(wallet);
+    CREATE INDEX IF NOT EXISTS idx_sloths_wallet_burned ON sloths(wallet, is_burned);
     CREATE INDEX IF NOT EXISTS idx_coin_balances_wallet ON coin_balances(wallet);
     CREATE INDEX IF NOT EXISTS idx_race_participants_race ON race_participants(race_id);
     CREATE INDEX IF NOT EXISTS idx_race_participants_wallet ON race_participants(wallet);
-    CREATE INDEX IF NOT EXISTS idx_race_participants_snail ON race_participants(snail_id);
-    CREATE INDEX IF NOT EXISTS idx_streaks_snail ON streaks(snail_id);
+    CREATE INDEX IF NOT EXISTS idx_race_participants_sloth ON race_participants(sloth_id);
+    CREATE INDEX IF NOT EXISTS idx_streaks_sloth ON streaks(sloth_id);
     CREATE INDEX IF NOT EXISTS idx_user_quest_progress_wallet ON user_quest_progress(wallet);
-    CREATE INDEX IF NOT EXISTS idx_trainings_snail ON trainings(snail_id);
+    CREATE INDEX IF NOT EXISTS idx_trainings_sloth ON trainings(sloth_id);
     CREATE INDEX IF NOT EXISTS idx_race_points_wallet_season ON race_points(wallet, season);
     CREATE INDEX IF NOT EXISTS idx_gp_points_wallet_season ON gp_points(wallet, season);
     CREATE INDEX IF NOT EXISTS idx_transactions_wallet ON transactions(wallet);
@@ -502,7 +542,7 @@ export async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_races_status ON races(status);
     CREATE INDEX IF NOT EXISTS idx_user_cosmetics_wallet ON user_cosmetics(wallet);
     CREATE INDEX IF NOT EXISTS idx_user_accessories_wallet ON user_accessories(wallet);
-    CREATE INDEX IF NOT EXISTS idx_snail_equipment_snail ON snail_equipment(snail_id);
+    CREATE INDEX IF NOT EXISTS idx_sloth_equipment_sloth ON sloth_equipment(sloth_id);
     CREATE INDEX IF NOT EXISTS idx_predictions_race ON predictions(race_id);
     CREATE INDEX IF NOT EXISTS idx_tactic_actions_race ON tactic_actions(race_id);
     CREATE INDEX IF NOT EXISTS idx_daily_races_date ON daily_races(race_date);

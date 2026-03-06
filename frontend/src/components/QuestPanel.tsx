@@ -10,7 +10,7 @@ type Quest = {
   description: string
   requirement_type: string
   requirement_value: number
-  slug_reward: number
+  sloth_reward: number
   xp_reward: number
   progress: number
   completed: boolean
@@ -48,16 +48,16 @@ export default function QuestPanel() {
   ]
 
   return (
-    <div className="bg-slug-card border border-slug-border rounded-xl p-5">
+    <div className="bg-sloth-card border border-sloth-border rounded-xl p-5">
       {/* Tab header */}
-      <div className="flex items-center gap-1 mb-4 bg-slug-dark rounded-lg p-1">
+      <div className="flex items-center gap-1 mb-4 bg-sloth-dark rounded-lg p-1">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex-1 py-1.5 px-3 rounded-md text-sm font-semibold transition-colors cursor-pointer ${
               tab === t.id
-                ? 'bg-slug-green/20 text-slug-green'
+                ? 'bg-sloth-green/20 text-sloth-green'
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
@@ -86,28 +86,28 @@ export default function QuestPanel() {
                 animate={{ opacity: 1, x: 0 }}
                 className={`p-3 rounded-lg border ${
                   quest.completed
-                    ? 'border-slug-green/30 bg-slug-green/5'
-                    : 'border-slug-border bg-slug-dark'
+                    ? 'border-sloth-green/30 bg-sloth-green/5'
+                    : 'border-sloth-border bg-sloth-dark'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <p className={`text-sm font-semibold ${quest.completed ? 'text-slug-green' : 'text-white'}`}>
+                  <p className={`text-sm font-semibold ${quest.completed ? 'text-sloth-green' : 'text-white'}`}>
                     {quest.completed ? '\u2705 ' : ''}{quest.title}
                   </p>
                   <div className="flex items-center gap-2 text-xs">
-                    {quest.slug_reward > 0 && (
-                      <span className="text-slug-green font-bold">+{quest.slug_reward} SLUG</span>
+                    {quest.sloth_reward > 0 && (
+                      <span className="text-sloth-green font-bold">+{quest.sloth_reward} ZZZ</span>
                     )}
                     {quest.xp_reward > 0 && (
-                      <span className="text-slug-purple font-bold">+{quest.xp_reward} XP</span>
+                      <span className="text-sloth-purple font-bold">+{quest.xp_reward} XP</span>
                     )}
                   </div>
                 </div>
                 <p className="text-gray-500 text-xs mb-2">{quest.description}</p>
-                <div className="w-full bg-slug-border rounded-full h-1.5">
+                <div className="w-full bg-sloth-border rounded-full h-1.5">
                   <div
                     className={`h-1.5 rounded-full transition-all duration-500 ${
-                      quest.completed ? 'bg-slug-green' : 'bg-slug-purple'
+                      quest.completed ? 'bg-sloth-green' : 'bg-sloth-purple'
                     }`}
                     style={{ width: `${pct}%` }}
                   />

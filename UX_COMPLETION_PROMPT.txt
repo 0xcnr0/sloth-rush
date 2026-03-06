@@ -1,0 +1,256 @@
+Slug Rush — UX Tamamlama Prompt: Ilk UX refactor'dan eksik kalan 18 maddeyi tamamla. PostgreSQL (pg), async/await, $1,$2... params. db.ts'den import: import { query, getOne, getAll, runTransaction } from "../db". Frontend: React 19, TypeScript, Tailwind CSS, Framer Motion. react-hot-toast zaten kurulu.
+
+Plan dosyasi: .claude/plans/noble-napping-flame.md — "UX ve BILGI MIMARISI DENETIM RAPORU" bolumunde tum sorunlarin detayi var.
+
+Tum maddeleri sirasiyla uygula. Her madde sonunda TypeScript hatasi olmadigindan emin ol.
+
+---
+
+## BOLUM A: MOBIL ve STABLE IYILESTIRMELER
+
+### A1. XP Bakiyesi Mobilde Gorunur Yap (S17)
+Dosya: frontend/src/components/Layout.tsx
+
+XP badge'i su an hidden sm:flex. Mobilde de goster:
+- XP badge'indeki hidden sm:flex -> flex yap
+- Mobilde kompakt gosterim: sadece rakam + mor ikon, "XP" label'i hidden sm:inline olsun
+- SLUG badge zaten mobilde gorunuyor — ayni pattern'i XP'ye uygula
+
+### A2. Training Butonlari Mobil Grid (S23)
+Dosya: frontend/src/pages/Stable.tsx — training stat secici bolum
+
+Mevcut: flex gap-1 ile 6 buton tek satir (mobilde cok dar)
+Yeni: grid grid-cols-3 sm:grid-cols-6 gap-1.5
+
+Buton padding'i artir: py-1 -> py-2, font: text-[10px] -> text-xs
+Min-height: min-h-[36px] (touch friendly)
+
+### A3. Touch Target Buyutme (S24)
+Dosya: frontend/src/components/Layout.tsx
+
+- Hamburger menu butonu: p-2 -> p-3
+- Mobil menu drawer'daki nav linkleri: px-3 py-2 -> px-4 py-3
+- Tum menu linklerinde min-h-[44px] ekle (Apple minimum)
+
+### A4. Training ve Equip Accordion (S20 kismi)
+Dosya: frontend/src/pages/Stable.tsx
+
+Training UI ve Kozmetik/Aksesuar equip bolumlerini collapsible accordion yap:
+
+Her snail karti icin toggle state ekle (expandedSections record).
+toggleSection fonksiyonu ile key bazli toggle.
+
+Training bolumu:
+- Toggle butonu: "Training" basligini tiklanabilir yap, yaninda ok isareti (asagi/sag)
+- Acikken mevcut training UI kodunu goster
+- Kapali iken gizle
+- Aktif training varsa otomatik acik baslasin
+
+Equip bolumu (ayni pattern):
+- Toggle butonu: "Equipment" basligini tiklanabilir yap
+- Acikken kozmetik + aksesuar dropdown kodunu goster
+- Default kapali
+
+### A5. QuestPanel Collapsible (S29)
+Dosya: frontend/src/pages/Stable.tsx — QuestPanel render bolumu
+
+QuestPanel'i collapsible wrapper'a al:
+- questsOpen state (default: true)
+- Baslik tiklanabilir: "Daily Quests" + ok isareti
+- questsOpen true ise QuestPanel'i render et, false ise gizle
+
+### A6. "Enter Race" Butonu One Cikar (S20 kismi)
+Dosya: frontend/src/pages/Stable.tsx
+
+Enter Race butonunu gorsel olarak digerlerinden ayir:
+- Tam genislik: w-full
+- Buyuk: py-3 text-lg font-bold
+- Parlayan yesil: bg-slug-green text-slug-dark hover:bg-slug-green/90 shadow-lg shadow-slug-green/20
+- Kartin en altinda, diger butonlardan ayri (border-top ile ayir)
+
+---
+
+## BOLUM B: YARISLA ILGILI IYILESTIRMELER
+
+### B1. Wallet Disconnect Overlay (S19)
+Dosya: frontend/src/pages/RaceBroadcast.tsx
+
+Yaris sirasinda wallet kontrolu ekle. useAccount() hook'undan isConnected al.
+Eger isConnected false ise, fixed fullscreen overlay goster:
+- Siyah yari saydam arka plan (z-50)
+- Ortada kart: uyari ikonu, "Wallet Disconnected" basligi
+- "Reconnect your wallet to continue the race and receive your rewards." aciklamasi
+- RainbowKit ConnectButton component'ini goster
+
+### B2. Yetersiz Bakiye Ayri Mesaj (S26 kismi tamamla)
+Dosya: frontend/src/pages/RaceLobby.tsx
+
+Su an mesaj butonun text'inde. Butonu basit tut, altina ayri kirmizi mesaj ekle:
+
+Buton text'ini sadece "Enter Race" yap (bakiye mesajini kaldir).
+Butonun hemen altina kosullu kirmizi text ekle:
+- Eger secili format var ve coinBalance secili formatin ucretinden dusukse:
+- "Need X SLUG — you have Y. Visit the Shop to buy more." kirmizi text goster
+
+### B3. Race Canvas Text Sadelestirme (S25)
+Dosya: frontend/src/pages/RaceBroadcast.tsx
+
+Canvas uzerindeki 6 text katmanini azalt:
+
+1. Kill feed'i canvas disina tasi: Canvas container'inin sagina sabit panel olarak koy (canvas ile yan yana, overlay degil). Flex layout kullan: sol taraf canvas (flex-1), sag taraf kill feed paneli (w-48). Mobilde kill feed gizle (hidden lg:block).
+
+2. Emote sikligini azalt: Ayni anda max 2 emote goster. Yeni emote geldiginde en eskisini kaldir.
+
+3. Commentary + speech bubbles: Ayni anda ikisi de gosteriliyorsa commentary'yi gizle (speech bubble oncelikli).
+
+---
+
+## BOLUM C: EQUIP ve SHOP IYILESTIRMELER
+
+### C1. Shop'tan Equip Kaldir (S7)
+Dosya: frontend/src/pages/Shop.tsx
+
+Cosmetics ve Accessories tab'larinda:
+- Sahip olunan item'larda equip dropdown + "Equip" butonunu KALDIR
+- Yerine "Owned — Equip in Stable" text'i goster (yesil renk, check isareti ile)
+- "Buy" butonu zaten var — degistirme
+
+Satin alma basarili oldugunda:
+toast.success("Purchased! Go to your Stable to equip it.");
+
+---
+
+## BOLUM D: API HATA YONETIMI
+
+### D1. Bos Catch Bloklarini Duzelt (S27)
+Yaklasik 18-20 bos catch blogu var. Tum frontend dosyalarinda .catch(() => {}) pattern'ini bul ve duzelt:
+
+Dosyalar: Layout.tsx, Stable.tsx, Shop.tsx, RaceLobby.tsx, RaceBroadcast.tsx, RaceHistory.tsx, Profile.tsx, QuestPanel.tsx, EvolutionModal.tsx
+
+Veri yukleme hatalari icin (useEffect icindeki GET cagrilari):
+.catch((err) => { console.error('Failed to load data:', err); toast.error('Failed to load data. Please refresh.'); })
+
+Aksiyon hatalari icin (POST — buy, equip, train, evolve):
+.catch((err) => { console.error('Action failed:', err); toast.error('Something went wrong. Please try again.'); })
+
+Layout.tsx balance fetch'leri: sessiz birakilabilir (toast spam'i onlemek icin sadece console.error)
+
+---
+
+## BOLUM E: DUSUK ONCELIKLI YENI OZELLIKLER
+
+### E1. Profil Sayfasina Ayarlar Bolumu (S14)
+Dosya: frontend/src/pages/Profile.tsx
+
+Sayfanin altina "Settings" bolumu ekle:
+- Baslik: "Settings"
+- Sound Effects toggle: localStorage key 'slug-rush-sound' kullan
+- Toggle butonu: yesil (acik) veya gri (kapali) yuvarlak switch
+- Aciklama: "Toggle race sounds and UI audio"
+
+### E2. Envanter Bolumu Profil'de (S11)
+Dosya: frontend/src/pages/Profile.tsx
+
+Profile sayfasina 3. tab ekle: "Inventory"
+
+Inventory tab icerigi:
+1. Backend'den cek: GET /api/shop/cosmetics (wallet parametresi ile, mevcut endpoint)
+2. Backend'den cek: GET /api/shop/accessories (wallet parametresi ile)
+3. Sahip olunan item'lari grid olarak goster:
+   - Item adi, ikonu, rarity badge
+   - "Equipped on [snail name]" veya "Not equipped" durumu
+   - Satin alma tarihi
+
+API endpoint'leri zaten mevcut — sadece frontend'de listeleme gerekiyor.
+
+### E3. Footer'a Twitter/Discord Linkleri (S30 kismi tamamla)
+Dosya: frontend/src/components/Layout.tsx
+
+Mevcut footer'daki link satirina ekle:
+- Twitter linki: href="https://twitter.com/SlugRushGame" target="_blank" rel="noopener noreferrer"
+- Discord linki: href="https://discord.gg/slugrush" target="_blank" rel="noopener noreferrer"
+
+(Placeholder URL'ler — daha sonra gercek linklerle degistirilecek)
+
+### E4. GP Takvimi Banner (S12)
+Dosya: frontend/src/pages/RaceLobby.tsx
+
+Mevcut "Daily Race" banner'inin altina "Upcoming GP" banner'i ekle:
+- Gradient arka plan (sari-amber tonlari)
+- Kupa ikonu + "Upcoming Grand Prix" basligi
+- "Grand Prix races unlock as more players join. Stay tuned!" aciklamasi
+
+Bu statik placeholder. Ileride backend'den gercek GP takvimi cekilebilir.
+
+---
+
+## BOLUM F: BUYUK YENI OZELLIK
+
+### F1. Mini Games -> Stable Entegrasyonu (S1)
+Bu en buyuk degisiklik. MiniGames.tsx'deki tum mantigi Stable'a tasi.
+
+Adim 1: frontend/src/pages/MiniGames.tsx'den oyun component'larini (SaltDodgeGame, SlimeSlideGame, ShellLiftGame, LuckyLeafGame, SpeedTapGame) ayri dosyaya cikar:
+- frontend/src/components/MiniGameModal.tsx — Tum oyun logic'ini iceren modal component
+
+MiniGameModal props:
+- snailId: number
+- snailName: string
+- wallet: string
+- playsLeft: number
+- onClose: () => void (modali kapat)
+- onGameComplete: () => void (Stable'i yeniden yukle)
+
+Bu modal:
+- 5 oyun kartini gosterir (snail zaten secili, dropdown gerekmez)
+- Oyun secince inline oynatir
+- Oyun bitince stat gain gosterir
+- Kalan hak sayisini gosterir
+- "X" ile kapatilir
+
+Adim 2: frontend/src/pages/Stable.tsx'de her snail kartina "Mini Games" butonu ekle:
+- Mor tonlarinda buton: "Play Mini Games (N left today)"
+- Tiklayinca MiniGameModal acilir (activeMiniGame state ile)
+- Modal kapaninca veya oyun bitince Stable yeniden yuklenir
+
+Adim 3: frontend/src/pages/MiniGames.tsx'i basitlestir — sadece /stable'a redirect:
+import { Navigate } from 'react-router-dom';
+export default function MiniGames() { return <Navigate to="/stable" replace />; }
+
+Adim 4: frontend/src/App.tsx'de /mini-games rotasini Navigate to="/stable" replace olarak guncelle.
+
+---
+
+## DOGRULAMA
+
+Tum degisiklikler bittikten sonra:
+1. cd backend && npx tsc --noEmit — 0 hata
+2. cd frontend && npx tsc --noEmit — 0 hata
+3. Kontrol listesi:
+   - XP bakiyesi mobilde gorunuyor mu?
+   - Training butonlari mobilde 3x2 grid mi?
+   - Hamburger butonu ve menu linkleri yeterince buyuk mu?
+   - Training ve Equip bolumleri accordion olarak acilip kapaniyor mu?
+   - QuestPanel collapsible mi?
+   - Enter Race butonu gorsel olarak one cikiyor mu?
+   - Wallet disconnect'ta overlay cikiyor mu?
+   - Yetersiz bakiyede kirmizi mesaj var mi?
+   - Kill feed canvas disinda ayri panelde mi?
+   - Shop'ta equip dropdown'lari kaldirilmis mi?
+   - Bos catch bloklari toast.error ile degistirilmis mi?
+   - Profile'da Settings bolumu var mi?
+   - Profile'da Inventory tab'i var mi?
+   - Footer'da Twitter/Discord linkleri var mi?
+   - GP banner RaceLobby'de var mi?
+   - Mini Games butonu Stable'daki her snail kartinda var mi?
+   - /mini-games -> /stable redirect calisiyor mu?
+   - MiniGameModal Stable'da acilip kapaniyor mu?
+4. Commit + push
+
+## KURALLAR
+- PostgreSQL, async/await, $1,$2... params
+- Mevcut mantiga dokunma — sadece UX katmani ekle/duzelt
+- alert() kullanma — toast kullan (react-hot-toast zaten kurulu)
+- Accordion'lar default kapali (aktif training harici)
+- Bos catch'lerde: fetch hatalari -> toast.error, Layout balance -> sadece console.error
+- npx tsc --noEmit her iki proje icin 0 hata
+- Bitince commit + push

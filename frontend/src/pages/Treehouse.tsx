@@ -13,9 +13,9 @@ import MiniGameModal from '../components/MiniGameModal'
 import Spinner from '../components/Spinner'
 
 const EVOLUTION_PATH_ICONS: Record<string, string> = {
-  velocity: '\u26A1',
-  fortress: '\u{1F6E1}\uFE0F',
-  mystic: '\u{1F52E}',
+  caffeine: '\u26A1',
+  hibernate: '\u{1F6E1}\uFE0F',
+  dreamwalk: '\u{1F52E}',
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -34,57 +34,57 @@ const RARITY_BORDER: Record<string, string> = {
   legendary: 'border-yellow-400',
 }
 
-const SNAIL_EMOJI: Record<string, string> = {
-  turbo_slug: '\u{1F40C}',
-  shell_knight: '\u{1F6E1}\uFE0F',
-  goo_mage: '\u{2728}',
-  storm_racer: '\u{26A1}',
+const SLOTH_EMOJI: Record<string, string> = {
+  caffeine_junkie: '\u{1F40C}',
+  pillow_knight: '\u{1F6E1}\uFE0F',
+  dream_weaver: '\u{2728}',
+  thunder_nap: '\u{26A1}',
 }
 
 type UpgradeState = 'idle' | 'paying' | 'burning' | 'revealing' | 'done'
 
-export default function Stable() {
+export default function Treehouse() {
   const { address, isConnected } = useAccount()
   const navigate = useNavigate()
-  const [slugs, setSlugs] = useState<any[]>([])
+  const [sloths, setSloths] = useState<any[]>([])
   const [coinBalance, setCoinBalance] = useState(0)
   const [loading, setLoading] = useState(true)
   const [upgradeState, setUpgradeState] = useState<UpgradeState>('idle')
-  const [newSnail, setNewSnail] = useState<any>(null)
+  const [newSloth, setNewSloth] = useState<any>(null)
   const onchainUpgrade = useUpgrade()
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [streaks, setStreaks] = useState<Record<number, { current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }>>({})
   const [upgradeProgress, setUpgradeProgress] = useState<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean } | null>(null)
-  const [trainings, setTrainings] = useState<{ snailId: number; snailName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]>([])
+  const [trainings, setTrainings] = useState<{ slothId: number; slothName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]>([])
   const [trainingStat, setTrainingStat] = useState<Record<number, string>>({})
   const [trainingLoading, setTrainingLoading] = useState<number | null>(null)
   const [weeklyTrainingCounts, setWeeklyTrainingCounts] = useState<Record<number, number>>({})
-  const [evolveSnailId, setEvolveSnailId] = useState<number | null>(null)
-  const [evolveSnailName, setEvolveSnailName] = useState<string>('')
+  const [evolveSlothId, setEvolveSlothId] = useState<number | null>(null)
+  const [evolveSlothName, setEvolveSlothName] = useState<string>('')
   const [ownedCosmetics, setOwnedCosmetics] = useState<any[]>([])
   const [ownedAccessories, setOwnedAccessories] = useState<any[]>([])
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
   const [questsOpen, setQuestsOpen] = useState(true)
-  const [activeMiniGame, setActiveMiniGame] = useState<{ snailId: number; snailName: string } | null>(null)
+  const [activeMiniGame, setActiveMiniGame] = useState<{ slothId: number; slothName: string } | null>(null)
 
-  async function loadStable() {
+  async function loadTreehouse() {
     if (!address) return
     setLoading(true)
     try {
-      const data = await api.getStable(address)
-      setSlugs(data.slugs)
+      const data = await api.getTreehouse(address)
+      setSloths(data.sloths)
       setCoinBalance(data.coinBalance)
-    } catch (err) { console.error('Failed to load stable:', err); toast.error('Failed to load data. Please refresh.') }
+    } catch (err) { console.error('Failed to load treehouse:', err); toast.error('Failed to load data. Please refresh.') }
     setLoading(false)
   }
 
-  useEffect(() => { loadStable() }, [address])
+  useEffect(() => { loadTreehouse() }, [address])
 
-  // Trigger stable_visit quest progress
+  // Trigger treehouse_visit quest progress
   useEffect(() => {
     if (!address) return
-    api.trackQuestProgress(address, 'stable_visit').catch((err) => { console.error('Failed to track quest:', err) })
+    api.trackQuestProgress(address, 'treehouse_visit').catch((err) => { console.error('Failed to track quest:', err) })
   }, [address])
 
   // Load free upgrade progress
@@ -107,7 +107,7 @@ export default function Stable() {
     if (!address) return
     api.getStreaks(address).then(data => {
       const map: Record<number, any> = {}
-      for (const s of data.streaks) map[s.snail_id] = s
+      for (const s of data.streaks) map[s.sloth_id] = s
       setStreaks(map)
     }).catch((err) => { console.error('Failed to load streaks:', err) })
   }, [address])
@@ -123,14 +123,14 @@ export default function Stable() {
       .catch((err) => { console.error('Failed to load accessories:', err) })
   }, [address])
 
-  const freeSlug = slugs.find(s => s.type === 'free_slug')
-  const snails = slugs.filter(s => s.type === 'snail')
+  const freeSloth = sloths.find(s => s.type === 'free_sloth')
+  const slothList = sloths.filter(s => s.type === 'sloth')
 
   // On-chain upgrade success: register in backend
   useEffect(() => {
     if (onchainUpgrade.isSuccess && address) {
       api.upgradeSlug(address).then(data => {
-        setNewSnail(data.snail)
+        setNewSloth(data.sloth)
         setCoinBalance(prev => prev + data.coinBonus)
         setUpgradeState('done')
       }).catch((err) => { console.error('Backend upgrade failed:', err); setUpgradeState('done') })
@@ -151,10 +151,10 @@ export default function Stable() {
     await new Promise(r => setTimeout(r, 1200))
     setUpgradeState('burning')
 
-    if (CONTRACTS_DEPLOYED && freeSlug) {
-      // On-chain: burn Free Slug + mint Snail
+    if (CONTRACTS_DEPLOYED && freeSloth) {
+      // On-chain: burn Free Sloth + mint Sloth
       const stats = { spd: 12, acc: 11, sta: 10, agi: 11, ref: 10, lck: 12 }
-      onchainUpgrade.upgrade(BigInt(freeSlug.id), 0, stats)
+      onchainUpgrade.upgrade(BigInt(freeSloth.id), 0, stats)
       setUpgradeState('revealing')
     } else {
       // Mock fallback
@@ -163,7 +163,7 @@ export default function Stable() {
 
       try {
         const data = await api.upgradeSlug(address)
-        setNewSnail(data.snail)
+        setNewSloth(data.sloth)
         await new Promise(r => setTimeout(r, 2000))
         setUpgradeState('done')
         setCoinBalance(prev => prev + data.coinBonus)
@@ -181,7 +181,7 @@ export default function Stable() {
     setUpgradeState('revealing')
     try {
       const data = await api.freeUpgrade(address)
-      setNewSnail(data.snail)
+      setNewSloth(data.sloth)
       await new Promise(r => setTimeout(r, 2000))
       setUpgradeState('done')
       setCoinBalance(prev => prev + data.coinBonus)
@@ -191,50 +191,50 @@ export default function Stable() {
     }
   }
 
-  async function handleRename(snailId: number) {
+  async function handleRename(slothId: number) {
     if (!address || editName.trim().length < 3) return
     try {
-      await api.renameSnail(address, snailId, editName.trim())
-      setSlugs(prev => prev.map(s => s.id === snailId ? { ...s, name: editName.trim() } : s))
+      await api.renameSloth(address, slothId, editName.trim())
+      setSloths(prev => prev.map(s => s.id === slothId ? { ...s, name: editName.trim() } : s))
       setEditingId(null)
     } catch (err: any) {
       toast.error(err.message)
     }
   }
 
-  async function handleStartTraining(snailId: number) {
+  async function handleStartTraining(slothId: number) {
     if (!address) return
-    const stat = trainingStat[snailId]
+    const stat = trainingStat[slothId]
     if (!stat) return
-    setTrainingLoading(snailId)
+    setTrainingLoading(slothId)
     try {
-      await api.startTraining(address, snailId, stat)
+      await api.startTraining(address, slothId, stat)
       loadTrainings()
-      loadStable()
+      loadTreehouse()
     } catch (err: any) {
       toast.error(err.message)
     }
     setTrainingLoading(null)
   }
 
-  async function handleClaimTraining(snailId: number) {
+  async function handleClaimTraining(slothId: number) {
     if (!address) return
-    setTrainingLoading(snailId)
+    setTrainingLoading(slothId)
     try {
-      await api.claimTraining(address, snailId)
+      await api.claimTraining(address, slothId)
       loadTrainings()
-      loadStable()
+      loadTreehouse()
     } catch (err: any) {
       toast.error(err.message)
     }
     setTrainingLoading(null)
   }
 
-  async function handleUnequipAccessory(snailId: number) {
+  async function handleUnequipAccessory(slothId: number) {
     if (!address) return
     try {
-      await api.unequipAccessory(address, snailId)
-      loadStable()
+      await api.unequipAccessory(address, slothId)
+      loadTreehouse()
     } catch (err: any) {
       toast.error(err.message)
     }
@@ -246,21 +246,21 @@ export default function Stable() {
 
   function closeReveal() {
     setUpgradeState('idle')
-    setNewSnail(null)
-    loadStable()
+    setNewSloth(null)
+    loadTreehouse()
   }
 
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Connect your wallet to view your stable</p>
+        <p className="text-gray-400">Connect your wallet to view your treehouse</p>
         <ConnectButton />
       </div>
     )
   }
 
   if (loading) {
-    return <Spinner fullPage text="Loading stable..." />
+    return <Spinner fullPage text="Loading treehouse..." />
   }
 
   return (
@@ -268,47 +268,47 @@ export default function Stable() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Your Stable</h1>
+          <h1 className="text-3xl font-bold">Your Treehouse</h1>
           <p className="text-gray-400 mt-1">
-            {slugs.length === 0 ? 'No slugs yet' : `${slugs.length} creature${slugs.length > 1 ? 's' : ''}`}
+            {sloths.length === 0 ? 'No sloths yet' : `${sloths.length} creature${sloths.length > 1 ? 's' : ''}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-slug-card border border-slug-border rounded-xl px-4 py-2">
-          <span className="text-slug-green font-bold text-lg">{coinBalance}</span>
-          <span className="text-slug-green/70 text-sm">SLUG</span>
+        <div className="flex items-center gap-2 bg-sloth-card border border-sloth-border rounded-xl px-4 py-2">
+          <span className="text-sloth-green font-bold text-lg">{coinBalance}</span>
+          <span className="text-sloth-green/70 text-sm">ZZZ</span>
         </div>
       </div>
 
       {/* Empty state */}
-      {slugs.length === 0 && (
+      {sloths.length === 0 && (
         <div className="text-center py-20">
           <div className="text-6xl mb-4">&#x1f3da;&#xfe0f;</div>
-          <p className="text-gray-400 mb-4">Your stable is empty</p>
+          <p className="text-gray-400 mb-4">Your treehouse is empty</p>
           <button
             onClick={() => navigate('/mint')}
-            className="px-6 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer"
+            className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
           >
-            Mint Your First Slug
+            Mint Your First Sloth
           </button>
         </div>
       )}
 
-      {/* Free Slug Card — Full Featured */}
-      {freeSlug && (
+      {/* Free Sloth Card — Full Featured */}
+      {freeSloth && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-300 mb-3">Free Slug</h2>
-          <div className="bg-slug-card border border-slug-border rounded-xl p-5">
+          <h2 className="text-lg font-semibold text-gray-300 mb-3">Free Sloth</h2>
+          <div className="bg-sloth-card border border-sloth-border rounded-xl p-5">
             {/* Header */}
             <div className="flex items-center gap-4 mb-4">
               <div className="text-5xl">{'\u{1F40C}'}</div>
               <div className="flex-1">
-                <p className="text-white font-semibold text-lg">{freeSlug.name}</p>
-                <p className="text-gray-500 text-sm">Free Slug #{freeSlug.id}</p>
+                <p className="text-white font-semibold text-lg">{freeSloth.name}</p>
+                <p className="text-gray-500 text-sm">Free Sloth #{freeSloth.id}</p>
               </div>
               <button
                 onClick={handleUpgrade}
                 disabled={upgradeState !== 'idle'}
-                className="px-4 py-2 bg-slug-purple text-white font-bold rounded-xl text-sm hover:bg-slug-purple/90 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                className="px-4 py-2 bg-sloth-purple text-white font-bold rounded-xl text-sm hover:bg-sloth-purple/90 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
               >
                 Upgrade — $3
               </button>
@@ -317,14 +317,14 @@ export default function Stable() {
             {/* Stat Grid (cap: 15) */}
             <div className="grid grid-cols-3 gap-1 text-center text-xs mb-3">
               {[
-                { label: 'SPD', val: freeSlug.spd },
-                { label: 'ACC', val: freeSlug.acc },
-                { label: 'STA', val: freeSlug.sta },
-                { label: 'AGI', val: freeSlug.agi },
-                { label: 'REF', val: freeSlug.ref },
-                { label: 'LCK', val: freeSlug.lck },
+                { label: 'SPD', val: freeSloth.spd },
+                { label: 'ACC', val: freeSloth.acc },
+                { label: 'STA', val: freeSloth.sta },
+                { label: 'AGI', val: freeSloth.agi },
+                { label: 'REF', val: freeSloth.ref },
+                { label: 'LCK', val: freeSloth.lck },
               ].map(s => (
-                <div key={s.label} className="bg-slug-dark rounded px-1 py-1">
+                <div key={s.label} className="bg-sloth-dark rounded px-1 py-1">
                   <span className="text-gray-500">{s.label} </span>
                   <span className="text-white font-bold">{Number(s.val || 0) % 1 === 0 ? (s.val || 0) : Number(s.val || 0).toFixed(1)}</span>
                   <span className="text-gray-600 text-[10px]">/15</span>
@@ -335,44 +335,44 @@ export default function Stable() {
             {/* Training UI — Accordion */}
             <div className="mt-3">
               <button
-                onClick={() => toggleSection(`training-${freeSlug.id}`)}
+                onClick={() => toggleSection(`training-${freeSloth.id}`)}
                 className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
               >
-                <span className={`text-xs transition-transform ${expandedSections[`training-${freeSlug.id}`] || trainings.find(t => t.snailId === freeSlug.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                <span className={`text-xs transition-transform ${expandedSections[`training-${freeSloth.id}`] || trainings.find(t => t.slothId === freeSloth.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                 Training
-                {trainings.find(t => t.snailId === freeSlug.id) && (
-                  <span className="text-slug-purple text-xs font-normal ml-1">(Active)</span>
+                {trainings.find(t => t.slothId === freeSloth.id) && (
+                  <span className="text-sloth-purple text-xs font-normal ml-1">(Active)</span>
                 )}
               </button>
-              {(expandedSections[`training-${freeSlug.id}`] || trainings.find(t => t.snailId === freeSlug.id)) && (() => {
-                const active = trainings.find(t => t.snailId === freeSlug.id)
+              {(expandedSections[`training-${freeSloth.id}`] || trainings.find(t => t.slothId === freeSloth.id)) && (() => {
+                const active = trainings.find(t => t.slothId === freeSloth.id)
                 if (active) {
                   return (
-                    <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
+                    <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border">
                       <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
                       {active.isReady ? (
                         <button
-                          onClick={() => handleClaimTraining(freeSlug.id)}
-                          disabled={trainingLoading === freeSlug.id}
-                          className="w-full py-1.5 bg-slug-green text-slug-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                          onClick={() => handleClaimTraining(freeSloth.id)}
+                          disabled={trainingLoading === freeSloth.id}
+                          className="w-full py-1.5 bg-sloth-green text-sloth-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
                         >
-                          {trainingLoading === freeSlug.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
+                          {trainingLoading === freeSloth.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
                         </button>
                       ) : (
-                        <p className="text-xs text-slug-purple">
+                        <p className="text-xs text-sloth-purple">
                           Ready at {new Date(active.completedAt).toLocaleTimeString()}
                         </p>
                       )}
                     </div>
                   )
                 }
-                const weeklyCount = weeklyTrainingCounts[freeSlug.id] || 0
+                const weeklyCount = weeklyTrainingCounts[freeSloth.id] || 0
                 const weeklyLimit = 1
                 const limitReached = weeklyCount >= weeklyLimit
                 return (
-                  <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
+                  <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-gray-400">Train a stat (6h, 10 SLUG)</p>
+                      <p className="text-xs text-gray-400">Train a stat (6h, 10 ZZZ)</p>
                       <span className={`text-[10px] font-bold ${limitReached ? 'text-red-400' : 'text-gray-500'}`}>
                         {weeklyCount}/{weeklyLimit} this week
                       </span>
@@ -385,11 +385,11 @@ export default function Stable() {
                           {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
                             <button
                               key={stat}
-                              onClick={() => setTrainingStat(prev => ({ ...prev, [freeSlug.id]: stat }))}
+                              onClick={() => setTrainingStat(prev => ({ ...prev, [freeSloth.id]: stat }))}
                               className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
-                                trainingStat[freeSlug.id] === stat
-                                  ? 'bg-slug-purple text-white'
-                                  : 'bg-slug-card text-gray-400 hover:text-white'
+                                trainingStat[freeSloth.id] === stat
+                                  ? 'bg-sloth-purple text-white'
+                                  : 'bg-sloth-card text-gray-400 hover:text-white'
                               }`}
                             >
                               {stat.toUpperCase()}
@@ -397,11 +397,11 @@ export default function Stable() {
                           ))}
                         </div>
                         <button
-                          onClick={() => handleStartTraining(freeSlug.id)}
-                          disabled={!trainingStat[freeSlug.id] || trainingLoading === freeSlug.id}
-                          className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                          onClick={() => handleStartTraining(freeSloth.id)}
+                          disabled={!trainingStat[freeSloth.id] || trainingLoading === freeSloth.id}
+                          className="w-full py-1.5 bg-sloth-purple/20 text-sloth-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
                         >
-                          {trainingLoading === freeSlug.id ? 'Starting...' : 'Start Training'}
+                          {trainingLoading === freeSloth.id ? 'Starting...' : 'Start Training'}
                         </button>
                       </>
                     )}
@@ -414,14 +414,14 @@ export default function Stable() {
             {(ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
               <div className="mt-3">
                 <button
-                  onClick={() => toggleSection(`equip-${freeSlug.id}`)}
+                  onClick={() => toggleSection(`equip-${freeSloth.id}`)}
                   className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
                 >
-                  <span className={`text-xs transition-transform ${expandedSections[`equip-${freeSlug.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                  <span className={`text-xs transition-transform ${expandedSections[`equip-${freeSloth.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                   Equipment
                 </button>
-                {expandedSections[`equip-${freeSlug.id}`] && (
-                  <div className="p-3 bg-slug-dark rounded-lg border border-slug-border space-y-2">
+                {expandedSections[`equip-${freeSloth.id}`] && (
+                  <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border space-y-2">
                     {ownedCosmetics.length > 0 && (
                       <select
                         value=""
@@ -429,13 +429,13 @@ export default function Stable() {
                           const cosId = Number(e.target.value)
                           if (!cosId || !address) return
                           try {
-                            await api.equipCosmetic(address, freeSlug.id, cosId)
-                            loadStable()
+                            await api.equipCosmetic(address, freeSloth.id, cosId)
+                            loadTreehouse()
                           } catch (err: any) { toast.error(err.message) }
                         }}
-                        className="w-full bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                        className="w-full bg-sloth-card border border-sloth-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                       >
-                        <option value="">{freeSlug.cosmetic ? `Cosmetic: ${typeof freeSlug.cosmetic === 'string' ? freeSlug.cosmetic : freeSlug.cosmetic.name}` : 'Equip Cosmetic...'}</option>
+                        <option value="">{freeSloth.cosmetic ? `Cosmetic: ${typeof freeSloth.cosmetic === 'string' ? freeSloth.cosmetic : freeSloth.cosmetic.name}` : 'Equip Cosmetic...'}</option>
                         {ownedCosmetics.map((c: any) => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
@@ -448,13 +448,13 @@ export default function Stable() {
                           const accId = Number(e.target.value)
                           if (!accId || !address) return
                           try {
-                            await api.equipAccessory(address, freeSlug.id, accId)
-                            loadStable()
+                            await api.equipAccessory(address, freeSloth.id, accId)
+                            loadTreehouse()
                           } catch (err: any) { toast.error(err.message) }
                         }}
-                        className="w-full bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                        className="w-full bg-sloth-card border border-sloth-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                       >
-                        <option value="">{(freeSlug.equipped_accessory || freeSlug.accessory) ? `Accessory: ${freeSlug.equipped_accessory || (typeof freeSlug.accessory === 'string' ? freeSlug.accessory : freeSlug.accessory?.name)}` : 'Equip Accessory...'}</option>
+                        <option value="">{(freeSloth.equipped_accessory || freeSloth.accessory) ? `Accessory: ${freeSloth.equipped_accessory || (typeof freeSloth.accessory === 'string' ? freeSloth.accessory : freeSloth.accessory?.name)}` : 'Equip Accessory...'}</option>
                         {ownedAccessories.map((a: any) => (
                           <option key={a.id} value={a.id}>{a.name}</option>
                         ))}
@@ -467,31 +467,31 @@ export default function Stable() {
 
             {/* Mini Games button */}
             <button
-              onClick={() => setActiveMiniGame({ snailId: freeSlug.id, snailName: freeSlug.name })}
+              onClick={() => setActiveMiniGame({ slothId: freeSloth.id, slothName: freeSloth.name })}
               className="w-full mt-3 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
             >
               Play Mini Games
             </button>
 
             {/* Enter Race — Exhibition only */}
-            <div className="mt-3 pt-3 border-t border-slug-border">
+            <div className="mt-3 pt-3 border-t border-sloth-border">
               <button
                 onClick={() => navigate('/race')}
-                className="w-full py-3 bg-slug-green text-slug-dark text-lg font-bold rounded-lg hover:bg-slug-green/90 transition-colors cursor-pointer shadow-lg shadow-slug-green/20"
+                className="w-full py-3 bg-sloth-green text-sloth-dark text-lg font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer shadow-lg shadow-sloth-green/20"
               >
                 Enter Exhibition Race
               </button>
             </div>
 
             {/* Upgrade Section */}
-            <div className="mt-4 pt-4 border-t border-slug-border">
+            <div className="mt-4 pt-4 border-t border-sloth-border">
               <p className="text-gray-400 text-xs text-center mb-3">Upgrade to unlock all race formats</p>
             </div>
           </div>
 
           {/* Free Upgrade Path */}
           {upgradeProgress && (
-            <div className="mt-4 bg-slug-dark border border-slug-border rounded-xl p-5">
+            <div className="mt-4 bg-sloth-dark border border-sloth-border rounded-xl p-5">
               <p className="text-gray-400 text-sm mb-3 text-center">...or upgrade for free by completing milestones</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -504,12 +504,12 @@ export default function Stable() {
                   const done = item.current >= item.target
                   return (
                     <div key={item.label} className="text-center">
-                      <p className={`text-xs font-semibold mb-1 ${done ? 'text-slug-green' : 'text-gray-400'}`}>
+                      <p className={`text-xs font-semibold mb-1 ${done ? 'text-sloth-green' : 'text-gray-400'}`}>
                         {done ? '\u2705 ' : ''}{item.label}
                       </p>
-                      <div className="w-full bg-slug-border rounded-full h-1.5 mb-1">
+                      <div className="w-full bg-sloth-border rounded-full h-1.5 mb-1">
                         <div
-                          className={`h-1.5 rounded-full transition-all ${done ? 'bg-slug-green' : 'bg-slug-purple'}`}
+                          className={`h-1.5 rounded-full transition-all ${done ? 'bg-sloth-green' : 'bg-sloth-purple'}`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -522,7 +522,7 @@ export default function Stable() {
                 <button
                   onClick={handleFreeUpgrade}
                   disabled={upgradeState !== 'idle'}
-                  className="w-full mt-4 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors disabled:opacity-50 cursor-pointer"
+                  className="w-full mt-4 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   Free Upgrade!
                 </button>
@@ -544,37 +544,37 @@ export default function Stable() {
         {questsOpen && <QuestPanel />}
       </div>
 
-      {/* Snail Cards */}
-      {snails.length > 0 && (
+      {/* Sloth Cards */}
+      {slothList.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-300 mb-3">Snails</h2>
+          <h2 className="text-lg font-semibold text-gray-300 mb-3">Sloths</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {snails.map((snail) => (
+            {slothList.map((sloth) => (
               <div
-                key={snail.id}
-                className={`bg-slug-card border-2 ${RARITY_BORDER[snail.rarity] || 'border-slug-border'} rounded-xl p-5`}
+                key={sloth.id}
+                className={`bg-sloth-card border-2 ${RARITY_BORDER[sloth.rarity] || 'border-sloth-border'} rounded-xl p-5`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    {editingId === snail.id ? (
+                    {editingId === sloth.id ? (
                       <div className="flex items-center gap-1">
                         <input
                           value={editName}
                           onChange={e => setEditName(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleRename(snail.id); if (e.key === 'Escape') setEditingId(null) }}
+                          onKeyDown={e => { if (e.key === 'Enter') handleRename(sloth.id); if (e.key === 'Escape') setEditingId(null) }}
                           maxLength={20}
-                          className="bg-slug-dark border border-slug-green rounded px-2 py-0.5 text-white text-sm w-32 outline-none"
+                          className="bg-sloth-dark border border-sloth-green rounded px-2 py-0.5 text-white text-sm w-32 outline-none"
                           autoFocus
                         />
-                        <button onClick={() => handleRename(snail.id)} className="text-slug-green text-xs cursor-pointer">&#x2714;</button>
+                        <button onClick={() => handleRename(sloth.id)} className="text-sloth-green text-xs cursor-pointer">&#x2714;</button>
                         <button onClick={() => setEditingId(null)} className="text-gray-500 text-xs cursor-pointer">&#x2716;</button>
                       </div>
                     ) : (
                       <p className="text-white font-bold text-lg flex items-center gap-1.5">
-                        {snail.name}
+                        {sloth.name}
                         <button
-                          onClick={() => { setEditingId(snail.id); setEditName(snail.name) }}
-                          className="text-gray-500 hover:text-slug-green transition-colors cursor-pointer"
+                          onClick={() => { setEditingId(sloth.id); setEditName(sloth.name) }}
+                          className="text-gray-500 hover:text-sloth-green transition-colors cursor-pointer"
                           title="Rename"
                         >
                           &#x270F;&#xFE0F;
@@ -582,40 +582,40 @@ export default function Stable() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs">
-                      Snail #{snail.id}
-                      {snail.tier && snail.tier > 1 && (
-                        <span className="ml-1 text-yellow-400" title={`Tier ${snail.tier}`}>
-                          {'\u2B50'.repeat(snail.tier)}
+                      Sloth #{sloth.id}
+                      {sloth.tier && sloth.tier > 1 && (
+                        <span className="ml-1 text-yellow-400" title={`Tier ${sloth.tier}`}>
+                          {'\u2B50'.repeat(sloth.tier)}
                         </span>
                       )}
-                      {snail.evolution_path && EVOLUTION_PATH_ICONS[snail.evolution_path] && (
-                        <span className="ml-1" title={snail.evolution_path}>
-                          {EVOLUTION_PATH_ICONS[snail.evolution_path]}
+                      {sloth.evolution_path && EVOLUTION_PATH_ICONS[sloth.evolution_path] && (
+                        <span className="ml-1" title={sloth.evolution_path}>
+                          {EVOLUTION_PATH_ICONS[sloth.evolution_path]}
                         </span>
                       )}
                     </p>
-                    {snail.passive && (
-                      <p className="text-slug-purple text-[10px] mt-0.5">{snail.passive}</p>
+                    {sloth.passive && (
+                      <p className="text-sloth-purple text-[10px] mt-0.5">{sloth.passive}</p>
                     )}
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${RARITY_COLORS[snail.rarity] || ''}`}>
-                    {snail.rarity}
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${RARITY_COLORS[sloth.rarity] || ''}`}>
+                    {sloth.rarity}
                   </span>
                 </div>
 
                 {/* Streak badge */}
-                {streaks[snail.id] && streaks[snail.id].current_wins >= 3 && (
+                {streaks[sloth.id] && streaks[sloth.id].current_wins >= 3 && (
                   <div className="text-center mb-1">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
-                      streaks[snail.id].current_wins >= 5
+                      streaks[sloth.id].current_wins >= 5
                         ? 'bg-red-500/20 text-red-400 border border-red-500'
                         : 'bg-orange-500/20 text-orange-400 border border-orange-500'
                     }`}>
-                      {streaks[snail.id].current_wins >= 5 ? 'UNSTOPPABLE!' : `${streaks[snail.id].current_wins} Win Streak`} &#x1F525;
+                      {streaks[sloth.id].current_wins >= 5 ? 'UNSTOPPABLE!' : `${streaks[sloth.id].current_wins} Win Streak`} &#x1F525;
                     </span>
                   </div>
                 )}
-                {streaks[snail.id] && streaks[snail.id].current_losses >= 3 && (
+                {streaks[sloth.id] && streaks[sloth.id].current_losses >= 3 && (
                   <div className="text-center mb-1">
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-gray-700/50 text-gray-400">
                       &#x1F622; Needs some motivation!
@@ -624,23 +624,23 @@ export default function Stable() {
                 )}
 
                 <div className="text-4xl text-center mb-3">
-                  {SNAIL_EMOJI[snail.race] || '\u{1F40C}'}
+                  {SLOTH_EMOJI[sloth.race] || '\u{1F40C}'}
                 </div>
 
                 <p className="text-gray-400 text-xs text-center mb-3 capitalize">
-                  {snail.race?.replace('_', ' ')}
+                  {sloth.race?.replace('_', ' ')}
                 </p>
 
                 <div className="grid grid-cols-3 gap-1 mt-3 text-center text-xs">
                   {[
-                    { label: 'SPD', val: snail.spd },
-                    { label: 'ACC', val: snail.acc },
-                    { label: 'STA', val: snail.sta },
-                    { label: 'AGI', val: snail.agi },
-                    { label: 'REF', val: snail.ref },
-                    { label: 'LCK', val: snail.lck },
+                    { label: 'SPD', val: sloth.spd },
+                    { label: 'ACC', val: sloth.acc },
+                    { label: 'STA', val: sloth.sta },
+                    { label: 'AGI', val: sloth.agi },
+                    { label: 'REF', val: sloth.ref },
+                    { label: 'LCK', val: sloth.lck },
                   ].map(s => (
-                    <div key={s.label} className="bg-slug-dark rounded px-1 py-1">
+                    <div key={s.label} className="bg-sloth-dark rounded px-1 py-1">
                       <span className="text-gray-500">{s.label} </span>
                       <span className="text-white font-bold">{Number(s.val) % 1 === 0 ? s.val : Number(s.val).toFixed(1)}</span>
                     </div>
@@ -648,8 +648,8 @@ export default function Stable() {
                 </div>
 
                 {/* Achievement Badges */}
-                {streaks[snail.id] && (() => {
-                  const s = streaks[snail.id]
+                {streaks[sloth.id] && (() => {
+                  const s = streaks[sloth.id]
                   const badges: { icon: string; label: string; color: string }[] = []
                   if (s.total_wins >= 1) badges.push({ icon: '\u2B50', label: 'First Win', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' })
                   if (s.max_wins >= 3) badges.push({ icon: '\uD83D\uDD25', label: 'On Fire', color: 'bg-orange-500/20 text-orange-400 border-orange-500/50' })
@@ -668,55 +668,55 @@ export default function Stable() {
                   )
                 })()}
 
-                {streaks[snail.id] && streaks[snail.id].total_races > 0 && (
+                {streaks[sloth.id] && streaks[sloth.id].total_races > 0 && (
                   <div className="flex items-center justify-center gap-3 mt-2 text-xs text-gray-500">
-                    <span>{streaks[snail.id].total_races} races</span>
-                    <span>{streaks[snail.id].total_wins} wins</span>
-                    <span>Best: {streaks[snail.id].max_wins}&#x1F525;</span>
+                    <span>{streaks[sloth.id].total_races} races</span>
+                    <span>{streaks[sloth.id].total_wins} wins</span>
+                    <span>Best: {streaks[sloth.id].max_wins}&#x1F525;</span>
                   </div>
                 )}
 
                 {/* Training UI — Accordion */}
                 <div className="mt-3">
                   <button
-                    onClick={() => toggleSection(`training-${snail.id}`)}
+                    onClick={() => toggleSection(`training-${sloth.id}`)}
                     className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
                   >
-                    <span className={`text-xs transition-transform ${expandedSections[`training-${snail.id}`] || trainings.find(t => t.snailId === snail.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                    <span className={`text-xs transition-transform ${expandedSections[`training-${sloth.id}`] || trainings.find(t => t.slothId === sloth.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                     Training
-                    {trainings.find(t => t.snailId === snail.id) && (
-                      <span className="text-slug-purple text-xs font-normal ml-1">(Active)</span>
+                    {trainings.find(t => t.slothId === sloth.id) && (
+                      <span className="text-sloth-purple text-xs font-normal ml-1">(Active)</span>
                     )}
                   </button>
-                  {(expandedSections[`training-${snail.id}`] || trainings.find(t => t.snailId === snail.id)) && (() => {
-                    const active = trainings.find(t => t.snailId === snail.id)
+                  {(expandedSections[`training-${sloth.id}`] || trainings.find(t => t.slothId === sloth.id)) && (() => {
+                    const active = trainings.find(t => t.slothId === sloth.id)
                     if (active) {
                       return (
-                        <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
+                        <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border">
                           <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
                           {active.isReady ? (
                             <button
-                              onClick={() => handleClaimTraining(snail.id)}
-                              disabled={trainingLoading === snail.id}
-                              className="w-full py-1.5 bg-slug-green text-slug-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                              onClick={() => handleClaimTraining(sloth.id)}
+                              disabled={trainingLoading === sloth.id}
+                              className="w-full py-1.5 bg-sloth-green text-sloth-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
                             >
-                              {trainingLoading === snail.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
+                              {trainingLoading === sloth.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
                             </button>
                           ) : (
-                            <p className="text-xs text-slug-purple">
+                            <p className="text-xs text-sloth-purple">
                               Ready at {new Date(active.completedAt).toLocaleTimeString()}
                             </p>
                           )}
                         </div>
                       )
                     }
-                    const weeklyCount = weeklyTrainingCounts[snail.id] || 0
-                    const weeklyLimit = snail.type === 'free_slug' ? 1 : 2
+                    const weeklyCount = weeklyTrainingCounts[sloth.id] || 0
+                    const weeklyLimit = sloth.type === 'free_sloth' ? 1 : 2
                     const limitReached = weeklyCount >= weeklyLimit
                     return (
-                      <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
+                      <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs text-gray-400">Train a stat (6h, 10 SLUG)</p>
+                          <p className="text-xs text-gray-400">Train a stat (6h, 10 ZZZ)</p>
                           <span className={`text-[10px] font-bold ${limitReached ? 'text-red-400' : 'text-gray-500'}`}>
                             {weeklyCount}/{weeklyLimit} this week
                           </span>
@@ -729,11 +729,11 @@ export default function Stable() {
                               {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
                                 <button
                                   key={stat}
-                                  onClick={() => setTrainingStat(prev => ({ ...prev, [snail.id]: stat }))}
+                                  onClick={() => setTrainingStat(prev => ({ ...prev, [sloth.id]: stat }))}
                                   className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
-                                    trainingStat[snail.id] === stat
-                                      ? 'bg-slug-purple text-white'
-                                      : 'bg-slug-card text-gray-400 hover:text-white'
+                                    trainingStat[sloth.id] === stat
+                                      ? 'bg-sloth-purple text-white'
+                                      : 'bg-sloth-card text-gray-400 hover:text-white'
                                   }`}
                                 >
                                   {stat.toUpperCase()}
@@ -741,11 +741,11 @@ export default function Stable() {
                               ))}
                             </div>
                             <button
-                              onClick={() => handleStartTraining(snail.id)}
-                              disabled={!trainingStat[snail.id] || trainingLoading === snail.id}
-                              className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                              onClick={() => handleStartTraining(sloth.id)}
+                              disabled={!trainingStat[sloth.id] || trainingLoading === sloth.id}
+                              className="w-full py-1.5 bg-sloth-purple/20 text-sloth-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
                             >
-                              {trainingLoading === snail.id ? 'Starting...' : 'Start Training'}
+                              {trainingLoading === sloth.id ? 'Starting...' : 'Start Training'}
                             </button>
                           </>
                         )}
@@ -755,16 +755,16 @@ export default function Stable() {
                 </div>
 
                 {/* Cosmetic / Accessory badges */}
-                {(snail.cosmetic || snail.equipped_accessory || snail.accessory) && (
+                {(sloth.cosmetic || sloth.equipped_accessory || sloth.accessory) && (
                   <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
-                    {snail.cosmetic && (
+                    {sloth.cosmetic && (
                       <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-pink-500/10 text-pink-400 border-pink-500/30">
-                        {'\u{1F3A8}'} {typeof snail.cosmetic === 'string' ? snail.cosmetic : snail.cosmetic.name || 'Cosmetic'}
+                        {'\u{1F3A8}'} {typeof sloth.cosmetic === 'string' ? sloth.cosmetic : sloth.cosmetic.name || 'Cosmetic'}
                       </span>
                     )}
-                    {(snail.equipped_accessory || snail.accessory) && (
+                    {(sloth.equipped_accessory || sloth.accessory) && (
                       <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
-                        {'\u{2699}\uFE0F'} {snail.equipped_accessory || (typeof snail.accessory === 'string' ? snail.accessory : snail.accessory?.name) || 'Accessory'}
+                        {'\u{2699}\uFE0F'} {sloth.equipped_accessory || (typeof sloth.accessory === 'string' ? sloth.accessory : sloth.accessory?.name) || 'Accessory'}
                       </span>
                     )}
                   </div>
@@ -774,14 +774,14 @@ export default function Stable() {
                 {(ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
                   <div className="mt-3">
                     <button
-                      onClick={() => toggleSection(`equip-${snail.id}`)}
+                      onClick={() => toggleSection(`equip-${sloth.id}`)}
                       className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
                     >
-                      <span className={`text-xs transition-transform ${expandedSections[`equip-${snail.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                      <span className={`text-xs transition-transform ${expandedSections[`equip-${sloth.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                       Equipment
                     </button>
-                    {expandedSections[`equip-${snail.id}`] && (
-                      <div className="p-3 bg-slug-dark rounded-lg border border-slug-border space-y-2">
+                    {expandedSections[`equip-${sloth.id}`] && (
+                      <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border space-y-2">
                         {ownedCosmetics.length > 0 && (
                           <select
                             value=""
@@ -789,13 +789,13 @@ export default function Stable() {
                               const cosId = Number(e.target.value)
                               if (!cosId || !address) return
                               try {
-                                await api.equipCosmetic(address, snail.id, cosId)
-                                loadStable()
+                                await api.equipCosmetic(address, sloth.id, cosId)
+                                loadTreehouse()
                               } catch (err: any) { toast.error(err.message) }
                             }}
-                            className="w-full bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                            className="w-full bg-sloth-card border border-sloth-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                           >
-                            <option value="">{snail.cosmetic ? `Cosmetic: ${typeof snail.cosmetic === 'string' ? snail.cosmetic : snail.cosmetic.name}` : 'Equip Cosmetic...'}</option>
+                            <option value="">{sloth.cosmetic ? `Cosmetic: ${typeof sloth.cosmetic === 'string' ? sloth.cosmetic : sloth.cosmetic.name}` : 'Equip Cosmetic...'}</option>
                             {ownedCosmetics.map((c: any) => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -809,20 +809,20 @@ export default function Stable() {
                                 const accId = Number(e.target.value)
                                 if (!accId || !address) return
                                 try {
-                                  await api.equipAccessory(address, snail.id, accId)
-                                  loadStable()
+                                  await api.equipAccessory(address, sloth.id, accId)
+                                  loadTreehouse()
                                 } catch (err: any) { toast.error(err.message) }
                               }}
-                              className="flex-1 bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                              className="flex-1 bg-sloth-card border border-sloth-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                             >
-                              <option value="">{(snail.equipped_accessory || snail.accessory) ? `Accessory: ${snail.equipped_accessory || (typeof snail.accessory === 'string' ? snail.accessory : snail.accessory?.name)}` : 'Equip Accessory...'}</option>
+                              <option value="">{(sloth.equipped_accessory || sloth.accessory) ? `Accessory: ${sloth.equipped_accessory || (typeof sloth.accessory === 'string' ? sloth.accessory : sloth.accessory?.name)}` : 'Equip Accessory...'}</option>
                               {ownedAccessories.map((a: any) => (
                                 <option key={a.id} value={a.id}>{a.name}</option>
                               ))}
                             </select>
-                            {(snail.equipped_accessory || snail.accessory) && (
+                            {(sloth.equipped_accessory || sloth.accessory) && (
                               <button
-                                onClick={() => handleUnequipAccessory(snail.id)}
+                                onClick={() => handleUnequipAccessory(sloth.id)}
                                 className="px-3 py-2 bg-gray-500/20 text-gray-400 rounded text-xs font-bold cursor-pointer min-h-[44px]"
                               >
                                 &#x2715;
@@ -837,25 +837,25 @@ export default function Stable() {
 
                 {/* Evolve button */}
                 <button
-                  onClick={() => { setEvolveSnailId(snail.id); setEvolveSnailName(snail.name) }}
-                  className="w-full mt-3 py-2 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg hover:bg-slug-purple/30 transition-colors cursor-pointer text-sm"
+                  onClick={() => { setEvolveSlothId(sloth.id); setEvolveSlothName(sloth.name) }}
+                  className="w-full mt-3 py-2 bg-sloth-purple/20 text-sloth-purple font-semibold rounded-lg hover:bg-sloth-purple/30 transition-colors cursor-pointer text-sm"
                 >
                   Evolve
                 </button>
 
                 {/* Mini Games button */}
                 <button
-                  onClick={() => setActiveMiniGame({ snailId: snail.id, snailName: snail.name })}
+                  onClick={() => setActiveMiniGame({ slothId: sloth.id, slothName: sloth.name })}
                   className="w-full mt-2 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
                 >
                   Play Mini Games
                 </button>
 
                 {/* Enter Race — prominent */}
-                <div className="mt-3 pt-3 border-t border-slug-border">
+                <div className="mt-3 pt-3 border-t border-sloth-border">
                   <button
                     onClick={() => navigate('/race')}
-                    className="w-full py-3 bg-slug-green text-slug-dark text-lg font-bold rounded-lg hover:bg-slug-green/90 transition-colors cursor-pointer shadow-lg shadow-slug-green/20"
+                    className="w-full py-3 bg-sloth-green text-sloth-dark text-lg font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer shadow-lg shadow-sloth-green/20"
                   >
                     Enter Race
                   </button>
@@ -869,23 +869,23 @@ export default function Stable() {
       {/* MiniGameModal */}
       {activeMiniGame && address && (
         <MiniGameModal
-          snailId={activeMiniGame.snailId}
-          snailName={activeMiniGame.snailName}
+          slothId={activeMiniGame.slothId}
+          slothName={activeMiniGame.slothName}
           wallet={address}
           playsLeft={5}
           onClose={() => setActiveMiniGame(null)}
-          onGameComplete={() => loadStable()}
+          onGameComplete={() => loadTreehouse()}
         />
       )}
 
       {/* Evolution Modal */}
-      {evolveSnailId !== null && address && (
+      {evolveSlothId !== null && address && (
         <EvolutionModal
-          snailId={evolveSnailId}
-          snailName={evolveSnailName}
+          slothId={evolveSlothId}
+          slothName={evolveSlothName}
           wallet={address}
-          onClose={() => setEvolveSnailId(null)}
-          onEvolved={() => loadStable()}
+          onClose={() => setEvolveSlothId(null)}
+          onEvolved={() => loadTreehouse()}
         />
       )}
 
@@ -902,7 +902,7 @@ export default function Stable() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-slug-card border border-slug-border rounded-2xl p-8 max-w-md w-full mx-4 text-center"
+              className="bg-sloth-card border border-sloth-border rounded-2xl p-8 max-w-md w-full mx-4 text-center"
             >
               {upgradeState === 'paying' && (
                 <>
@@ -928,8 +928,8 @@ export default function Stable() {
                     transition={{ delay: 0.5, duration: 1 }}
                     className="text-4xl mb-4"
                   >&#x1f525;</motion.div>
-                  <p className="text-xl font-bold mb-2 text-orange-400">Burning Free Slug...</p>
-                  <p className="text-gray-400">Your slug is evolving!</p>
+                  <p className="text-xl font-bold mb-2 text-orange-400">Burning Free Sloth...</p>
+                  <p className="text-gray-400">Your sloth is evolving!</p>
                 </>
               )}
 
@@ -942,12 +942,12 @@ export default function Stable() {
                     className="text-7xl mb-4 inline-block"
                     style={{ perspective: '500px' }}
                   >&#x2753;</motion.div>
-                  <p className="text-xl font-bold mb-2 text-slug-purple">Revealing Rarity...</p>
-                  <p className="text-gray-400">Chainlink VRF determining your snail...</p>
+                  <p className="text-xl font-bold mb-2 text-sloth-purple">Revealing Rarity...</p>
+                  <p className="text-gray-400">Chainlink VRF determining your sloth...</p>
                 </>
               )}
 
-              {upgradeState === 'done' && newSnail && (
+              {upgradeState === 'done' && newSloth && (
                 <>
                   <motion.div
                     initial={{ scale: 0 }}
@@ -955,19 +955,19 @@ export default function Stable() {
                     transition={{ type: 'spring', stiffness: 200 }}
                     className="text-7xl mb-4"
                   >&#x1f389;</motion.div>
-                  <h2 className="text-2xl font-bold text-white mb-2">{newSnail.name}</h2>
-                  <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold uppercase mb-4 ${RARITY_COLORS[newSnail.rarity] || ''}`}>
-                    {newSnail.rarity}
+                  <h2 className="text-2xl font-bold text-white mb-2">{newSloth.name}</h2>
+                  <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold uppercase mb-4 ${RARITY_COLORS[newSloth.rarity] || ''}`}>
+                    {newSloth.rarity}
                   </span>
                   <p className="text-gray-400 text-sm mb-2 capitalize">
-                    Race: {newSnail.race?.replace('_', ' ')}
+                    Race: {newSloth.race?.replace('_', ' ')}
                   </p>
-                  <p className="text-slug-green font-semibold mb-6">+500 SLUG Coins</p>
+                  <p className="text-sloth-green font-semibold mb-6">+500 ZZZ Coins</p>
                   <button
                     onClick={closeReveal}
-                    className="px-6 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
                   >
-                    View in Stable
+                    View in Treehouse
                   </button>
                 </>
               )}

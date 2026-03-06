@@ -1,27 +1,27 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { CONTRACTS, CONTRACTS_DEPLOYED, FREE_SLUG_ABI, SLUG_RUSH_ABI, SNAIL_ABI } from '../config/contracts'
+import { CONTRACTS, CONTRACTS_DEPLOYED, FREE_SLOTH_ABI, SLOTH_RUSH_ABI, SLOTH_ABI } from '../config/contracts'
 
-// Check if wallet has already minted a Free Slug on-chain
+// Check if wallet has already minted a Free Sloth on-chain
 export function useHasMinted(address?: `0x${string}`) {
   return useReadContract({
-    address: CONTRACTS.freeSlug,
-    abi: FREE_SLUG_ABI,
+    address: CONTRACTS.freeSloth,
+    abi: FREE_SLOTH_ABI,
     functionName: 'hasMinted',
     args: address ? [address] : undefined,
     query: { enabled: CONTRACTS_DEPLOYED && !!address },
   })
 }
 
-// Mint Free Slug on-chain
-export function useMintFreeSlug() {
+// Mint Free Sloth on-chain
+export function useMintFreeSloth() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
   function mint() {
     if (!CONTRACTS_DEPLOYED) return
     writeContract({
-      address: CONTRACTS.freeSlug,
-      abi: FREE_SLUG_ABI,
+      address: CONTRACTS.freeSloth,
+      abi: FREE_SLOTH_ABI,
       functionName: 'mint',
     })
   }
@@ -29,29 +29,29 @@ export function useMintFreeSlug() {
   return { mint, hash, isPending, isConfirming, isSuccess, error, isDeployed: CONTRACTS_DEPLOYED }
 }
 
-// Upgrade via SlugRush contract on-chain
+// Upgrade via SlothRush contract on-chain
 export function useUpgrade() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
-  function upgrade(freeSlugId: bigint, rarity: number, stats: { spd: number; acc: number; sta: number; agi: number; ref: number; lck: number }) {
+  function upgrade(freeSlothId: bigint, rarity: number, stats: { spd: number; acc: number; sta: number; agi: number; ref: number; lck: number }) {
     if (!CONTRACTS_DEPLOYED) return
     writeContract({
-      address: CONTRACTS.slugRush,
-      abi: SLUG_RUSH_ABI,
+      address: CONTRACTS.slothRush,
+      abi: SLOTH_RUSH_ABI,
       functionName: 'upgrade',
-      args: [freeSlugId, rarity, stats.spd, stats.acc, stats.sta, stats.agi, stats.ref, stats.lck],
+      args: [freeSlothId, rarity, stats.spd, stats.acc, stats.sta, stats.agi, stats.ref, stats.lck],
     })
   }
 
   return { upgrade, hash, isPending, isConfirming, isSuccess, error, isDeployed: CONTRACTS_DEPLOYED }
 }
 
-// Read snail stats from on-chain
-export function useSnailStats(tokenId?: bigint) {
+// Read sloth stats from on-chain
+export function useSlothStats(tokenId?: bigint) {
   return useReadContract({
-    address: CONTRACTS.snail,
-    abi: SNAIL_ABI,
+    address: CONTRACTS.sloth,
+    abi: SLOTH_ABI,
     functionName: 'getStats',
     args: tokenId !== undefined ? [tokenId] : undefined,
     query: { enabled: CONTRACTS_DEPLOYED && tokenId !== undefined },

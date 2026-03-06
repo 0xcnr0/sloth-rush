@@ -1,5 +1,5 @@
 // Live race commentary templates
-// {name} = snail name, {name2} = second snail, {pos} = position
+// {name} = sloth name, {name2} = second sloth, {pos} = position
 
 export interface CommentaryEntry {
   type: string
@@ -12,9 +12,9 @@ export const COMMENTARY: CommentaryEntry[] = [
     type: 'race_start',
     priority: 3,
     templates: [
-      'The race is on! 4 brave snails on the track!',
-      '3... 2... 1... GO! The snails are off!',
-      'Lights on at the Grand Shell track!',
+      'The race is on! 4 brave sloths on the track!',
+      '3... 2... 1... GO! The sloths are off!',
+      'Lights on at the Grand Treehouse track!',
     ],
   },
   {
@@ -37,21 +37,21 @@ export const COMMENTARY: CommentaryEntry[] = [
     ],
   },
   {
-    type: 'tactic_shell',
+    type: 'tactic_pillow',
     priority: 3,
     templates: [
-      'SHELL HIT! {name} took a direct hit! Ouch!',
-      '{name} got shelled! Speed dropping!',
-      'Shell attack! {name} is staggering!',
+      'PILLOW HIT! {name} took a direct hit! Ouch!',
+      '{name} got pillow-thrown! Speed dropping!',
+      'Pillow attack! {name} is staggering!',
     ],
   },
   {
-    type: 'slime_burst',
+    type: 'yawn_wave',
     priority: 2,
     templates: [
-      'Slime Burst! Everyone is sliding! CHAOS!',
-      'The leader left a slime trail! Others are slipping!',
-      'Slime on the track! Watch out!',
+      'Yawn Wave! Everyone is getting drowsy! CHAOS!',
+      'The leader spread a massive yawn! Others are slowing!',
+      'Yawning on the track! Watch out!',
     ],
   },
   {
@@ -73,10 +73,10 @@ export const COMMENTARY: CommentaryEntry[] = [
     ],
   },
   {
-    type: 'clash',
+    type: 'pillow_fight',
     priority: 2,
     templates: [
-      'Clash! Two snails collided!',
+      'Pillow Fight! Two sloths had a pillow fight!',
       'CRASH! {name} and {name2} tangled up!',
       'Contact! Reflexes kicking in!',
     ],

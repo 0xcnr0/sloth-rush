@@ -1,0 +1,242 @@
+Slug Rush — Oyun Mantik Hatalari Duzeltme Prompt: 20 mantik hatasini duzelt. PostgreSQL (pg), async/await, $1,$2... params. db.ts'den import: import { query, getOne, getAll, runTransaction } from "../db". Frontend: React 19, TypeScript, Tailwind CSS. react-hot-toast zaten kurulu.
+
+Plan dosyasi: .claude/plans/noble-napping-flame.md — "OYUN MANTIK HATALARI DENETIM RAPORU" bolumunde tum sorunlarin detayi var.
+
+Tum maddeleri sirasiyla uygula. Her madde sonunda npx tsc --noEmit ile 0 hata dogrula.
+
+---
+
+## BOLUM A: YARIS SISTEMI DUZELTMELERI
+
+### A1. Exhibition/Daily Race Bidding'i Atla (HATA 1 — KRITIK)
+Dosya: backend/src/routes/race.ts
+
+startBidding fonksiyonunda format kontrolu ekle. Exhibition formatinda bidding fazini ATLA, direkt racing fazina gec:
+
+Mevcut: startBidding icinde kosulsuz olarak status='bidding' yapiliyor.
+Yeni: Eger race.format === 'exhibition' ise, status='bidding' yerine direkt status='racing' yap ve simulasyonu baslat. Bidding countdown'u atla.
+
+Ayrica: bid endpoint'inde (/bid) exhibition format kontrolu ekle. Eger format exhibition ise bid kabul etme, hata dondur.
+
+Frontend dosya: frontend/src/pages/RaceLobby.tsx
+Bidding fazinda eger selectedFormat ve selectedFormat.maxRaise === 0 ise bid UI'i gosterme. Direkt "Race starting..." mesaji goster.
+
+### A2. "2x Exhibition Rewards" Banner'ini Kaldir (HATA 2)
+Dosya: frontend/src/pages/RaceLobby.tsx
+
+Daily Race banner'indaki "2x Exhibition Rewards" yazisindan "2x" kismini kaldir.
+Eski: "2x Exhibition Rewards"
+Yeni: "Exhibition Race" veya "Daily Exhibition Race"
+
+### A3. Daily Race Sinir Yok — Ama Adi Anlamli Olsun (HATA 3)
+Tasarim karari: Daily Race sinirsiz katilim, dusuk odul. Mevcut davranis korunacak.
+
+Yapilacak: Frontend'deki "Daily Race" banner'inda aciklama ekle:
+"Free exhibition race with today's weather. Play as many times as you want."
+
+Bu sekilde oyuncu "daily" nin "gunluk hava durumu" anlamina geldigini anlar, katilim limitinden degil.
+
+### A4. Tactic Action Snail Sahipligi Dogrulamasi (HATA 6 — KRITIK)
+Dosya: backend/src/routes/race.ts — /action endpoint'i
+
+Action submit edildiginde snail'in o wallet'a ait oldugunu dogrula:
+
+Mevcut action endpoint'inin basina ekle:
+const snailOwner = await getOne("SELECT id FROM slugs WHERE id = $1 AND wallet = $2", [snailId, wallet]);
+if (snailOwner === null) { res.status(403).json({ error: "Not your snail" }); return; }
+
+### A5. GP Tier Gate Ekle (HATA 12)
+Dosya: backend/src/routes/race.ts — /join endpoint'i
+
+GP yarislarina katilirken tier kontrolu ekle:
+
+GP join sirasinda:
+- Silver GP (format === 'gp' ve race.entry_fee <= 150): Minimum snail (tier >= 1) gerekli
+- Gold GP (format === 'gp' ve race.entry_fee > 150): Minimum elite (tier >= 2) gerekli
+
+const slug = await getOne("SELECT tier, type FROM slugs WHERE id = $1", [snailId]);
+if (race.format === 'gp') {
+  if (race.entry_fee > 150 && (slug.tier || 0) < 2) {
+    res.status(400).json({ error: "Gold GP requires Elite snail (Tier 2+)" }); return;
+  }
+  if (slug.type === 'free_slug') {
+    res.status(400).json({ error: "GP requires at least a Snail" }); return;
+  }
+}
+
+Frontend'de: RaceLobby.tsx'de GP format secildiginde, free slug'lari snail listesinden filtrele. Gold GP secildiginde tier < 2 snail'leri filtrele.
+
+### A6. GP Qualifying Slot Uyumu (HATA 16)
+Dosya: backend/src/routes/race.ts
+
+GP qualifying maxSlots taniminda 8 yaziyorsa 4'e dusur. Veya GP qualifying race creation'da 4 slot olusturuluyorsa maxSlots'u da 4 yap. Tutarli olsun.
+
+---
+
+## BOLUM B: STAT & TRAINING DUZELTMELERI
+
+### B1. Training Limitini Haftalik Yap (HATA 4 — KRITIK)
+Dosya: backend/src/routes/slug.ts — /train endpoint'i
+
+Mevcut: Gunluk 2 training limiti (per day).
+Yeni: Haftalik 2 training limiti (per week per snail).
+
+Training limit sorgusunu degistir:
+Eski: WHERE snail_id = $1 AND DATE(started_at) = CURRENT_DATE
+Yeni: WHERE snail_id = $1 AND started_at >= date_trunc('week', CURRENT_TIMESTAMP)
+
+Limit sayisi ayni kalsin:
+- Free slug: haftada 1
+- Snail: haftada 2
+
+Frontend'de de (Stable.tsx) training limit mesajini guncelle:
+Eski: "(2 per day)" veya benzer
+Yeni: "X/2 this week" seklinde goster
+
+### B2. Mini-Game Limitini Wallet Bazli Yap (HATA 5 — KRITIK)
+Dosya: backend/src/routes/slug.ts — /mini-game endpoint'i
+
+Mevcut: Snail bazli gunluk limit (her snail icin ayri 5 hak).
+Yeni: Wallet bazli gunluk limit (toplam 5 hak).
+
+Limit sorgusunu degistir:
+Eski: SELECT count FROM daily_minigame_plays WHERE snail_id = $1 AND play_date = $2
+Yeni:
+SELECT COALESCE(SUM(dmp.count), 0) as total_count
+FROM daily_minigame_plays dmp
+JOIN slugs s ON dmp.snail_id = s.id
+WHERE s.wallet = $1 AND dmp.play_date = $2
+
+dailyLimit = 5 (herkes icin ayni, free slug farki kaldiriliyor)
+
+### B3. Stat Cap Guvenlik Kontrolu (HATA 7)
+Dosya: backend/src/routes/slug.ts
+
+Training claim ve mini-game stat gain hesaplarinda:
+Mevcut: Math.min(gain, cap - current)
+Yeni: Math.min(gain, Math.max(0, cap - (current || 0)))
+
+Bu degisikligi su yerlere uygula:
+1. /claim-training endpoint'inde stat gain hesabi
+2. /mini-game endpoint'inde stat gain hesabi
+
+Bu Math.max(0, ...) eklentisi current'in null/undefined olmasi durumunda negatif deger olusmasini onler.
+
+---
+
+## BOLUM C: QUEST & ECONOMY DUZELTMELERI
+
+### C1. Weather Quest Tetikleme Duzeltmesi (HATA 9)
+Dosya: backend/src/routes/race.ts — quest tetikleme bolumu
+
+Mevcut: if (count <= 3) seklinde weather variety quest'i tetikleniyor
+Yeni: if (count === 5) — 5 farkli hava durumu gorulunce tetiklensin
+
+Mevcut koddaki kosulu bul ve duzelt. Quest "See all 5 weather types" icin count tam 5 oldugunda basarili sayilmali.
+
+### C2. GDA Race Condition (HATA 15)
+Dosya: backend/src/routes/race.ts — /action endpoint'i
+
+GDA fiyat hesabini transaction icine al:
+Mevcut: GDA state her action'da sifirdan hesaplaniyor
+Yeni: runTransaction kullanarak action ekleme + fiyat hesabi atomik yapilsin. Ayni tick'te iki action gelirse ikincisi guncellenmis fiyati gorur.
+
+---
+
+## BOLUM D: FRONTEND DUZELTMELERI
+
+### D1. Passive Ability Aciklamalari Duzelt (HATA 10)
+Dosya: frontend/src/components/EvolutionModal.tsx
+
+Backend passive map'i:
+- velocity tier 3: speed_burst (Son 100m'de +10% hiz)
+- velocity tier 4: speed_overtake (Gecis yapinca 1sn hiz patlamasi)
+- fortress tier 3: fatigue_slow (Yorgunluk %50 yavas birikir) — BU SU AN shell_resist OLARAK YANLIS YAZILI
+- fortress tier 4: shell_resist (Shell hasari %30 azalir) — BU SU AN fatigue_slow OLARAK YANLIS YAZILI
+- mystic tier 3: luck_magnet (Luck Orb %20 daha sik)
+- mystic tier 4: bad_to_good (Kotu event %30 iyiye donusur)
+
+Fortress Tier 3 ve 4 aciklamalari YER DEGISTIRMIS. Duzelt:
+- Fortress Tier 3: "Fatigue builds up 50% slower" (speed_burst -> fatigue_slow)
+- Fortress Tier 4: "Shell damage reduced by 30%" (fatigue_slow -> shell_resist)
+
+Tum path aciklamalarini backend passive map'iyle esle ve dogrula.
+
+### D2. Tahmin UI Turkce -> Ingilizce (HATA 11)
+Dosya: frontend/src/pages/RaceBroadcast.tsx
+
+Su Turkce text'leri bul ve Ingilizce'ye cevir:
+- "Tahmin:" -> "Predict:"
+- "Dogru tahmin = 15 SLUG!" -> "Correct prediction = 15 SLUG!"
+- "Tahmin yapildi! Dogru tahmin = +15 SLUG" -> "Prediction submitted! Correct = +15 SLUG"
+- Diger Turkce text varsa onlari da cevir
+
+### D3. Training Limiti UI'da Goster (HATA 13)
+Dosya: frontend/src/pages/Stable.tsx
+
+Her snail kartindaki training bolumund ekle:
+- Backend'den haftalik training count bilgisi al (veya mevcut veriyi kullan)
+- Gosterim: "Training (1/2 this week)" seklinde sayac
+- Limit dolduysa training butonunu disable et ve aciklama goster
+
+Bunun icin backend'de /train-status/:snailId endpoint'ine haftalik count ekle (veya mevcut endpoint'i guncelle).
+
+### D4. Shop Owned Item Badge (HATA 14)
+Dosya: frontend/src/pages/Shop.tsx
+
+Cosmetics ve Accessories tab'larinda:
+- Sahip olunan item'larda "Buy" butonunu gizle
+- Yerine yesil "Owned" badge goster
+- Owned item'lari listenin sonuna tasi (veya ayri "Owned" bolumu)
+
+Bunun icin: API'den gelen cosmetic/accessory listesinde "owned" flag'ini kontrol et (backend zaten bu bilgiyi donduruyor).
+
+### D5. GP Final Bid Hardcode Duzelt (HATA 19)
+Dosya: frontend/src/pages/RaceLobby.tsx
+
+GP Final bidding'de:
+Eski: max={Math.min(300, coinBalance)}
+Yeni: max={Math.min(selectedFormat?.maxRaise || 300, coinBalance)}
+
+### D6. Wallet Disconnect'ta Butonlari Devre Disi Birak (HATA 20)
+Dosya: frontend/src/pages/RaceBroadcast.tsx
+
+Eger wallet disconnect overlay gosteriliyorsa (isConnected false), tactic butonlarini (Boost/Shell) da disable et:
+- Butonlara disabled={isConnected === false} ekle
+- Veya overlay z-index'inin butonlarin ustunde oldugunu dogrula (pointer-events-none ile)
+
+---
+
+## DOGRULAMA
+
+Tum degisiklikler bittikten sonra:
+1. cd backend && npx tsc --noEmit — 0 hata
+2. cd frontend && npx tsc --noEmit — 0 hata
+3. Kontrol listesi:
+   - Exhibition/Daily Race'e girildiginde bid UI gorunmuyor mu? Direkt yaris basliyor mu?
+   - Daily Race banner'inda "2x" yazisi kaldirildi mi?
+   - Daily Race banner'inda aciklama text'i eklendi mi?
+   - Tactic action'da snail sahipligi dogrulaniyor mu?
+   - GP'ye free slug giremez mi?
+   - Gold GP'ye tier 2'den dusuk giremez mi?
+   - Training limiti haftalik mi (2/hafta)?
+   - Mini-game limiti wallet bazli mi (5/gun toplam)?
+   - Stat cap asiliyor mu yoksa korunuyor mu?
+   - Weather quest 5 farkli hava durumunda tetikleniyor mu?
+   - Fortress passive aciklamalari dogru mu (tier 3=fatigue, tier 4=shell)?
+   - Tahmin UI Ingilizce mi?
+   - Training limiti Stable'da gorunuyor mu?
+   - Shop'ta owned item'larda "Owned" badge var mi?
+   - GP Final bid selectedFormat.maxRaise kullaniyor mu?
+   - Wallet disconnect'ta tactic butonlari disable mi?
+4. Commit + push
+
+## KURALLAR
+- PostgreSQL, async/await, $1,$2... params
+- Exhibition = fee 0, maxRaise 0, bid yok, direkt racing
+- Training: haftalik 2 limit (free slug 1)
+- Mini-game: wallet bazli gunluk 5 limit
+- Tum stat gain hesaplarinda Math.max(0, cap - current) kullan
+- alert() kullanma — toast kullan
+- npx tsc --noEmit her iki proje icin 0 hata
+- Bitince commit + push

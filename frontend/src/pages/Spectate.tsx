@@ -55,10 +55,10 @@ export default function Spectate() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-slug-card border border-slug-border rounded-xl p-4 flex items-center justify-between hover:border-slug-green/30 transition-colors"
+              className="bg-sloth-card border border-sloth-border rounded-xl p-4 flex items-center justify-between hover:border-sloth-green/30 transition-colors"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-slug-green/10 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-sloth-green/10 rounded-lg flex items-center justify-center">
                   <span className="text-xl">{'\u{1F40C}'}</span>
                 </div>
                 <div>
@@ -79,7 +79,7 @@ export default function Spectate() {
                 </div>
                 <button
                   onClick={() => navigate(`/race/${race.raceId || race.id}`)}
-                  className="px-4 py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer text-sm"
+                  className="px-4 py-2 bg-sloth-green/20 text-sloth-green font-semibold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer text-sm"
                 >
                   Watch
                 </button>
@@ -89,7 +89,7 @@ export default function Spectate() {
         </div>
       )}
 
-      <div className="mt-8 bg-slug-card border border-slug-border rounded-xl p-5">
+      <div className="mt-8 bg-sloth-card border border-sloth-border rounded-xl p-5">
         <h3 className="text-white font-semibold mb-2">How Spectating Works</h3>
         <div className="text-gray-400 text-sm space-y-1">
           <p>Active races refresh every 5 seconds.</p>

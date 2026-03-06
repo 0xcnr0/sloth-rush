@@ -39,7 +39,7 @@ router.get("/daily/:wallet", async (req: Request, res: Response) => {
         description: quest.description,
         requirement_type: quest.requirement_type,
         requirement_value: quest.requirement_value,
-        slug_reward: quest.slug_reward,
+        sloth_reward: quest.sloth_reward,
         xp_reward: quest.xp_reward,
         progress: progress?.progress || 0,
         completed: progress?.completed === 1,
@@ -92,7 +92,7 @@ router.get("/weekly/:wallet", async (req: Request, res: Response) => {
         description: quest.description,
         requirement_type: quest.requirement_type,
         requirement_value: quest.requirement_value,
-        slug_reward: quest.slug_reward,
+        sloth_reward: quest.sloth_reward,
         xp_reward: quest.xp_reward,
         progress: progress?.progress || 0,
         completed: progress?.completed === 1,
@@ -134,7 +134,7 @@ router.get("/milestones/:wallet", async (req: Request, res: Response) => {
     const totalWins = parseInt(totalWinsRow?.count) || 0;
 
     const maxStreakRow = await getOne(
-      "SELECT COALESCE(MAX(max_wins), 0) as max_streak FROM streaks s JOIN slugs sl ON s.snail_id = sl.id WHERE sl.wallet = $1",
+      "SELECT COALESCE(MAX(max_wins), 0) as max_streak FROM streaks s JOIN sloths sl ON s.sloth_id = sl.id WHERE sl.wallet = $1",
       [wallet]
     );
     const maxStreak = parseInt(maxStreakRow?.max_streak) || 0;
@@ -146,7 +146,7 @@ router.get("/milestones/:wallet", async (req: Request, res: Response) => {
     const trainingCount = parseInt(trainingCountRow?.count) || 0;
 
     const miniGameCountRow = await getOne(
-      "SELECT COALESCE(SUM(count), 0) as count FROM daily_minigame_plays dmp JOIN slugs s ON dmp.snail_id = s.id WHERE s.wallet = $1",
+      "SELECT COALESCE(SUM(count), 0) as count FROM daily_minigame_plays dmp JOIN sloths s ON dmp.sloth_id = s.id WHERE s.wallet = $1",
       [wallet]
     );
     const miniGameCount = parseInt(miniGameCountRow?.count) || 0;
@@ -201,7 +201,7 @@ router.get("/milestones/:wallet", async (req: Request, res: Response) => {
         description: quest.description,
         requirement_type: quest.requirement_type,
         requirement_value: quest.requirement_value,
-        slug_reward: quest.slug_reward,
+        sloth_reward: quest.sloth_reward,
         xp_reward: quest.xp_reward,
         progress: computedProgress,
         completed: progress?.completed === 1,

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { query, getOne, getAll, runTransaction } from "../db";
-import { simulateRace, calculatePot, SnailStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
+import { simulateRace, calculatePot, SlothStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
 import { awardXP, XP_AMOUNTS } from "../xp";
 import { isValidWallet } from "../middleware/validateWallet";
 
@@ -92,7 +92,7 @@ export async function triggerQuestProgress(wallet: string, requirementType: stri
 
 // Stat caps by rarity (and type)
 const STAT_CAPS: Record<string, number> = {
-  free_slug: 15,
+  free_sloth: 15,
   common: 22,
   uncommon: 25,
   rare: 28,
@@ -108,16 +108,16 @@ const POSITION_STAT: Record<number, string> = {
   4: 'ref',
 };
 
-// Bot snail templates with diverse stat distributions (total ~60 each)
+// Bot sloth templates with diverse stat distributions (total ~60 each)
 const BOT_TEMPLATES = [
-  { name: "Turbo Bot",    race: "turbo_slug",   spd: 14, acc: 8,  sta: 10, agi: 10, ref: 10, lck: 8  },
-  { name: "Shell Guard",  race: "shell_knight",  spd: 8,  acc: 14, sta: 12, agi: 8,  ref: 10, lck: 8  },
-  { name: "Goo Master",   race: "goo_mage",     spd: 10, acc: 10, sta: 14, agi: 8,  ref: 10, lck: 8  },
-  { name: "Storm Bolt",   race: "storm_racer",  spd: 10, acc: 10, sta: 8,  agi: 14, ref: 10, lck: 8  },
-  { name: "Iron Reflex",  race: "shell_knight",  spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 14, lck: 10 },
-  { name: "Lucky Slime",  race: "goo_mage",     spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 8,  lck: 16 },
-  { name: "Balanced Ace", race: "turbo_slug",    spd: 12, acc: 12, sta: 10, agi: 10, ref: 8,  lck: 8  },
-  { name: "Tough Cookie", race: "storm_racer",  spd: 10, acc: 10, sta: 12, agi: 10, ref: 10, lck: 8  },
+  { name: "Espresso Bot",    race: "caffeine_junkie",   spd: 14, acc: 8,  sta: 10, agi: 10, ref: 10, lck: 8  },
+  { name: "Pillow Guard",  race: "pillow_knight",  spd: 8,  acc: 14, sta: 12, agi: 8,  ref: 10, lck: 8  },
+  { name: "Dream Master",   race: "dream_weaver",     spd: 10, acc: 10, sta: 14, agi: 8,  ref: 10, lck: 8  },
+  { name: "Thunder Bolt",   race: "thunder_nap",  spd: 10, acc: 10, sta: 8,  agi: 14, ref: 10, lck: 8  },
+  { name: "Iron Snooze",  race: "pillow_knight",  spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 14, lck: 10 },
+  { name: "Lucky Dreamer",  race: "dream_weaver",     spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 8,  lck: 16 },
+  { name: "Balanced Napper", race: "caffeine_junkie",    spd: 12, acc: 12, sta: 10, agi: 10, ref: 8,  lck: 8  },
+  { name: "Tough Sleeper", race: "thunder_nap",  spd: 10, acc: 10, sta: 12, agi: 10, ref: 10, lck: 8  },
 ];
 
 function generateRaceId(): string {
@@ -161,13 +161,13 @@ router.post("/create", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/race/join — Join a race with a snail
+// POST /api/race/join — Join a race with a sloth
 router.post("/join", async (req: Request, res: Response) => {
   try {
-    const { raceId, snailId, wallet } = req.body;
+    const { raceId, slothId, wallet } = req.body;
 
-    if (!raceId || !snailId || !wallet) {
-      res.status(400).json({ error: "raceId, snailId, and wallet required" });
+    if (!raceId || !slothId || !wallet) {
+      res.status(400).json({ error: "raceId, slothId, and wallet required" });
       return;
     }
 
@@ -176,9 +176,9 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
-    const parsedSnailId = parseInt(snailId);
-    if (isNaN(parsedSnailId) || parsedSnailId <= 0) {
-      res.status(400).json({ error: "Invalid snailId" });
+    const parsedSlothId = parseInt(slothId);
+    if (isNaN(parsedSlothId) || parsedSlothId <= 0) {
+      res.status(400).json({ error: "Invalid slothId" });
       return;
     }
 
@@ -192,39 +192,39 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify creature ownership (snail or free_slug)
-    const snail = await getOne(
-      "SELECT * FROM slugs WHERE id = $1 AND wallet = $2 AND is_burned = 0 AND type IN ('snail', 'free_slug')",
-      [parsedSnailId, wallet]
+    // Verify creature ownership (sloth or free_sloth)
+    const sloth = await getOne(
+      "SELECT * FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0 AND type IN ('sloth', 'free_sloth')",
+      [parsedSlothId, wallet]
     );
 
-    if (!snail) {
+    if (!sloth) {
       res.status(404).json({ error: "creature not found or not owned by wallet" });
       return;
     }
 
     // Free slugs can only join exhibition races
-    if (snail.type === "free_slug" && race.format !== "exhibition") {
-      res.status(400).json({ error: "Free Slugs can only join Exhibition races. Upgrade to a Snail for other formats!" });
+    if (sloth.type === "free_sloth" && race.format !== "exhibition") {
+      res.status(400).json({ error: "Free Sloths can only join Exhibition races. Upgrade to a Sloth for other formats!" });
       return;
     }
 
-    // GP tier gate: free slugs blocked, Gold GP requires tier >= 2
+    // GP tier gate: free sloths blocked, Gold GP requires tier >= 2
     if (race.format === "gp_qualify") {
-      if (snail.type === "free_slug") {
-        res.status(400).json({ error: "GP requires at least a Snail" });
+      if (sloth.type === "free_sloth") {
+        res.status(400).json({ error: "GP requires at least a Sloth" });
         return;
       }
-      if (race.entry_fee > 150 && (snail.tier || 0) < 2) {
-        res.status(400).json({ error: "Gold GP requires Elite snail (Tier 2+)" });
+      if (race.entry_fee > 150 && (sloth.tier || 0) < 2) {
+        res.status(400).json({ error: "Gold GP requires Elite sloth (Tier 2+)" });
         return;
       }
     }
 
-    // Training lock: snail in active (unclaimed) training cannot race
+    // Training lock: sloth in active (unclaimed) training cannot race
     const activeTraining = await getOne(
-      "SELECT id FROM trainings WHERE snail_id = $1 AND claimed = 0",
-      [parsedSnailId]
+      "SELECT id FROM trainings WHERE sloth_id = $1 AND claimed = 0",
+      [parsedSlothId]
     );
     if (activeTraining) {
       res.status(400).json({ error: "This creature is in training and cannot race!" });
@@ -303,13 +303,13 @@ router.post("/join", async (req: Request, res: Response) => {
 
         // Add participant
         await client.query(
-          "INSERT INTO race_participants (race_id, snail_id, wallet, is_bot) VALUES ($1, $2, $3, 0)",
-          [raceId, parsedSnailId, wallet]
+          "INSERT INTO race_participants (race_id, sloth_id, wallet, is_bot) VALUES ($1, $2, $3, 0)",
+          [raceId, parsedSlothId, wallet]
         );
       });
     } catch (err: any) {
       if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient SLUG Coin balance" });
+        res.status(400).json({ error: "insufficient ZZZ Coin balance" });
         return;
       }
       throw err;
@@ -320,7 +320,7 @@ router.post("/join", async (req: Request, res: Response) => {
     res.json({
       joined: true,
       raceId,
-      snailId: parsedSnailId,
+      slothId: parsedSlothId,
       entryFeeCharged: effectiveFee,
       dailyFreeRace: isUsingFreeRace,
       newBalance: newBalance?.balance || 0,
@@ -355,16 +355,16 @@ router.post("/start-bidding", async (req: Request, res: Response) => {
       const shuffled = [...BOT_TEMPLATES].sort(() => Math.random() - 0.5);
       for (let i = 0; i < botsNeeded; i++) {
         const template = shuffled[i % shuffled.length];
-        // Create a bot snail with diverse stats
-        const botSnail = await getOne(
-          `INSERT INTO slugs (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)
-           VALUES ($1, 'snail', $2, 'common', $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        // Create a bot sloth with diverse stats
+        const botSloth = await getOne(
+          `INSERT INTO sloths (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)
+           VALUES ($1, 'sloth', $2, 'common', $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
           [`bot_${i}`, template.name, template.race, template.spd, template.acc, template.sta, template.agi, template.ref, template.lck]
         );
 
         await query(
-          "INSERT INTO race_participants (race_id, snail_id, wallet, is_bot) VALUES ($1, $2, $3, 1)",
-          [raceId, botSnail.id, `bot_${i}`]
+          "INSERT INTO race_participants (race_id, sloth_id, wallet, is_bot) VALUES ($1, $2, $3, 1)",
+          [raceId, botSloth.id, `bot_${i}`]
         );
       }
     }
@@ -458,7 +458,7 @@ router.post("/bid", async (req: Request, res: Response) => {
 
     // Generate stat-aware bot bids — stronger bots bid more aggressively
     const botParticipants = await getAll(
-      "SELECT rp.*, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck FROM race_participants rp JOIN slugs s ON rp.snail_id = s.id WHERE rp.race_id = $1 AND rp.is_bot = 1",
+      "SELECT rp.*, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck FROM race_participants rp JOIN sloths s ON rp.sloth_id = s.id WHERE rp.race_id = $1 AND rp.is_bot = 1",
       [raceId]
     );
 
@@ -493,7 +493,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const participants = await getAll(
       `SELECT rp.*, s.name, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
        FROM race_participants rp
-       JOIN slugs s ON rp.snail_id = s.id
+       JOIN sloths s ON rp.sloth_id = s.id
        WHERE rp.race_id = $1
        ORDER BY rp.bid_amount DESC`,
       [raceId]
@@ -503,8 +503,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const accessoryBonuses: Record<number, Record<string, number>> = {};
     for (const p of participants) {
       const equipment = await getOne(
-        "SELECT a.stat_bonus FROM snail_equipment se JOIN accessories a ON se.accessory_id = a.id WHERE se.snail_id = $1",
-        [p.snail_id]
+        "SELECT a.stat_bonus FROM sloth_equipment se JOIN accessories a ON se.accessory_id = a.id WHERE se.sloth_id = $1",
+        [p.sloth_id]
       );
       if (equipment && equipment.stat_bonus) {
         let bonus: Record<string, number> = {};
@@ -516,7 +516,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
           console.error("Invalid stat_bonus JSON for equipment:", equipment.id, e);
           bonus = {};
         }
-        accessoryBonuses[p.snail_id] = bonus;
+        accessoryBonuses[p.sloth_id] = bonus;
       }
     }
 
@@ -526,10 +526,10 @@ router.post("/simulate", async (req: Request, res: Response) => {
       await query("UPDATE race_participants SET grid_position = $1 WHERE id = $2", [index + 1, p.id]);
     }
 
-    const gridded: SnailStats[] = participants.map((p: any, index: number) => {
-      const bonus = accessoryBonuses[p.snail_id] || {};
+    const gridded: SlothStats[] = participants.map((p: any, index: number) => {
+      const bonus = accessoryBonuses[p.sloth_id] || {};
       return {
-        id: p.snail_id,
+        id: p.sloth_id,
         name: p.name,
         wallet: p.wallet,
         isBot: p.is_bot === 1,
@@ -551,8 +551,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
     );
     const tacticActions: TacticAction[] = tacticRows.map((r: any) => ({
       tick: r.tick,
-      type: r.action_type as "boost" | "shell",
-      snailId: r.snail_id,
+      type: r.action_type as "boost" | "pillow",
+      slothId: r.sloth_id,
     }));
 
     // Generate bot tactic actions for tactic/gp_final modes
@@ -560,16 +560,16 @@ router.post("/simulate", async (req: Request, res: Response) => {
       const botEntries = participants.filter((p: any) => p.is_bot === 1);
       for (const bot of botEntries) {
         if (Math.random() < 0.6) {
-          const actionType = Math.random() > 0.5 ? "boost" : "shell";
+          const actionType = Math.random() > 0.5 ? "boost" : "pillow";
           const actionTick = Math.floor(50 + Math.random() * 200);
           const existingAction = await getOne(
-            "SELECT 1 FROM tactic_actions WHERE race_id = $1 AND snail_id = $2 AND action_type = $3",
-            [raceId, bot.snail_id, actionType]
+            "SELECT 1 FROM tactic_actions WHERE race_id = $1 AND sloth_id = $2 AND action_type = $3",
+            [raceId, bot.sloth_id, actionType]
           );
           if (!existingAction) {
             await query(
-              "INSERT INTO tactic_actions (race_id, snail_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
-              [raceId, bot.snail_id, bot.wallet, actionType, actionTick]
+              "INSERT INTO tactic_actions (race_id, sloth_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
+              [raceId, bot.sloth_id, bot.wallet, actionType, actionTick]
             );
           }
         }
@@ -581,7 +581,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
       );
       tacticActions.length = 0;
       for (const r of allActions) {
-        tacticActions.push({ tick: r.tick, type: r.action_type as "boost" | "shell", snailId: r.snail_id });
+        tacticActions.push({ tick: r.tick, type: r.action_type as "boost" | "pillow", slothId: r.sloth_id });
       }
     }
 
@@ -602,8 +602,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
       for (let i = 0; i < result.finalOrder.length; i++) {
         const entry = result.finalOrder[i];
         if (i === 0 && !entry.isBot) {
-          const creatureType = await getOne("SELECT type FROM slugs WHERE id = $1", [entry.id]);
-          if (creatureType?.type === "free_slug") {
+          const creatureType = await getOne("SELECT type FROM sloths WHERE id = $1", [entry.id]);
+          if (creatureType?.type === "free_sloth") {
             payouts.push({ id: entry.id, payout: 3 + ((seed32 + i) % 3) });
           } else {
             payouts.push({ id: entry.id, payout: 8 + ((seed32 + i) % 5) });
@@ -633,7 +633,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
         const position = result.finalOrder.indexOf(order) + 1;
 
         await client.query(
-          "UPDATE race_participants SET finish_position = $1, payout = $2 WHERE race_id = $3 AND snail_id = $4",
+          "UPDATE race_participants SET finish_position = $1, payout = $2 WHERE race_id = $3 AND sloth_id = $4",
           [position, payout?.payout || 0, raceId, order.id]
         );
 
@@ -656,13 +656,13 @@ router.post("/simulate", async (req: Request, res: Response) => {
       for (let i = 0; i < result.finalOrder.length; i++) {
         const entry = result.finalOrder[i];
         if (entry.isBot) continue;
-        const snailId = entry.id;
+        const slothId = entry.id;
         const isWin = i === 0;
 
         // Ensure streak row exists
         await client.query(
-          "INSERT INTO streaks (snail_id) VALUES ($1) ON CONFLICT DO NOTHING",
-          [snailId]
+          "INSERT INTO streaks (sloth_id) VALUES ($1) ON CONFLICT DO NOTHING",
+          [slothId]
         );
 
         if (isWin) {
@@ -673,8 +673,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
               current_losses = 0,
               total_races = total_races + 1,
               total_wins = total_wins + 1
-            WHERE snail_id = $1`,
-            [snailId]
+            WHERE sloth_id = $1`,
+            [slothId]
           );
         } else {
           await client.query(
@@ -683,17 +683,17 @@ router.post("/simulate", async (req: Request, res: Response) => {
               max_losses = GREATEST(max_losses, current_losses + 1),
               current_wins = 0,
               total_races = total_races + 1
-            WHERE snail_id = $1`,
-            [snailId]
+            WHERE sloth_id = $1`,
+            [slothId]
           );
         }
       }
 
-      // Reward correct predictions (15 SLUG each)
+      // Reward correct predictions (15 ZZZ each)
       const winnerId = result.finalOrder[0]?.id;
       if (winnerId) {
         const correctPredictions = (await client.query(
-          "SELECT * FROM predictions WHERE race_id = $1 AND predicted_snail_id = $2 AND rewarded = 0",
+          "SELECT * FROM predictions WHERE race_id = $1 AND predicted_sloth_id = $2 AND rewarded = 0",
           [raceId, winnerId]
         )).rows;
 
@@ -727,7 +727,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
         const rp = rpValues[i] || 0;
         if (rp > 0) {
           await client.query(
-            "INSERT INTO race_points (wallet, snail_id, rp) VALUES ($1, $2, $3)",
+            "INSERT INTO race_points (wallet, sloth_id, rp) VALUES ($1, $2, $3)",
             [entry.wallet, entry.id, rp]
           );
         }
@@ -773,34 +773,34 @@ router.post("/simulate", async (req: Request, res: Response) => {
 
       // Check daily cap
       await query(
-        "INSERT INTO daily_stat_gains (snail_id, gain_date, total_gain) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
+        "INSERT INTO daily_stat_gains (sloth_id, gain_date, total_gain) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
         [entry.id, today]
       );
       const dailyGain = await getOne(
-        "SELECT total_gain FROM daily_stat_gains WHERE snail_id = $1 AND gain_date = $2",
+        "SELECT total_gain FROM daily_stat_gains WHERE sloth_id = $1 AND gain_date = $2",
         [entry.id, today]
       );
       if ((dailyGain?.total_gain || 0) >= 0.3) continue;
 
       // Check stat cap (with evolution support)
       assertValidStat(statToGrow);
-      const slug = await getOne("SELECT type, rarity, tier, evolution_path, " + statToGrow + " as current_val FROM slugs WHERE id = $1", [entry.id]);
-      if (!slug) continue;
-      let cap = slug.type === 'free_slug' ? STAT_CAPS.free_slug : (STAT_CAPS[slug.rarity] || STAT_CAPS.common);
-      if ((slug.tier || 0) >= 3 && slug.evolution_path) {
-        const pathStats: Record<string, string[]> = { velocity: ['spd', 'acc'], fortress: ['sta', 'ref'], mystic: ['lck', 'agi'] };
-        if (pathStats[slug.evolution_path]?.includes(statToGrow)) cap += 5;
-        if ((slug.tier || 0) >= 4) cap += 3;
+      const sloth = await getOne("SELECT type, rarity, tier, evolution_path, " + statToGrow + " as current_val FROM sloths WHERE id = $1", [entry.id]);
+      if (!sloth) continue;
+      let cap = sloth.type === 'free_sloth' ? STAT_CAPS.free_sloth : (STAT_CAPS[sloth.rarity] || STAT_CAPS.common);
+      if ((sloth.tier || 0) >= 3 && sloth.evolution_path) {
+        const pathStats: Record<string, string[]> = { caffeine: ['spd', 'acc'], hibernate: ['sta', 'ref'], dreamwalk: ['lck', 'agi'] };
+        if (pathStats[sloth.evolution_path]?.includes(statToGrow)) cap += 5;
+        if ((sloth.tier || 0) >= 4) cap += 3;
       }
-      if (slug.current_val >= cap) continue;
+      if (sloth.current_val >= cap) continue;
 
-      const gain = Math.min(0.05, cap - slug.current_val);
+      const gain = Math.min(0.05, cap - sloth.current_val);
       await query(
-        `UPDATE slugs SET ${statToGrow} = ${statToGrow} + $1 WHERE id = $2`,
+        `UPDATE sloths SET ${statToGrow} = ${statToGrow} + $1 WHERE id = $2`,
         [gain, entry.id]
       );
       await query(
-        "UPDATE daily_stat_gains SET total_gain = total_gain + $1 WHERE snail_id = $2 AND gain_date = $3",
+        "UPDATE daily_stat_gains SET total_gain = total_gain + $1 WHERE sloth_id = $2 AND gain_date = $3",
         [gain, entry.id, today]
       );
     }
@@ -834,7 +834,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
       raceId,
       seed,
       resultHash,
-      gridPositions: gridded.map((g) => ({ id: g.id, name: g.name, position: g.gridPosition, bid: participants.find((p: any) => p.snail_id === g.id)?.bid_amount || 0 })),
+      gridPositions: gridded.map((g) => ({ id: g.id, name: g.name, position: g.gridPosition, bid: participants.find((p: any) => p.sloth_id === g.id)?.bid_amount || 0 })),
       frames: animFrames,
       events: result.events,
       finalOrder: result.finalOrder.map((o: any, i: number) => ({
@@ -852,13 +852,13 @@ router.post("/simulate", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/race/action — Submit a tactic action (Boost or Shell)
+// POST /api/race/action — Submit a tactic action (Boost or Pillow)
 router.post("/action", async (req: Request, res: Response) => {
   try {
-    const { raceId, wallet, snailId, actionType, tick } = req.body;
+    const { raceId, wallet, slothId, actionType, tick } = req.body;
 
-    if (!raceId || !wallet || !snailId || !actionType || tick === undefined) {
-      res.status(400).json({ error: "raceId, wallet, snailId, actionType, and tick required" });
+    if (!raceId || !wallet || !slothId || !actionType || tick === undefined) {
+      res.status(400).json({ error: "raceId, wallet, slothId, actionType, and tick required" });
       return;
     }
 
@@ -873,15 +873,15 @@ router.post("/action", async (req: Request, res: Response) => {
       return;
     }
 
-    if (!["boost", "shell"].includes(actionType)) {
-      res.status(400).json({ error: "actionType must be 'boost' or 'shell'" });
+    if (!["boost", "pillow"].includes(actionType)) {
+      res.status(400).json({ error: "actionType must be 'boost' or 'pillow'" });
       return;
     }
 
-    // Verify snail ownership
-    const snailOwner = await getOne("SELECT id FROM slugs WHERE id = $1 AND wallet = $2", [snailId, wallet]);
-    if (snailOwner === null) {
-      res.status(403).json({ error: "Not your snail" });
+    // Verify sloth ownership
+    const slothOwner = await getOne("SELECT id FROM sloths WHERE id = $1 AND wallet = $2", [slothId, wallet]);
+    if (slothOwner === null) {
+      res.status(403).json({ error: "Not your sloth" });
       return;
     }
 
@@ -934,8 +934,8 @@ router.post("/action", async (req: Request, res: Response) => {
         );
 
         await client.query(
-          "INSERT INTO tactic_actions (race_id, snail_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
-          [raceId, snailId, wallet, actionType, parsedTick]
+          "INSERT INTO tactic_actions (race_id, sloth_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
+          [raceId, slothId, wallet, actionType, parsedTick]
         );
       });
     } catch (err: any) {
@@ -1003,7 +1003,7 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
     const finishers = await getAll(
       `SELECT rp.*, s.name, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck
        FROM race_participants rp
-       JOIN slugs s ON rp.snail_id = s.id
+       JOIN sloths s ON rp.sloth_id = s.id
        WHERE rp.race_id = $1
        ORDER BY rp.finish_position ASC
        LIMIT 4`,
@@ -1020,13 +1020,13 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
     // Move top 4 to final
     for (const f of finishers) {
       await query(
-        "INSERT INTO race_participants (race_id, snail_id, wallet, is_bot) VALUES ($1, $2, $3, $4)",
-        [finalId, f.snail_id, f.wallet, f.is_bot]
+        "INSERT INTO race_participants (race_id, sloth_id, wallet, is_bot) VALUES ($1, $2, $3, $4)",
+        [finalId, f.sloth_id, f.wallet, f.is_bot]
       );
     }
 
     const qualifiers = finishers.map((f: any, i: number) => ({
-      id: f.snail_id,
+      id: f.sloth_id,
       name: f.name,
       wallet: f.wallet,
       position: i + 1,
@@ -1047,10 +1047,10 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
 // POST /api/race/predict — Predict race winner
 router.post("/predict", async (req: Request, res: Response) => {
   try {
-    const { raceId, wallet, snailId } = req.body;
+    const { raceId, wallet, slothId } = req.body;
 
-    if (!raceId || !wallet || !snailId) {
-      res.status(400).json({ error: "raceId, wallet, and snailId required" });
+    if (!raceId || !wallet || !slothId) {
+      res.status(400).json({ error: "raceId, wallet, and slothId required" });
       return;
     }
 
@@ -1076,11 +1076,11 @@ router.post("/predict", async (req: Request, res: Response) => {
     }
 
     await query(
-      "INSERT INTO predictions (race_id, wallet, predicted_snail_id) VALUES ($1, $2, $3)",
-      [raceId, wallet, snailId]
+      "INSERT INTO predictions (race_id, wallet, predicted_sloth_id) VALUES ($1, $2, $3)",
+      [raceId, wallet, slothId]
     );
 
-    res.json({ predicted: true, raceId, snailId });
+    res.json({ predicted: true, raceId, slothId });
   } catch (err) {
     console.error("POST /predict error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -1093,7 +1093,7 @@ router.get("/:id/predictions", async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const predictions = await getAll(
-      "SELECT p.*, s.name as snail_name FROM predictions p JOIN slugs s ON p.predicted_snail_id = s.id WHERE p.race_id = $1",
+      "SELECT p.*, s.name as sloth_name FROM predictions p JOIN sloths s ON p.predicted_sloth_id = s.id WHERE p.race_id = $1",
       [id]
     );
 
@@ -1125,9 +1125,9 @@ router.get("/:id/prices", async (req: Request, res: Response) => {
 
     res.json({
       boostPrice: getGDAPrice(gdaState, "boost", tick, isChaos),
-      shellPrice: getGDAPrice(gdaState, "shell", tick, isChaos),
+      pillowPrice: getGDAPrice(gdaState, "pillow", tick, isChaos),
       boostPurchases: gdaState.boostPurchases,
-      shellPurchases: gdaState.shellPurchases,
+      pillowPurchases: gdaState.pillowPurchases,
     });
   } catch (err) {
     console.error("GET /:id/prices error:", err);
@@ -1189,10 +1189,10 @@ router.get("/history/:wallet", async (req: Request, res: Response) => {
 
     const races = await getAll(
       `SELECT r.id as "raceId", r.format, r.created_at as "createdAt",
-              rp.finish_position as position, rp.payout, s.name as "snailName"
+              rp.finish_position as position, rp.payout, s.name as "slothName"
        FROM race_participants rp
        JOIN races r ON rp.race_id = r.id
-       JOIN slugs s ON rp.snail_id = s.id
+       JOIN sloths s ON rp.sloth_id = s.id
        WHERE rp.wallet = $1 AND r.status = 'finished'
        ORDER BY r.finished_at DESC
        LIMIT 20`,
@@ -1269,9 +1269,9 @@ router.get("/:id", async (req: Request, res: Response) => {
     }
 
     const participants = await getAll(
-      `SELECT rp.*, s.name, s.rarity, s.race as snail_race, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck
+      `SELECT rp.*, s.name, s.rarity, s.race as sloth_race, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck
        FROM race_participants rp
-       JOIN slugs s ON rp.snail_id = s.id
+       JOIN sloths s ON rp.sloth_id = s.id
        WHERE rp.race_id = $1
        ORDER BY COALESCE(rp.grid_position, rp.id)`,
       [id]

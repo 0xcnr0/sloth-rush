@@ -91,7 +91,7 @@ export default function RaceReplay() {
         <p className="text-gray-400 mb-4">{error || 'Replay not found'}</p>
         <button
           onClick={() => navigate(-1)}
-          className="px-6 py-2.5 bg-slug-card border border-slug-border text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+          className="px-6 py-2.5 bg-sloth-card border border-sloth-border text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
         >
           Go Back
         </button>
@@ -119,26 +119,26 @@ export default function RaceReplay() {
         </div>
         <button
           onClick={() => navigate(-1)}
-          className="px-4 py-2 border border-slug-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm"
+          className="px-4 py-2 border border-sloth-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm"
         >
           Back
         </button>
       </div>
 
       {/* Race visualization */}
-      <div className="bg-slug-card border border-slug-border rounded-xl p-4 mb-4">
+      <div className="bg-sloth-card border border-sloth-border rounded-xl p-4 mb-4">
         <div className="space-y-3">
           {sortedPositions.map((pos: any, i: number) => {
             const pct = Math.min(100, (pos.distance / trackLength) * 100)
             const color = RACER_COLORS[i] || '#6b7280'
-            const name = nameMap.get(pos.id) || `Snail #${pos.id}`
+            const name = nameMap.get(pos.id) || `Sloth #${pos.id}`
             return (
               <div key={pos.id}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-white text-sm font-semibold">{name}</span>
                   <span className="text-gray-400 text-xs">{pct.toFixed(0)}% | {pos.speed?.toFixed(1)} u/t</span>
                 </div>
-                <div className="relative h-6 bg-slug-dark rounded-full overflow-hidden">
+                <div className="relative h-6 bg-sloth-dark rounded-full overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"
                     style={{ backgroundColor: color, width: `${Math.max(2, pct)}%` }}
@@ -164,11 +164,11 @@ export default function RaceReplay() {
       </div>
 
       {/* Controls */}
-      <div className="bg-slug-card border border-slug-border rounded-xl p-4 mb-4">
+      <div className="bg-sloth-card border border-sloth-border rounded-xl p-4 mb-4">
         <div className="flex items-center gap-3 mb-3">
           <button
             onClick={playing ? pause : play}
-            className="px-5 py-2 bg-slug-green text-slug-dark font-bold rounded-lg hover:bg-slug-green/90 transition-colors cursor-pointer text-sm"
+            className="px-5 py-2 bg-sloth-green text-sloth-dark font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer text-sm"
           >
             {playing ? 'Pause' : currentFrame >= totalFrames - 1 ? 'Replay' : 'Play'}
           </button>
@@ -180,8 +180,8 @@ export default function RaceReplay() {
                 onClick={() => setSpeed(s)}
                 className={`px-3 py-2 rounded-lg font-semibold text-xs cursor-pointer transition-colors ${
                   speed === s
-                    ? 'bg-slug-purple text-white'
-                    : 'bg-slug-dark text-gray-400 hover:text-white'
+                    ? 'bg-sloth-purple text-white'
+                    : 'bg-sloth-dark text-gray-400 hover:text-white'
                 }`}
               >
                 {s}x
@@ -201,12 +201,12 @@ export default function RaceReplay() {
             setCurrentFrame(val)
             if (playing) pause()
           }}
-          className="w-full accent-slug-green cursor-pointer"
+          className="w-full accent-sloth-green cursor-pointer"
         />
       </div>
 
       {/* Events feed */}
-      <div className="bg-slug-card border border-slug-border rounded-xl p-4">
+      <div className="bg-sloth-card border border-sloth-border rounded-xl p-4">
         <h3 className="text-gray-400 text-xs font-bold uppercase mb-3">Event Feed</h3>
         <div className="max-h-48 overflow-y-auto space-y-1.5">
           {events.filter((e: any) => e.tick <= (frameData?.tick ?? 0)).reverse().map((e: any, i: number) => (
@@ -214,7 +214,7 @@ export default function RaceReplay() {
               key={`${e.tick}-${i}`}
               className={`text-xs px-3 py-1.5 rounded-lg ${
                 e.tick === frameData?.tick
-                  ? 'bg-slug-green/10 text-slug-green'
+                  ? 'bg-sloth-green/10 text-sloth-green'
                   : 'text-gray-500'
               }`}
             >
@@ -233,7 +233,7 @@ export default function RaceReplay() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 bg-slug-card border border-slug-border rounded-xl p-4"
+          className="mt-4 bg-sloth-card border border-sloth-border rounded-xl p-4"
         >
           <h3 className="text-gray-400 text-xs font-bold uppercase mb-3">Final Standings</h3>
           <div className="space-y-2">
@@ -241,15 +241,15 @@ export default function RaceReplay() {
               <div
                 key={fo.id}
                 className={`flex items-center gap-3 p-2 rounded-lg ${
-                  i === 0 ? 'bg-slug-green/10' : 'bg-slug-dark/50'
+                  i === 0 ? 'bg-sloth-green/10' : 'bg-sloth-dark/50'
                 }`}
               >
                 <span className={`font-bold w-6 ${
-                  i === 0 ? 'text-slug-green' : 'text-gray-500'
+                  i === 0 ? 'text-sloth-green' : 'text-gray-500'
                 }`}>{i + 1}.</span>
                 <span className="text-white font-semibold text-sm flex-1">{fo.name}</span>
                 {fo.payout > 0 && (
-                  <span className="text-slug-green text-sm font-bold">+{fo.payout} SLUG</span>
+                  <span className="text-sloth-green text-sm font-bold">+{fo.payout} ZZZ</span>
                 )}
               </div>
             ))}

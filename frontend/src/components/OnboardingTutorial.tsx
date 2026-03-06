@@ -4,36 +4,36 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 const STEPS = [
   {
-    title: 'Mint Your Free Slug',
-    description: 'Connect your wallet and mint a Free Slug to get started. It\'s gasless and completely free!',
-    icon: '\u{1F40C}',
+    title: 'Mint Your Free Sloth',
+    description: 'Connect your wallet and mint a Free Sloth to get started. It\'s gasless and completely free!',
+    icon: '\u{1F9A5}',
     cta: 'Go to Mint',
     path: '/mint',
   },
   {
-    title: 'Visit Your Stable',
-    description: 'Check out your slug\'s stats, upgrade to a Snail, and manage your collection.',
+    title: 'Visit Your Treehouse',
+    description: 'Check out your sloth\'s stats, upgrade and evolve, and manage your collection.',
     icon: '\u{1F3DA}\uFE0F',
-    cta: 'Go to Stable',
-    path: '/stable',
+    cta: 'Go to Treehouse',
+    path: '/treehouse',
   },
   {
     title: 'Enter Your First Race',
-    description: 'Join an Exhibition race for free, or enter a Standard Race with your Snail to win SLUG Coins!',
+    description: 'Join an Exhibition race for free, or enter a Standard Race to win ZZZ Coins!',
     icon: '\u{1F3C1}',
     cta: 'Go to Race',
     path: '/race',
   },
   {
     title: 'Train & Evolve',
-    description: 'Train your Snail to boost stats, play mini games, and evolve through 4 tiers! Check your Stable for training options.',
+    description: 'Train your Sloth to boost stats, play mini games, and evolve through 4 tiers! Check your Treehouse for training options.',
     icon: '\u{1F4AA}',
     cta: 'Start Playing!',
-    path: '/stable',
+    path: '/treehouse',
   },
 ]
 
-const STORAGE_KEY = 'slug-rush-onboarded'
+const STORAGE_KEY = 'sloth-rush-onboarded'
 
 export default function OnboardingTutorial() {
   const navigate = useNavigate()
@@ -85,7 +85,7 @@ export default function OnboardingTutorial() {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: -20 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          className="bg-slug-card border border-slug-border rounded-2xl p-8 max-w-md w-full text-center"
+          className="bg-sloth-card border border-sloth-border rounded-2xl p-8 max-w-md w-full text-center"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -105,7 +105,7 @@ export default function OnboardingTutorial() {
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full transition-colors ${
-                  i === step ? 'bg-slug-green' : i < step ? 'bg-slug-green/40' : 'bg-slug-border'
+                  i === step ? 'bg-sloth-green' : i < step ? 'bg-sloth-green/40' : 'bg-sloth-border'
                 }`}
               />
             ))}
@@ -122,13 +122,13 @@ export default function OnboardingTutorial() {
               <>
                 <button
                   onClick={handleCTA}
-                  className="flex-1 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer text-sm"
+                  className="flex-1 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer text-sm"
                 >
                   {currentStep.cta}
                 </button>
                 <button
                   onClick={handleNext}
-                  className="flex-1 py-2.5 bg-slug-card border border-slug-border text-white font-semibold rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm"
+                  className="flex-1 py-2.5 bg-sloth-card border border-sloth-border text-white font-semibold rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm"
                 >
                   Next
                 </button>
@@ -136,7 +136,7 @@ export default function OnboardingTutorial() {
             ) : (
               <button
                 onClick={handleSkip}
-                className="flex-[2] py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer text-sm"
+                className="flex-[2] py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer text-sm"
               >
                 {currentStep.cta}
               </button>

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 
-type GameType = 'salt_dodge' | 'slime_slide' | 'shell_lift' | 'lucky_leaf' | 'speed_tap'
+type GameType = 'salt_dodge' | 'yawn_stretch' | 'pillow_lift' | 'lucky_leaf' | 'speed_tap'
 
 interface GameInfo {
   id: GameType
@@ -16,15 +16,15 @@ interface GameInfo {
 
 const GAMES: GameInfo[] = [
   { id: 'salt_dodge', name: 'Salt Dodge', icon: '\u{1F9C2}', stat: 'AGI / REF', duration: '20s', description: 'Dodge falling salt crystals! Arrow keys or tap sides to move.' },
-  { id: 'slime_slide', name: 'Slime Slide', icon: '\u{1F7E2}', stat: 'SPD', duration: '15s', description: 'Stop the slider in the green zone. Timing is everything!' },
-  { id: 'shell_lift', name: 'Shell Lift', icon: '\u{1F4AA}', stat: 'STA', duration: '10s', description: 'Hold to fill the bar. Release before it explodes!' },
+  { id: 'yawn_stretch', name: 'Yawn Stretch', icon: '\u{1F7E2}', stat: 'SPD', duration: '15s', description: 'Stop the slider in the green zone. Timing is everything!' },
+  { id: 'pillow_lift', name: 'Pillow Lift', icon: '\u{1F4AA}', stat: 'STA', duration: '10s', description: 'Hold to fill the bar. Release before it explodes!' },
   { id: 'lucky_leaf', name: 'Lucky Leaf', icon: '\u{1F340}', stat: 'LCK', duration: '5s', description: 'Pick a card and test your luck. 1x, 2x, or 3x reward!' },
   { id: 'speed_tap', name: 'Speed Tap', icon: '\u{26A1}', stat: 'ACC', duration: '5s', description: 'Tap as fast as you can in 5 seconds!' },
 ]
 
 interface MiniGameModalProps {
-  snailId: number
-  snailName: string
+  slothId: number
+  slothName: string
   wallet: string
   playsLeft: number
   onClose: () => void
@@ -34,18 +34,18 @@ interface MiniGameModalProps {
 // --- Salt Dodge Game ---
 function SaltDodgeGame({ onComplete }: { onComplete: (score: number) => void }) {
   const [timeLeft, setTimeLeft] = useState(20)
-  const [slugX, setSlugX] = useState(50)
+  const [slothX, setSlothX] = useState(50)
   const [salts, setSalts] = useState<{ id: number; x: number; y: number }[]>([])
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
   const nextId = useRef(0)
-  const slugXRef = useRef(50)
+  const slothXRef = useRef(50)
 
-  useEffect(() => { slugXRef.current = slugX }, [slugX])
+  useEffect(() => { slothXRef.current = slothX }, [slothX])
 
   const handleKey = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'ArrowLeft') setSlugX(prev => Math.max(5, prev - 10))
-    if (e.key === 'ArrowRight') setSlugX(prev => Math.min(95, prev + 10))
+    if (e.key === 'ArrowLeft') setSlothX(prev => Math.max(5, prev - 10))
+    if (e.key === 'ArrowRight') setSlothX(prev => Math.min(95, prev + 10))
   }, [])
 
   useEffect(() => {
@@ -83,7 +83,7 @@ function SaltDodgeGame({ onComplete }: { onComplete: (score: number) => void }) 
         for (const s of prev) {
           const ny = s.y + 5
           if (ny >= 90) {
-            if (Math.abs(s.x - slugXRef.current) >= 10) dodged++
+            if (Math.abs(s.x - slothXRef.current) >= 10) dodged++
           } else {
             next.push({ ...s, y: ny })
           }
@@ -98,30 +98,30 @@ function SaltDodgeGame({ onComplete }: { onComplete: (score: number) => void }) 
   useEffect(() => { if (gameOver) onComplete(score) }, [gameOver, score, onComplete])
 
   return (
-    <div className="relative w-full h-80 bg-slug-dark rounded-xl overflow-hidden border border-slug-border select-none"
+    <div className="relative w-full h-80 bg-sloth-dark rounded-xl overflow-hidden border border-sloth-border select-none"
       onTouchStart={(e) => {
         const rect = e.currentTarget.getBoundingClientRect()
         const touchX = e.touches[0].clientX - rect.left
         const pct = (touchX / rect.width) * 100
-        setSlugX(Math.max(5, Math.min(95, pct)))
+        setSlothX(Math.max(5, Math.min(95, pct)))
       }}
     >
-      <div className="absolute top-2 left-2 bg-black/60 px-3 py-1 rounded-lg text-slug-green font-bold text-sm z-10">{timeLeft}s</div>
+      <div className="absolute top-2 left-2 bg-black/60 px-3 py-1 rounded-lg text-sloth-green font-bold text-sm z-10">{timeLeft}s</div>
       <div className="absolute top-2 right-2 bg-black/60 px-3 py-1 rounded-lg text-white font-bold text-sm z-10">Score: {score}</div>
       {salts.map(s => (
         <div key={s.id} className="absolute w-4 h-4 bg-white rounded-full opacity-80" style={{ left: `${s.x}%`, top: `${s.y}%`, transform: 'translate(-50%, -50%)' }} />
       ))}
-      <div className="absolute bottom-4 text-3xl transition-all duration-75" style={{ left: `${slugX}%`, transform: 'translateX(-50%)' }}>{'\u{1F40C}'}</div>
+      <div className="absolute bottom-4 text-3xl transition-all duration-75" style={{ left: `${slothX}%`, transform: 'translateX(-50%)' }}>{'\u{1F40C}'}</div>
       {gameOver && (
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-          <p className="text-2xl font-bold text-slug-green">Dodged {score} salts!</p>
+          <p className="text-2xl font-bold text-sloth-green">Dodged {score} salts!</p>
         </div>
       )}
     </div>
   )
 }
 
-// --- Slime Slide Game ---
+// --- Yawn Stretch Game ---
 function SlimeSlideGame({ onComplete }: { onComplete: (score: number) => void }) {
   const [timeLeft, setTimeLeft] = useState(15)
   const [position, setPosition] = useState(0)
@@ -174,11 +174,11 @@ function SlimeSlideGame({ onComplete }: { onComplete: (score: number) => void })
   return (
     <div className="w-full p-6 select-none">
       <div className="flex justify-between mb-4">
-        <span className="text-slug-green font-bold">{timeLeft}s</span>
+        <span className="text-sloth-green font-bold">{timeLeft}s</span>
         <span className="text-white font-bold">Round {round + 1}/{maxRounds}</span>
-        <span className="text-slug-green font-bold">Hits: {score}</span>
+        <span className="text-sloth-green font-bold">Hits: {score}</span>
       </div>
-      <div className="relative w-full h-12 bg-slug-dark rounded-xl border border-slug-border cursor-pointer overflow-hidden" onClick={handleClick}>
+      <div className="relative w-full h-12 bg-sloth-dark rounded-xl border border-sloth-border cursor-pointer overflow-hidden" onClick={handleClick}>
         <div className="absolute top-0 h-full bg-green-500/30 border-x-2 border-green-500" style={{ left: `${greenStart}%`, width: '20%' }} />
         <div className="absolute top-0 h-full w-2 bg-white rounded transition-none" style={{ left: `${position}%` }} />
       </div>
@@ -187,7 +187,7 @@ function SlimeSlideGame({ onComplete }: { onComplete: (score: number) => void })
   )
 }
 
-// --- Shell Lift Game ---
+// --- Pillow Lift Game ---
 function ShellLiftGame({ onComplete }: { onComplete: (score: number) => void }) {
   const [timeLeft, setTimeLeft] = useState(10)
   const [power, setPower] = useState(0)
@@ -228,10 +228,10 @@ function ShellLiftGame({ onComplete }: { onComplete: (score: number) => void }) 
   return (
     <div className="w-full p-6 text-center select-none">
       <div className="flex justify-between mb-4">
-        <span className="text-slug-green font-bold">{timeLeft}s</span>
+        <span className="text-sloth-green font-bold">{timeLeft}s</span>
         <span className="text-white font-bold">{Math.round(power)}%</span>
       </div>
-      <div className="relative w-full h-16 bg-slug-dark rounded-xl border border-slug-border overflow-hidden mb-6">
+      <div className="relative w-full h-16 bg-sloth-dark rounded-xl border border-sloth-border overflow-hidden mb-6">
         <motion.div className={`h-full ${barColor} transition-colors`} style={{ width: `${power}%` }} />
         <div className="absolute top-0 right-0 h-full w-[5%] bg-red-500/30 border-l border-red-500" />
       </div>
@@ -239,12 +239,12 @@ function ShellLiftGame({ onComplete }: { onComplete: (score: number) => void }) 
         <button
           onMouseDown={() => setHolding(true)} onMouseUp={handleRelease}
           onTouchStart={() => setHolding(true)} onTouchEnd={handleRelease}
-          className={`w-full py-6 rounded-xl font-bold text-lg cursor-pointer transition-colors ${holding ? 'bg-yellow-500 text-yellow-900' : 'bg-slug-green text-slug-dark hover:bg-slug-green/90'}`}
+          className={`w-full py-6 rounded-xl font-bold text-lg cursor-pointer transition-colors ${holding ? 'bg-yellow-500 text-yellow-900' : 'bg-sloth-green text-sloth-dark hover:bg-sloth-green/90'}`}
         >{holding ? 'HOLDING... Release!' : 'HOLD to Lift'}</button>
       )}
       {gameOver && (
         <div className="text-center">
-          {exploded ? <p className="text-red-400 font-bold text-xl">EXPLODED! Score: 0</p> : <p className="text-slug-green font-bold text-xl">Released at {finalScore}%!</p>}
+          {exploded ? <p className="text-red-400 font-bold text-xl">EXPLODED! Score: 0</p> : <p className="text-sloth-green font-bold text-xl">Released at {finalScore}%!</p>}
         </div>
       )}
     </div>
@@ -275,14 +275,14 @@ function LuckyLeafGame({ onComplete }: { onComplete: (score: number) => void }) 
       <div className="flex gap-4 justify-center">
         {[0, 1, 2].map(i => (
           <motion.button key={i} whileHover={picked === null ? { scale: 1.05 } : {}} whileTap={picked === null ? { scale: 0.95 } : {}} onClick={() => handlePick(i)}
-            className={`w-24 h-36 rounded-xl border-2 flex flex-col items-center justify-center text-3xl font-bold cursor-pointer transition-colors ${picked === i ? 'border-slug-green bg-slug-green/20' : picked !== null ? 'border-slug-border bg-slug-dark opacity-60' : 'border-slug-border bg-slug-card hover:border-slug-green/50'}`}
+            className={`w-24 h-36 rounded-xl border-2 flex flex-col items-center justify-center text-3xl font-bold cursor-pointer transition-colors ${picked === i ? 'border-sloth-green bg-sloth-green/20' : picked !== null ? 'border-sloth-border bg-sloth-dark opacity-60' : 'border-sloth-border bg-sloth-card hover:border-sloth-green/50'}`}
           >
-            {revealed ? (<><span className="text-4xl mb-1">{cardIcons[i]}</span><span className={`text-lg font-extrabold ${multipliers[i] === 3 ? 'text-yellow-400' : multipliers[i] === 2 ? 'text-slug-green' : 'text-gray-400'}`}>{multipliers[i]}x</span></>) : picked === i ? (<motion.span animate={{ rotateY: 360 }} transition={{ duration: 0.8 }} className="text-4xl">{cardIcons[i]}</motion.span>) : (<span className="text-4xl">?</span>)}
+            {revealed ? (<><span className="text-4xl mb-1">{cardIcons[i]}</span><span className={`text-lg font-extrabold ${multipliers[i] === 3 ? 'text-yellow-400' : multipliers[i] === 2 ? 'text-sloth-green' : 'text-gray-400'}`}>{multipliers[i]}x</span></>) : picked === i ? (<motion.span animate={{ rotateY: 360 }} transition={{ duration: 0.8 }} className="text-4xl">{cardIcons[i]}</motion.span>) : (<span className="text-4xl">?</span>)}
           </motion.button>
         ))}
       </div>
       {revealed && picked !== null && (
-        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-slug-green font-bold text-xl mt-6">{multipliers[picked]}x Multiplier!</motion.p>
+        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-sloth-green font-bold text-xl mt-6">{multipliers[picked]}x Multiplier!</motion.p>
       )}
     </div>
   )
@@ -314,11 +314,11 @@ function SpeedTapGame({ onComplete }: { onComplete: (score: number) => void }) {
   return (
     <div className="w-full p-6 text-center select-none">
       <div className="flex justify-between mb-4">
-        <span className="text-slug-green font-bold">{timeLeft}s</span>
+        <span className="text-sloth-green font-bold">{timeLeft}s</span>
         <span className="text-white font-bold text-2xl">{taps} taps</span>
       </div>
       <motion.button whileTap={{ scale: 0.95 }} onClick={handleTap} disabled={gameOver}
-        className={`w-full py-16 rounded-xl font-bold text-2xl cursor-pointer transition-colors ${gameOver ? 'bg-slug-card border-2 border-slug-border text-gray-400' : 'bg-slug-green text-slug-dark hover:bg-slug-green/90 active:bg-slug-green/80'}`}
+        className={`w-full py-16 rounded-xl font-bold text-2xl cursor-pointer transition-colors ${gameOver ? 'bg-sloth-card border-2 border-sloth-border text-gray-400' : 'bg-sloth-green text-sloth-dark hover:bg-sloth-green/90 active:bg-sloth-green/80'}`}
       >{gameOver ? `${taps} Taps!` : started ? 'TAP! TAP! TAP!' : 'TAP TO START!'}</motion.button>
       {gameOver && (
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-gray-400 mt-4">
@@ -330,7 +330,7 @@ function SpeedTapGame({ onComplete }: { onComplete: (score: number) => void }) {
 }
 
 // --- MiniGameModal ---
-export default function MiniGameModal({ snailId, snailName, wallet, playsLeft, onClose, onGameComplete }: MiniGameModalProps) {
+export default function MiniGameModal({ slothId, slothName, wallet, playsLeft, onClose, onGameComplete }: MiniGameModalProps) {
   const [activeGame, setActiveGame] = useState<GameType | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{ gain: number; stat: string; newStatValue: number } | null>(null)
@@ -339,7 +339,7 @@ export default function MiniGameModal({ snailId, snailName, wallet, playsLeft, o
   async function handleGameComplete(gameType: GameType, score: number) {
     setSubmitting(true)
     try {
-      const data = await api.playMiniGame(wallet, snailId, gameType, score)
+      const data = await api.playMiniGame(wallet, slothId, gameType, score)
       setResult({ gain: data.gain, stat: data.stat, newStatValue: data.newStatValue })
       setRemainingPlays(prev => Math.max(0, prev - 1))
     } catch (err: any) {
@@ -373,15 +373,15 @@ export default function MiniGameModal({ snailId, snailName, wallet, playsLeft, o
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={e => e.stopPropagation()}
-          className="bg-slug-card border border-slug-border rounded-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="bg-sloth-card border border-sloth-border rounded-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slug-border">
+          <div className="flex items-center justify-between p-4 border-b border-sloth-border">
             <div>
               <h2 className="text-white font-bold text-lg">
                 {activeGame ? `${GAMES.find(g => g.id === activeGame)?.icon} ${GAMES.find(g => g.id === activeGame)?.name}` : 'Mini Games'}
               </h2>
-              <p className="text-gray-400 text-sm">{snailName} — {remainingPlays} plays left</p>
+              <p className="text-gray-400 text-sm">{slothName} — {remainingPlays} plays left</p>
             </div>
             <button onClick={activeGame ? closeGame : handleClose} className="text-gray-400 hover:text-white cursor-pointer text-xl leading-none">&#x2715;</button>
           </div>
@@ -395,11 +395,11 @@ export default function MiniGameModal({ snailId, snailName, wallet, playsLeft, o
                     key={game.id}
                     onClick={() => setActiveGame(game.id)}
                     disabled={remainingPlays <= 0}
-                    className="bg-slug-dark border border-slug-border rounded-xl p-4 text-left hover:border-slug-green/50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="bg-sloth-dark border border-sloth-border rounded-xl p-4 text-left hover:border-sloth-green/50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <div className="text-3xl mb-2">{game.icon}</div>
                     <p className="text-white font-bold text-sm">{game.name}</p>
-                    <p className="text-slug-purple text-xs font-semibold">{game.stat} | {game.duration}</p>
+                    <p className="text-sloth-purple text-xs font-semibold">{game.stat} | {game.duration}</p>
                     <p className="text-gray-500 text-xs mt-1">{game.description}</p>
                   </button>
                 ))}
@@ -410,8 +410,8 @@ export default function MiniGameModal({ snailId, snailName, wallet, playsLeft, o
             {activeGame && !result && !submitting && (
               <>
                 {activeGame === 'salt_dodge' && <SaltDodgeGame onComplete={s => handleGameComplete('salt_dodge', s)} />}
-                {activeGame === 'slime_slide' && <SlimeSlideGame onComplete={s => handleGameComplete('slime_slide', s)} />}
-                {activeGame === 'shell_lift' && <ShellLiftGame onComplete={s => handleGameComplete('shell_lift', s)} />}
+                {activeGame === 'yawn_stretch' && <SlimeSlideGame onComplete={s => handleGameComplete('yawn_stretch', s)} />}
+                {activeGame === 'pillow_lift' && <ShellLiftGame onComplete={s => handleGameComplete('pillow_lift', s)} />}
                 {activeGame === 'lucky_leaf' && <LuckyLeafGame onComplete={s => handleGameComplete('lucky_leaf', s)} />}
                 {activeGame === 'speed_tap' && <SpeedTapGame onComplete={s => handleGameComplete('speed_tap', s)} />}
               </>
@@ -428,13 +428,13 @@ export default function MiniGameModal({ snailId, snailName, wallet, playsLeft, o
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="py-8 text-center">
                 <div className="text-5xl mb-4">{'\u{2B50}'}</div>
                 <p className="text-white font-bold text-xl mb-2">Training Complete!</p>
-                <p className="text-slug-green font-bold text-lg mb-1">+{result.gain.toFixed(2)} {result.stat.toUpperCase()}</p>
+                <p className="text-sloth-green font-bold text-lg mb-1">+{result.gain.toFixed(2)} {result.stat.toUpperCase()}</p>
                 <p className="text-gray-400 text-sm">New {result.stat.toUpperCase()}: {result.newStatValue.toFixed(1)}</p>
                 <div className="flex gap-3 justify-center mt-6">
-                  <button onClick={closeGame} className="px-6 py-2.5 bg-slug-purple/20 text-slug-purple font-bold rounded-xl hover:bg-slug-purple/30 transition-colors cursor-pointer">
+                  <button onClick={closeGame} className="px-6 py-2.5 bg-sloth-purple/20 text-sloth-purple font-bold rounded-xl hover:bg-sloth-purple/30 transition-colors cursor-pointer">
                     Play Another
                   </button>
-                  <button onClick={handleClose} className="px-6 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer">
+                  <button onClick={handleClose} className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer">
                     Done
                   </button>
                 </div>

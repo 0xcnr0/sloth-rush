@@ -26,15 +26,15 @@ export default function Shop() {
   const [cosmeticsLoading, setCosmeticsLoading] = useState(false)
   const [accessoriesLoading, setAccessoriesLoading] = useState(false)
 
-  const [slugs, setSlugs] = useState<any[]>([])
+  const [sloths, setSloths] = useState<any[]>([])
 
   useEffect(() => {
     if (!address) return
     api.getCoinBalance(address).then(d => setBalance(d.balance)).catch((err) => { console.error('Failed to load balance:', err) })
-    api.getStable(address).then(d => {
-      const snails = d.slugs.filter((s: any) => s.type === 'snail')
-      setSlugs(snails)
-    }).catch((err) => { console.error('Failed to load stable:', err) })
+    api.getTreehouse(address).then(d => {
+      const slothsOnly = d.sloths.filter((s: any) => s.type === 'sloth')
+      setSloths(slothsOnly)
+    }).catch((err) => { console.error('Failed to load treehouse:', err) })
   }, [address])
 
   // Load cosmetics
@@ -77,7 +77,7 @@ export default function Shop() {
     try {
       const data = await api.buyCosmetic(address, cosmeticId)
       setBalance(data.newBalance)
-      toast.success('Purchased! Go to your Stable to equip it.')
+      toast.success('Purchased! Go to your Treehouse to equip it.')
       const d = await api.getShopCosmetics(address)
       setCosmetics(d.cosmetics)
     } catch (err: any) {
@@ -92,7 +92,7 @@ export default function Shop() {
     try {
       const data = await api.buyAccessory(address, accessoryId)
       setBalance(data.newBalance)
-      toast.success('Purchased! Go to your Stable to equip it.')
+      toast.success('Purchased! Go to your Treehouse to equip it.')
       const d = await api.getShopAccessories(address)
       setAccessories(d.accessories)
     } catch (err: any) {
@@ -104,7 +104,7 @@ export default function Shop() {
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Connect your wallet to buy SLUG Coins</p>
+        <p className="text-gray-400">Connect your wallet to buy ZZZ Coins</p>
         <ConnectButton />
       </div>
     )
@@ -121,12 +121,12 @@ export default function Shop() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">SLUG Shop</h1>
+          <h1 className="text-3xl font-bold">ZZZ Shop</h1>
           <p className="text-gray-400 mt-1">Buy coins, cosmetics, and accessories</p>
         </div>
-        <div className="flex items-center gap-2 bg-slug-card border border-slug-border rounded-xl px-4 py-2">
-          <span className="text-slug-green font-bold text-lg">{balance}</span>
-          <span className="text-slug-green/70 text-sm">SLUG</span>
+        <div className="flex items-center gap-2 bg-sloth-card border border-sloth-border rounded-xl px-4 py-2">
+          <span className="text-sloth-green font-bold text-lg">{balance}</span>
+          <span className="text-sloth-green/70 text-sm">ZZZ</span>
         </div>
       </div>
 
@@ -142,8 +142,8 @@ export default function Shop() {
             onClick={() => setTab(t.id)}
             className={`px-5 py-2 rounded-lg font-semibold text-sm transition-colors cursor-pointer ${
               tab === t.id
-                ? 'bg-slug-green/20 text-slug-green border border-slug-green'
-                : 'bg-slug-card border border-slug-border text-gray-500 hover:text-white'
+                ? 'bg-sloth-green/20 text-sloth-green border border-sloth-green'
+                : 'bg-sloth-card border border-sloth-border text-gray-500 hover:text-white'
             }`}
           >
             {t.label}
@@ -157,10 +157,10 @@ export default function Shop() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          className="mb-6 bg-slug-green/10 border border-slug-green rounded-xl p-4 text-center"
+          className="mb-6 bg-sloth-green/10 border border-sloth-green rounded-xl p-4 text-center"
         >
-          <span className="text-slug-green font-bold">
-            +{lastPurchase.coins} SLUG Coins added! ({lastPurchase.name} package)
+          <span className="text-sloth-green font-bold">
+            +{lastPurchase.coins} ZZZ Coins added! ({lastPurchase.name} package)
           </span>
         </motion.div>
       )}
@@ -182,9 +182,9 @@ export default function Shop() {
                   <span className="text-4xl mb-3">{style.icon}</span>
                   <h3 className="text-white font-bold text-lg mb-1">{pkg.name}</h3>
                   <p className="text-3xl font-extrabold text-white mb-1">{pkg.coins}</p>
-                  <p className="text-gray-400 text-sm mb-1">SLUG Coins</p>
+                  <p className="text-gray-400 text-sm mb-1">ZZZ Coins</p>
                   {pkg.bonus > 0 && (
-                    <span className="text-slug-green text-xs font-bold mb-3">+{pkg.bonus}% bonus</span>
+                    <span className="text-sloth-green text-xs font-bold mb-3">+{pkg.bonus}% bonus</span>
                   )}
                   {pkg.bonus === 0 && <div className="mb-3" />}
                   <p className="text-gray-300 font-semibold mb-4">${pkg.price} USDC</p>
@@ -209,16 +209,16 @@ export default function Shop() {
           </div>
 
           {/* Info */}
-          <div className="mt-8 bg-slug-card border border-slug-border rounded-xl p-6">
-            <h3 className="text-white font-semibold mb-3">What can you do with SLUG Coins?</h3>
+          <div className="mt-8 bg-sloth-card border border-sloth-border rounded-xl p-6">
+            <h3 className="text-white font-semibold mb-3">What can you do with ZZZ Coins?</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="text-gray-300 font-medium">Race Entry</p>
-                <p className="text-gray-500">Standard: 50 SLUG / Grand Prix: 150 SLUG</p>
+                <p className="text-gray-500">Standard: 50 ZZZ / Grand Prix: 150 ZZZ</p>
               </div>
               <div>
                 <p className="text-gray-300 font-medium">Grid Boost</p>
-                <p className="text-gray-500">Boost up to 100-300 SLUG for Pole Position</p>
+                <p className="text-gray-500">Boost up to 100-300 ZZZ for Pole Position</p>
               </div>
               <div>
                 <p className="text-gray-300 font-medium">Daily Free Race</p>
@@ -238,7 +238,7 @@ export default function Shop() {
             <div className="text-center py-12">
               <div className="text-4xl mb-3">{'\u{1F3A8}'}</div>
               <p className="text-gray-400">No cosmetics available yet.</p>
-              <p className="text-gray-500 text-sm mt-1">Check back soon for shell skins and trail effects!</p>
+              <p className="text-gray-500 text-sm mt-1">Check back soon for fur skins and trail effects!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -248,8 +248,8 @@ export default function Shop() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className={`bg-slug-card border rounded-xl p-5 ${
-                    item.owned ? 'border-slug-green/40' : 'border-slug-border'
+                  className={`bg-sloth-card border rounded-xl p-5 ${
+                    item.owned ? 'border-sloth-green/40' : 'border-sloth-border'
                   }`}
                 >
                   <div className="text-center mb-3">
@@ -271,18 +271,18 @@ export default function Shop() {
                   )}
                   {!item.owned ? (
                     <>
-                      <p className="text-slug-green font-bold text-center mb-3">{item.price} SLUG</p>
+                      <p className="text-sloth-green font-bold text-center mb-3">{item.price} ZZZ</p>
                       <button
                         onClick={() => handleBuyCosmetic(item.id)}
                         disabled={buying !== null || balance < (item.price || 0)}
-                        className="w-full py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer disabled:opacity-40 text-sm"
+                        className="w-full py-2 bg-sloth-green/20 text-sloth-green font-semibold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer disabled:opacity-40 text-sm"
                       >
                         {buying === `cosmetic-${item.id}` ? 'Buying...' : 'Buy'}
                       </button>
                     </>
                   ) : (
-                    <p className="text-slug-green text-xs font-semibold text-center flex items-center justify-center gap-1">
-                      {'\u2705'} Owned — Equip in Stable
+                    <p className="text-sloth-green text-xs font-semibold text-center flex items-center justify-center gap-1">
+                      {'\u2705'} Owned — Equip in Treehouse
                     </p>
                   )}
                 </motion.div>
@@ -311,8 +311,8 @@ export default function Shop() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className={`bg-slug-card border rounded-xl p-5 ${
-                    item.owned ? 'border-slug-purple/40' : 'border-slug-border'
+                  className={`bg-sloth-card border rounded-xl p-5 ${
+                    item.owned ? 'border-sloth-purple/40' : 'border-sloth-border'
                   }`}
                 >
                   <div className="text-center mb-3">
@@ -325,7 +325,7 @@ export default function Shop() {
                   {item.statBonuses && (
                     <div className="flex flex-wrap justify-center gap-1 mb-3">
                       {Object.entries(item.statBonuses).map(([stat, val]: [string, any]) => (
-                        <span key={stat} className="bg-slug-dark text-slug-green text-[10px] font-bold px-2 py-0.5 rounded">
+                        <span key={stat} className="bg-sloth-dark text-sloth-green text-[10px] font-bold px-2 py-0.5 rounded">
                           {stat.toUpperCase()} +{val}
                         </span>
                       ))}
@@ -334,18 +334,18 @@ export default function Shop() {
 
                   {!item.owned ? (
                     <>
-                      <p className="text-slug-green font-bold text-center mb-3">{item.price} SLUG</p>
+                      <p className="text-sloth-green font-bold text-center mb-3">{item.price} ZZZ</p>
                       <button
                         onClick={() => handleBuyAccessory(item.id)}
                         disabled={buying !== null || balance < (item.price || 0)}
-                        className="w-full py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer disabled:opacity-40 text-sm"
+                        className="w-full py-2 bg-sloth-green/20 text-sloth-green font-semibold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer disabled:opacity-40 text-sm"
                       >
                         {buying === `accessory-${item.id}` ? 'Buying...' : 'Buy'}
                       </button>
                     </>
                   ) : (
-                    <p className="text-slug-green text-xs font-semibold text-center flex items-center justify-center gap-1">
-                      {'\u2705'} Owned — Equip in Stable
+                    <p className="text-sloth-green text-xs font-semibold text-center flex items-center justify-center gap-1">
+                      {'\u2705'} Owned — Equip in Treehouse
                     </p>
                   )}
                 </motion.div>

@@ -1,8 +1,8 @@
 // Contract addresses — update these after deployment to Base Sepolia
 export const CONTRACTS = {
-  freeSlug: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  snail: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  slugRush: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  freeSloth: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  sloth: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  slothRush: '0x0000000000000000000000000000000000000000' as `0x${string}`,
 } as const
 
 // Set to true after deploying to Base Sepolia
@@ -10,7 +10,7 @@ export const CONTRACTS_DEPLOYED = false
 
 // Minimal ABIs — only functions we call from frontend
 
-export const FREE_SLUG_ABI = [
+export const FREE_SLOTH_ABI = [
   {
     inputs: [],
     name: 'mint',
@@ -48,7 +48,7 @@ export const FREE_SLUG_ABI = [
   },
 ] as const
 
-export const SNAIL_ABI = [
+export const SLOTH_ABI = [
   {
     inputs: [{ name: 'tokenId', type: 'uint256' }],
     name: 'getStats',
@@ -80,10 +80,10 @@ export const SNAIL_ABI = [
   },
 ] as const
 
-export const SLUG_RUSH_ABI = [
+export const SLOTH_RUSH_ABI = [
   {
     inputs: [
-      { name: 'freeSlugId', type: 'uint256' },
+      { name: 'freeSlothId', type: 'uint256' },
       { name: 'rarity', type: 'uint8' },
       { name: 'spd', type: 'uint8' },
       { name: 'acc', type: 'uint8' },

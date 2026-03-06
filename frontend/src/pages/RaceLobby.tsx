@@ -11,9 +11,9 @@ type Phase = 'select' | 'lobby' | 'bidding' | 'reveal' | 'starting' | 'gp_break'
 
 const FORMATS = [
   { id: 'exhibition', name: 'Exhibition', fee: 0, maxRaise: 0, desc: 'Free practice race' },
-  { id: 'standard', name: 'Standard Race', fee: 50, maxRaise: 100, desc: '50 SLUG entry, win big' },
+  { id: 'standard', name: 'Standard Race', fee: 50, maxRaise: 100, desc: '50 ZZZ entry, win big' },
   { id: 'grand_prix', name: 'Grand Prix', fee: 150, maxRaise: 300, desc: 'High stakes racing' },
-  { id: 'tactic', name: 'Tactic Challenge', fee: 75, maxRaise: 150, desc: 'Use Boost & Shell during race!' },
+  { id: 'tactic', name: 'Tactic Challenge', fee: 75, maxRaise: 150, desc: 'Use Boost & Pillow during race!' },
 ]
 
 export default function RaceLobby() {
@@ -25,9 +25,9 @@ export default function RaceLobby() {
   const [liveLoading, setLiveLoading] = useState(false)
 
   const [phase, setPhase] = useState<Phase>('select')
-  const [snails, setSnails] = useState<any[]>([])
+  const [sloths, setSloths] = useState<any[]>([])
   const [coinBalance, setCoinBalance] = useState(0)
-  const [selectedSnail, setSelectedSnail] = useState<any>(null)
+  const [selectedSloth, setSelectedSloth] = useState<any>(null)
   const [selectedFormat, setSelectedFormat] = useState(FORMATS[1])
   const [raceId, setRaceId] = useState('')
   const [participants, setParticipants] = useState<any[]>([])
@@ -44,14 +44,14 @@ export default function RaceLobby() {
 
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Load creatures (snails + free slugs)
+  // Load creatures (sloths + free sloths)
   const [allCreatures, setAllCreatures] = useState<any[]>([])
   useEffect(() => {
     if (!address) return
-    api.getStable(address).then(data => {
-      setAllCreatures(data.slugs)
+    api.getTreehouse(address).then(data => {
+      setAllCreatures(data.sloths)
       setCoinBalance(data.coinBalance)
-    }).catch((err) => { console.error('Failed to load stable:', err); toast.error('Failed to load data. Please refresh.') })
+    }).catch((err) => { console.error('Failed to load treehouse:', err); toast.error('Failed to load data. Please refresh.') })
   }, [address])
 
   // Load daily race info
@@ -59,21 +59,21 @@ export default function RaceLobby() {
     api.getDailyRace().then(setDailyRace).catch((err) => { console.error('Failed to load daily race:', err) })
   }, [])
 
-  // Filter creatures based on format: exhibition → all, others → snails only, GP → tier gate
+  // Filter creatures based on format: exhibition → all, others → sloths only, GP → tier gate
   useEffect(() => {
     if (selectedFormat.id === 'exhibition') {
-      setSnails(allCreatures)
+      setSloths(allCreatures)
     } else if (selectedFormat.id === 'grand_prix') {
-      // GP: no free slugs, Gold GP (fee > 150) requires tier >= 2
-      setSnails(allCreatures.filter((s: any) => {
-        if (s.type === 'free_slug') return false
+      // GP: no free sloths, Gold GP (fee > 150) requires tier >= 2
+      setSloths(allCreatures.filter((s: any) => {
+        if (s.type === 'free_sloth') return false
         if (selectedFormat.fee > 150 && (s.tier || 0) < 2) return false
         return true
       }))
     } else {
-      setSnails(allCreatures.filter((s: any) => s.type === 'snail'))
+      setSloths(allCreatures.filter((s: any) => s.type === 'sloth'))
     }
-    setSelectedSnail(null)
+    setSelectedSloth(null)
   }, [selectedFormat, allCreatures])
 
   // Poll live races when on the Live Races tab
@@ -113,7 +113,7 @@ export default function RaceLobby() {
   }, [countdown, phase, bidSubmitted])
 
   async function handleCreateAndJoin() {
-    if (!address || !selectedSnail) return
+    if (!address || !selectedSloth) return
     setLoading(true)
     try {
       if (selectedFormat.id === 'grand_prix') {
@@ -123,14 +123,14 @@ export default function RaceLobby() {
         setGpFinalId(gp.finalRaceId)
         setRaceId(gp.qualifyRaceId)
 
-        const joined = await api.joinRace(gp.qualifyRaceId, selectedSnail.id, address)
+        const joined = await api.joinRace(gp.qualifyRaceId, selectedSloth.id, address)
         setCoinBalance(joined.newBalance)
         setPhase('lobby')
       } else {
-        const race = await api.createRace(address, selectedSnail.id, selectedFormat.id)
+        const race = await api.createRace(address, selectedSloth.id, selectedFormat.id)
         setRaceId(race.raceId)
 
-        const joined = await api.joinRace(race.raceId, selectedSnail.id, address)
+        const joined = await api.joinRace(race.raceId, selectedSloth.id, address)
         setCoinBalance(joined.newBalance)
         setPhase('lobby')
       }
@@ -154,7 +154,7 @@ export default function RaceLobby() {
         setPhase('starting')
         const result = await api.simulateRace(raceId)
         setGridPositions(result.gridPositions)
-        navigate(`/race/${raceId}`, { state: { raceResult: result, format: selectedFormat.id, snailId: selectedSnail?.id } })
+        navigate(`/race/${raceId}`, { state: { raceResult: result, format: selectedFormat.id, slothId: selectedSloth?.id } })
       } else {
         setPhase('bidding')
         startCountdown()
@@ -208,7 +208,7 @@ export default function RaceLobby() {
       } else {
         // Regular race — navigate to broadcast
         setTimeout(() => {
-          navigate(`/race/${raceId}`, { state: { raceResult: result, format: selectedFormat.id, snailId: selectedSnail?.id } })
+          navigate(`/race/${raceId}`, { state: { raceResult: result, format: selectedFormat.id, slothId: selectedSloth?.id } })
         }, 4000)
       }
     } catch (err: any) {
@@ -235,7 +235,7 @@ export default function RaceLobby() {
             <button
               onClick={() => setMainTab('create')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mainTab === 'create' ? 'bg-slug-green/20 text-slug-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                mainTab === 'create' ? 'bg-sloth-green/20 text-sloth-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
               Create Race
@@ -243,7 +243,7 @@ export default function RaceLobby() {
             <button
               onClick={() => setMainTab('live')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mainTab === 'live' ? 'bg-slug-green/20 text-slug-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                mainTab === 'live' ? 'bg-sloth-green/20 text-sloth-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
               Live Races
@@ -278,10 +278,10 @@ export default function RaceLobby() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="bg-slug-card border border-slug-border rounded-xl p-4 flex items-center justify-between hover:border-slug-green/30 transition-colors"
+                  className="bg-sloth-card border border-sloth-border rounded-xl p-4 flex items-center justify-between hover:border-sloth-green/30 transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-slug-green/10 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-sloth-green/10 rounded-lg flex items-center justify-center">
                       <span className="text-xl">{'\u{1F40C}'}</span>
                     </div>
                     <div>
@@ -301,7 +301,7 @@ export default function RaceLobby() {
                     </div>
                     <button
                       onClick={() => navigate(`/race/${race.raceId || race.id}`)}
-                      className="px-4 py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer text-sm"
+                      className="px-4 py-2 bg-sloth-green/20 text-sloth-green font-semibold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer text-sm"
                     >
                       Watch
                     </button>
@@ -317,7 +317,7 @@ export default function RaceLobby() {
       {(mainTab === 'create' || phase !== 'select') && (
       <div className="max-w-3xl mx-auto px-4 py-8">
       <AnimatePresence mode="wait">
-        {/* Phase 1: Snail & Format Selection */}
+        {/* Phase 1: Sloth & Format Selection */}
         {phase === 'select' && (
           <motion.div
             key="select"
@@ -329,12 +329,12 @@ export default function RaceLobby() {
 
             {/* Daily Race Banner */}
             {dailyRace && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-slug-purple/20 to-slug-green/20 border border-slug-purple/30 rounded-xl">
+              <div className="mb-6 p-4 bg-gradient-to-r from-sloth-purple/20 to-sloth-green/20 border border-sloth-purple/30 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white font-bold text-sm">Daily Race</p>
                     <p className="text-gray-400 text-xs">
-                      Weather: <span className="text-slug-green font-semibold capitalize">{dailyRace.weather}</span>
+                      Weather: <span className="text-sloth-green font-semibold capitalize">{dailyRace.weather}</span>
                       {' \u2022 '}Daily Exhibition Race
                     </p>
                     <p className="text-gray-500 text-[10px] mt-0.5">Free exhibition race with today's weather. Play as many times as you want.</p>
@@ -344,7 +344,7 @@ export default function RaceLobby() {
                       setSelectedFormat(FORMATS[0]) // Exhibition
                       setRaceId(dailyRace.raceId)
                     }}
-                    className="px-4 py-1.5 bg-slug-purple text-white font-bold rounded-lg text-sm cursor-pointer hover:bg-slug-purple/80"
+                    className="px-4 py-1.5 bg-sloth-purple text-white font-bold rounded-lg text-sm cursor-pointer hover:bg-sloth-purple/80"
                   >
                     Join Daily
                   </button>
@@ -363,15 +363,15 @@ export default function RaceLobby() {
               </div>
             </div>
 
-            {snails.length === 0 ? (
+            {sloths.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">&#x1f40c;</div>
-                <p className="text-gray-400 mb-4">You need a Snail to race</p>
+                <p className="text-gray-400 mb-4">You need a Sloth to race</p>
                 <button
-                  onClick={() => navigate('/stable')}
-                  className="px-6 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl cursor-pointer"
+                  onClick={() => navigate('/treehouse')}
+                  className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl cursor-pointer"
                 >
-                  Go to Stable
+                  Go to Treehouse
                 </button>
               </div>
             ) : (
@@ -379,8 +379,8 @@ export default function RaceLobby() {
                 {/* Balance */}
                 <div className="flex items-center gap-2 mb-6">
                   <span className="text-gray-400">Balance:</span>
-                  <span className="text-slug-green font-bold text-xl">{coinBalance}</span>
-                  <span className="text-slug-green/70 text-sm">SLUG</span>
+                  <span className="text-sloth-green font-bold text-xl">{coinBalance}</span>
+                  <span className="text-sloth-green/70 text-sm">ZZZ</span>
                 </div>
 
                 {/* Format selection */}
@@ -392,42 +392,42 @@ export default function RaceLobby() {
                       onClick={() => setSelectedFormat(fmt)}
                       className={`p-4 rounded-xl border text-left transition-colors cursor-pointer ${
                         selectedFormat.id === fmt.id
-                          ? 'border-slug-green bg-slug-green/10'
-                          : 'border-slug-border bg-slug-card hover:border-gray-500'
+                          ? 'border-sloth-green bg-sloth-green/10'
+                          : 'border-sloth-border bg-sloth-card hover:border-gray-500'
                       }`}
                     >
                       <p className="text-white font-semibold">{fmt.name}</p>
                       <p className="text-gray-500 text-sm mt-1">{fmt.desc}</p>
                       {fmt.fee > 0 && (
-                        <p className="text-slug-green text-sm font-bold mt-2">{fmt.fee} SLUG Entry</p>
+                        <p className="text-sloth-green text-sm font-bold mt-2">{fmt.fee} ZZZ Entry</p>
                       )}
                     </button>
                   ))}
                 </div>
 
-                {/* Snail selection */}
-                <h2 className="text-lg font-semibold text-gray-300 mb-3">Select Your Snail</h2>
+                {/* Sloth selection */}
+                <h2 className="text-lg font-semibold text-gray-300 mb-3">Select Your Sloth</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                  {snails.map(snail => (
+                  {sloths.map(sloth => (
                     <button
-                      key={snail.id}
-                      onClick={() => setSelectedSnail(snail)}
+                      key={sloth.id}
+                      onClick={() => setSelectedSloth(sloth)}
                       className={`p-4 rounded-xl border flex items-center gap-4 transition-colors cursor-pointer ${
-                        selectedSnail?.id === snail.id
-                          ? 'border-slug-green bg-slug-green/10'
-                          : 'border-slug-border bg-slug-card hover:border-gray-500'
+                        selectedSloth?.id === sloth.id
+                          ? 'border-sloth-green bg-sloth-green/10'
+                          : 'border-sloth-border bg-sloth-card hover:border-gray-500'
                       }`}
                     >
                       <span className="text-3xl">&#x1f40c;</span>
                       <div className="text-left">
                         <p className="text-white font-semibold flex items-center gap-2">
-                          {snail.name}
-                          {snail.type === 'free_slug' && (
-                            <span className="px-1.5 py-0.5 bg-slug-blue/20 text-slug-blue text-[10px] font-bold rounded">FREE SLUG</span>
+                          {sloth.name}
+                          {sloth.type === 'free_sloth' && (
+                            <span className="px-1.5 py-0.5 bg-sloth-blue/20 text-sloth-blue text-[10px] font-bold rounded">FREE ZZZ</span>
                           )}
                         </p>
                         <p className="text-gray-500 text-xs capitalize">
-                          {snail.type === 'free_slug' ? 'Free Slug' : `${snail.rarity} ${snail.race?.replace('_', ' ')}`}
+                          {sloth.type === 'free_sloth' ? 'Free Sloth' : `${sloth.rarity} ${sloth.race?.replace('_', ' ')}`}
                         </p>
                       </div>
                     </button>
@@ -437,14 +437,14 @@ export default function RaceLobby() {
                 {/* Start button */}
                 <button
                   onClick={handleCreateAndJoin}
-                  disabled={!selectedSnail || loading || (selectedFormat.fee > coinBalance)}
-                  className="w-full py-3 bg-slug-green text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-green/90 transition-colors disabled:opacity-50 cursor-pointer"
+                  disabled={!selectedSloth || loading || (selectedFormat.fee > coinBalance)}
+                  className="w-full py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {loading ? 'Creating Race...' : `Enter Race (${selectedFormat.fee > 0 ? selectedFormat.fee + ' SLUG' : 'Free'})`}
+                  {loading ? 'Creating Race...' : `Enter Race (${selectedFormat.fee > 0 ? selectedFormat.fee + ' ZZZ' : 'Free'})`}
                 </button>
                 {selectedFormat.fee > 0 && coinBalance < selectedFormat.fee && (
                   <p className="text-red-400 text-sm text-center mt-2">
-                    Need {selectedFormat.fee} SLUG — you have {coinBalance}. Visit the Shop to buy more.
+                    Need {selectedFormat.fee} ZZZ — you have {coinBalance}. Visit the Shop to buy more.
                   </p>
                 )}
               </>
@@ -467,14 +467,14 @@ export default function RaceLobby() {
             {/* 4 slots */}
             <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
               {/* Player slot */}
-              <div className="bg-slug-card border-2 border-slug-green rounded-xl p-4 text-center">
+              <div className="bg-sloth-card border-2 border-sloth-green rounded-xl p-4 text-center">
                 <div className="text-3xl mb-2">&#x1f40c;</div>
-                <p className="text-white font-semibold text-sm">{selectedSnail?.name}</p>
-                <p className="text-slug-green text-xs">YOU</p>
+                <p className="text-white font-semibold text-sm">{selectedSloth?.name}</p>
+                <p className="text-sloth-green text-xs">YOU</p>
               </div>
               {/* Bot slots */}
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-slug-card border border-slug-border rounded-xl p-4 text-center">
+                <div key={i} className="bg-sloth-card border border-sloth-border rounded-xl p-4 text-center">
                   <div className="text-3xl mb-2 opacity-30">&#x1f916;</div>
                   <p className="text-gray-500 text-sm">Waiting...</p>
                   <p className="text-gray-600 text-xs">BOT</p>
@@ -485,7 +485,7 @@ export default function RaceLobby() {
             <button
               onClick={handleStartBidding}
               disabled={loading}
-              className="px-8 py-3 bg-slug-green text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-green/90 transition-colors disabled:opacity-50 cursor-pointer"
+              className="px-8 py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors disabled:opacity-50 cursor-pointer"
             >
               {loading ? 'Filling with Bots...' : 'Start Race!'}
             </button>
@@ -503,7 +503,7 @@ export default function RaceLobby() {
           >
             <h1 className="text-2xl font-bold mb-2">GRID BOOST</h1>
             <p className="text-gray-400 mb-2">Boost your starting position!</p>
-            <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">Spend SLUG Coins to boost your grid position. Highest boost starts in pole position with a small lead. Coins are returned — it only determines starting order.</p>
+            <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">Spend ZZZ Coins to boost your grid position. Highest boost starts in pole position with a small lead. Coins are returned — it only determines starting order.</p>
 
             {/* Big countdown */}
             <motion.div
@@ -511,7 +511,7 @@ export default function RaceLobby() {
               initial={{ scale: 1.3, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className={`text-8xl font-extrabold mb-8 ${
-                countdown <= 3 ? 'text-slug-red' : countdown <= 5 ? 'text-slug-gold' : 'text-white'
+                countdown <= 3 ? 'text-sloth-red' : countdown <= 5 ? 'text-sloth-gold' : 'text-white'
               }`}
             >
               {countdown}
@@ -522,8 +522,8 @@ export default function RaceLobby() {
               {participants.map((p: any, i: number) => (
                 <div
                   key={i}
-                  className={`bg-slug-card border rounded-lg p-3 text-center w-20 ${
-                    p.wallet === address ? 'border-slug-green' : 'border-slug-border'
+                  className={`bg-sloth-card border rounded-lg p-3 text-center w-20 ${
+                    p.wallet === address ? 'border-sloth-green' : 'border-sloth-border'
                   }`}
                 >
                   <div className="text-2xl mb-1">{p.is_bot ? '\u{1F916}' : '\u{1F40C}'}</div>
@@ -537,7 +537,7 @@ export default function RaceLobby() {
               <div className="max-w-sm mx-auto">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-400 text-sm">Boost Amount</span>
-                  <span className="text-slug-green font-bold text-lg">{bidAmount} SLUG</span>
+                  <span className="text-sloth-green font-bold text-lg">{bidAmount} ZZZ</span>
                 </div>
                 <input
                   type="range"
@@ -545,7 +545,7 @@ export default function RaceLobby() {
                   max={Math.min(selectedFormat.maxRaise, coinBalance)}
                   value={bidAmount}
                   onChange={e => setBidAmount(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slug-border accent-slug-green"
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-sloth-border accent-sloth-green"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>0</span>
@@ -554,7 +554,7 @@ export default function RaceLobby() {
 
                 <button
                   onClick={handleBidSubmit}
-                  className="w-full mt-6 py-3 bg-slug-gold text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-gold/90 transition-colors cursor-pointer"
+                  className="w-full mt-6 py-3 bg-sloth-gold text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-gold/90 transition-colors cursor-pointer"
                 >
                   CONFIRM BOOST
                 </button>
@@ -563,10 +563,10 @@ export default function RaceLobby() {
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-slug-green/10 border border-slug-green rounded-xl p-6 max-w-sm mx-auto"
+                className="bg-sloth-green/10 border border-sloth-green rounded-xl p-6 max-w-sm mx-auto"
               >
                 <div className="text-3xl mb-2">&#x1f512;</div>
-                <p className="text-slug-green font-bold">Boost Locked: {bidAmount} SLUG</p>
+                <p className="text-sloth-green font-bold">Boost Locked: {bidAmount} ZZZ</p>
                 <p className="text-gray-400 text-sm mt-1">Revealing boosts...</p>
               </motion.div>
             )}
@@ -586,7 +586,7 @@ export default function RaceLobby() {
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 150 }}
-              className="text-3xl font-extrabold text-slug-gold mb-8"
+              className="text-3xl font-extrabold text-sloth-gold mb-8"
             >
               WHO GOT POLE POSITION?
             </motion.h1>
@@ -599,20 +599,20 @@ export default function RaceLobby() {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: i * 0.6, type: 'spring' }}
                   className={`flex items-center gap-4 p-4 rounded-xl border ${
-                    i === 0 ? 'bg-slug-gold/10 border-slug-gold' :
-                    'bg-slug-card border-slug-border'
+                    i === 0 ? 'bg-sloth-gold/10 border-sloth-gold' :
+                    'bg-sloth-card border-sloth-border'
                   }`}
                 >
-                  <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-slug-gold' : 'text-gray-500'}`}>
+                  <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-sloth-gold' : 'text-gray-500'}`}>
                     P{gp.position}
                   </span>
                   <span className="text-2xl">&#x1f40c;</span>
                   <div className="flex-1 text-left">
                     <p className="text-white font-semibold">{gp.name}</p>
-                    <p className="text-gray-500 text-xs">Boost: {gp.bid} SLUG</p>
+                    <p className="text-gray-500 text-xs">Boost: {gp.bid} ZZZ</p>
                   </div>
                   {i === 0 && (
-                    <span className="text-slug-gold text-sm font-bold">POLE</span>
+                    <span className="text-sloth-gold text-sm font-bold">POLE</span>
                   )}
                 </motion.div>
               ))}
@@ -640,7 +640,7 @@ export default function RaceLobby() {
             <motion.h1
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
-              className="text-3xl font-extrabold text-slug-gold mb-4"
+              className="text-3xl font-extrabold text-sloth-gold mb-4"
             >
               ELIMINATION COMPLETE!
             </motion.h1>
@@ -656,17 +656,17 @@ export default function RaceLobby() {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: i * 0.3 }}
                   className={`flex items-center gap-3 p-3 rounded-lg ${
-                    i === 0 ? 'bg-slug-gold/10 border border-slug-gold' : 'bg-slug-card border border-slug-border'
+                    i === 0 ? 'bg-sloth-gold/10 border border-sloth-gold' : 'bg-sloth-card border border-sloth-border'
                   }`}
                 >
-                  <span className={`font-bold w-8 ${i === 0 ? 'text-slug-gold' : 'text-gray-500'}`}>{i + 1}.</span>
+                  <span className={`font-bold w-8 ${i === 0 ? 'text-sloth-gold' : 'text-gray-500'}`}>{i + 1}.</span>
                   <span className="text-white font-semibold">{q.name}</span>
                   {q.isBot && <span className="text-gray-600 text-xs">BOT</span>}
                 </motion.div>
               ))}
             </div>
 
-            <p className="text-slug-purple text-sm font-bold">FINAL = TACTIC MODE + GDA PRICING + CHAOS MODE!</p>
+            <p className="text-sloth-purple text-sm font-bold">FINAL = TACTIC MODE + GDA PRICING + CHAOS MODE!</p>
           </motion.div>
         )}
 
@@ -679,14 +679,14 @@ export default function RaceLobby() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="text-center"
           >
-            <h1 className="text-2xl font-bold mb-2 text-slug-gold">GRAND PRIX FINAL</h1>
+            <h1 className="text-2xl font-bold mb-2 text-sloth-gold">GRAND PRIX FINAL</h1>
             <p className="text-gray-400 mb-4">Final bid! Race in Tactic Mode!</p>
 
             <motion.div
               key={countdown}
               initial={{ scale: 1.3, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className={`text-7xl font-extrabold mb-6 ${countdown <= 3 ? 'text-slug-red' : 'text-white'}`}
+              className={`text-7xl font-extrabold mb-6 ${countdown <= 3 ? 'text-sloth-red' : 'text-white'}`}
             >
               {countdown}
             </motion.div>
@@ -695,7 +695,7 @@ export default function RaceLobby() {
               <div className="max-w-sm mx-auto">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-400 text-sm">Final Boost</span>
-                  <span className="text-slug-green font-bold text-lg">{bidAmount} SLUG</span>
+                  <span className="text-sloth-green font-bold text-lg">{bidAmount} ZZZ</span>
                 </div>
                 <input
                   type="range"
@@ -703,7 +703,7 @@ export default function RaceLobby() {
                   max={Math.min(selectedFormat?.maxRaise || 300, coinBalance)}
                   value={bidAmount}
                   onChange={e => setBidAmount(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slug-border accent-slug-green"
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-sloth-border accent-sloth-green"
                 />
                 <button
                   onClick={async () => {
@@ -714,21 +714,21 @@ export default function RaceLobby() {
                       await api.submitBid(gpFinalId, address, bidAmount)
                       await new Promise(r => setTimeout(r, 1500))
                       const result = await api.simulateRace(gpFinalId)
-                      navigate(`/race/${gpFinalId}`, { state: { raceResult: result, format: 'gp_final', snailId: selectedSnail?.id } })
+                      navigate(`/race/${gpFinalId}`, { state: { raceResult: result, format: 'gp_final', slothId: selectedSloth?.id } })
                     } catch (err: any) {
                       toast.error(err.message)
                       setBidSubmitted(false)
                     }
                   }}
-                  className="w-full mt-4 py-3 bg-slug-gold text-slug-dark font-bold rounded-xl text-lg cursor-pointer"
+                  className="w-full mt-4 py-3 bg-sloth-gold text-sloth-dark font-bold rounded-xl text-lg cursor-pointer"
                 >
                   CONFIRM FINAL BOOST
                 </button>
               </div>
             ) : (
-              <div className="bg-slug-green/10 border border-slug-green rounded-xl p-6 max-w-sm mx-auto">
+              <div className="bg-sloth-green/10 border border-sloth-green rounded-xl p-6 max-w-sm mx-auto">
                 <div className="text-3xl mb-2">&#x1f512;</div>
-                <p className="text-slug-green font-bold">Final Boost Locked: {bidAmount} SLUG</p>
+                <p className="text-sloth-green font-bold">Final Boost Locked: {bidAmount} ZZZ</p>
                 <p className="text-gray-400 text-sm mt-1">Starting Grand Prix Final...</p>
               </div>
             )}

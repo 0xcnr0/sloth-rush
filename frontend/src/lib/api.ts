@@ -16,48 +16,48 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data
 }
 
-// Slug endpoints
+// Sloth endpoints
 export const api = {
-  mintSlug: (wallet: string) =>
-    request<{ slug: any }>('/slug/mint', {
+  mintSloth: (wallet: string) =>
+    request<{ sloth: any }>('/sloth/mint', {
       method: 'POST',
       body: JSON.stringify({ wallet }),
     }),
 
-  upgradeSlug: (wallet: string) =>
-    request<{ snail: any; burnedSlugId: number; coinBonus: number }>('/slug/upgrade', {
+  upgradeSloth: (wallet: string) =>
+    request<{ sloth: any; burnedSlothId: number; coinBonus: number }>('/sloth/upgrade', {
       method: 'POST',
       body: JSON.stringify({ wallet }),
     }),
 
-  getStable: (wallet: string) =>
-    request<{ slugs: any[]; coinBalance: number }>(`/slug/stable/${wallet}`),
+  getTreehouse: (wallet: string) =>
+    request<{ sloths: any[]; coinBalance: number }>(`/sloth/treehouse/${wallet}`),
 
   getCoinBalance: (wallet: string) =>
-    request<{ wallet: string; balance: number }>(`/slug/coin/${wallet}`),
+    request<{ wallet: string; balance: number }>(`/sloth/coin/${wallet}`),
 
   getStreaks: (wallet: string) =>
-    request<{ streaks: { snail_id: number; current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }[] }>(
-      `/slug/streaks/${wallet}`
+    request<{ streaks: { sloth_id: number; current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }[] }>(
+      `/sloth/streaks/${wallet}`
     ),
 
-  renameSnail: (wallet: string, snailId: number, name: string) =>
-    request<{ renamed: boolean; snailId: number; newName: string }>('/slug/rename', {
+  renameSloth: (wallet: string, slothId: number, name: string) =>
+    request<{ renamed: boolean; slothId: number; newName: string }>('/sloth/rename', {
       method: 'POST',
-      body: JSON.stringify({ wallet, snailId, name }),
+      body: JSON.stringify({ wallet, slothId: slothId, name }),
     }),
 
   // Race endpoints
-  createRace: (wallet: string, snailId: number, format: string = 'standard') =>
+  createRace: (wallet: string, slothId: number, format: string = 'standard') =>
     request<{ raceId: string; format: string; entryFee: number; maxRaise: number; status: string }>(
       '/race/create',
-      { method: 'POST', body: JSON.stringify({ wallet, snailId, format }) }
+      { method: 'POST', body: JSON.stringify({ wallet, slothId: slothId, format }) }
     ),
 
-  joinRace: (raceId: string, snailId: number, wallet: string) =>
+  joinRace: (raceId: string, slothId: number, wallet: string) =>
     request<{ joined: boolean; raceId: string; entryFeeCharged: number; newBalance: number }>(
       '/race/join',
-      { method: 'POST', body: JSON.stringify({ raceId, snailId, wallet }) }
+      { method: 'POST', body: JSON.stringify({ raceId, slothId: slothId, wallet }) }
     ),
 
   startBidding: (raceId: string) =>
@@ -88,10 +88,10 @@ export const api = {
       body: JSON.stringify({ raceId }),
     }),
 
-  submitAction: (raceId: string, wallet: string, snailId: number, actionType: 'boost' | 'shell', tick: number) =>
+  submitAction: (raceId: string, wallet: string, slothId: number, actionType: 'boost' | 'pillow', tick: number) =>
     request<{ raceId: string; actionType: string; tick: number; cost: number; newBalance: number }>(
       '/race/action',
-      { method: 'POST', body: JSON.stringify({ raceId, wallet, snailId, actionType, tick }) }
+      { method: 'POST', body: JSON.stringify({ raceId, wallet, slothId: slothId, actionType, tick }) }
     ),
 
   getRace: (raceId: string) =>
@@ -109,14 +109,14 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ qualifyRaceId }) }
     ),
 
-  predictWinner: (raceId: string, wallet: string, snailId: number) =>
-    request<{ predicted: boolean; raceId: string; snailId: number }>('/race/predict', {
+  predictWinner: (raceId: string, wallet: string, slothId: number) =>
+    request<{ predicted: boolean; raceId: string; slothId: number }>('/race/predict', {
       method: 'POST',
-      body: JSON.stringify({ raceId, wallet, snailId }),
+      body: JSON.stringify({ raceId, wallet, slothId: slothId }),
     }),
 
   getGDAPrices: (raceId: string, tick: number) =>
-    request<{ boostPrice: number; shellPrice: number; boostPurchases: number; shellPurchases: number }>(
+    request<{ boostPrice: number; pillowPrice: number; boostPurchases: number; pillowPurchases: number }>(
       `/race/${raceId}/prices?tick=${tick}`
     ),
 
@@ -141,17 +141,17 @@ export const api = {
   // Daily login bonus
   claimDailyLogin: (wallet: string) =>
     request<{ claimed: boolean; bonus?: number; newBalance?: number; message?: string }>(
-      '/slug/daily-login',
+      '/sloth/daily-login',
       { method: 'POST', body: JSON.stringify({ wallet }) }
     ),
 
   // XP
   getXP: (wallet: string) =>
-    request<{ wallet: string; xp: number }>(`/slug/xp/${wallet}`),
+    request<{ wallet: string; xp: number }>(`/sloth/xp/${wallet}`),
 
   // Quests
   getDailyQuests: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; slug_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; sloth_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
       `/quests/daily/${wallet}`
     ),
 
@@ -164,18 +164,18 @@ export const api = {
   // Upgrade progress (free path)
   getUpgradeProgress: (wallet: string) =>
     request<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean }>(
-      `/slug/upgrade-progress/${wallet}`
+      `/sloth/upgrade-progress/${wallet}`
     ),
 
   freeUpgrade: (wallet: string) =>
-    request<{ snail: any; burnedSlugId: number; coinBonus: number }>('/slug/free-upgrade', {
+    request<{ sloth: any; burnedSlothId: number; coinBonus: number }>('/sloth/free-upgrade', {
       method: 'POST',
       body: JSON.stringify({ wallet }),
     }),
 
   // Leaderboard
   getLeaderboard: (league: string) =>
-    request<{ leaderboard: { rank: number; wallet: string; snail_name: string; rarity: string; total_rp: number }[] }>(
+    request<{ leaderboard: { rank: number; wallet: string; sloth_name: string; rarity: string; total_rp: number }[] }>(
       `/leaderboard/${league}`
     ),
 
@@ -185,31 +185,31 @@ export const api = {
     ),
 
   // Training
-  startTraining: (wallet: string, snailId: number, stat: string) =>
-    request<{ started: boolean; snailId: number; stat: string; completedAt: string }>('/slug/train', {
+  startTraining: (wallet: string, slothId: number, stat: string) =>
+    request<{ started: boolean; slothId: number; stat: string; completedAt: string }>('/sloth/train', {
       method: 'POST',
-      body: JSON.stringify({ wallet, snailId, stat }),
+      body: JSON.stringify({ wallet, slothId: slothId, stat }),
     }),
 
-  claimTraining: (wallet: string, snailId: number) =>
-    request<{ claimed: boolean; snailId: number; stat: string; gain: number; newStatValue: number }>('/slug/claim-training', {
+  claimTraining: (wallet: string, slothId: number) =>
+    request<{ claimed: boolean; slothId: number; stat: string; gain: number; newStatValue: number }>('/sloth/claim-training', {
       method: 'POST',
-      body: JSON.stringify({ wallet, snailId }),
+      body: JSON.stringify({ wallet, slothId: slothId }),
     }),
 
   getTrainingStatus: (wallet: string) =>
-    request<{ trainings: { snailId: number; snailName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[] }>(
-      `/slug/training-status/${wallet}`
+    request<{ trainings: { slothId: number; slothName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[] }>(
+      `/sloth/training-status/${wallet}`
     ),
 
   // Weekly & Milestone quests
   getWeeklyQuests: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; slug_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; sloth_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
       `/quests/weekly/${wallet}`
     ),
 
   getMilestones: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; slug_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; sloth_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
       `/quests/milestones/${wallet}`
     ),
 
@@ -218,22 +218,22 @@ export const api = {
     request<{ raceId: string; weather: string; date: string; isNew?: boolean }>('/race/daily'),
 
   // Mini games
-  playMiniGame: (wallet: string, snailId: number, gameType: string, score: number) =>
-    request<{ gain: number; newStatValue: number; stat: string }>('/slug/mini-game', {
+  playMiniGame: (wallet: string, slothId: number, gameType: string, score: number) =>
+    request<{ gain: number; newStatValue: number; stat: string }>('/sloth/mini-game', {
       method: 'POST',
-      body: JSON.stringify({ wallet, snailId, gameType, score }),
+      body: JSON.stringify({ wallet, slothId: slothId, gameType, score }),
     }),
 
   // Evolution
-  getEvolutionProgress: (snailId: number) =>
+  getEvolutionProgress: (slothId: number) =>
     request<{ tier: number; evolutionPath: string | null; passive: string | null; requirements: any; progress: any; eligible: boolean }>(
-      `/slug/evolution-progress/${snailId}`
+      `/sloth/evolution-progress/${slothId}`
     ),
 
-  evolve: (wallet: string, snailId: number, path?: string) =>
-    request<{ evolved: boolean; tier: number; evolutionPath: string | null; passive: string | null }>('/slug/evolve', {
+  evolve: (wallet: string, slothId: number, path?: string) =>
+    request<{ evolved: boolean; tier: number; evolutionPath: string | null; passive: string | null }>('/sloth/evolve', {
       method: 'POST',
-      body: JSON.stringify({ wallet, snailId, path }),
+      body: JSON.stringify({ wallet, slothId: slothId, path }),
     }),
 
   // Cosmetics
@@ -246,10 +246,10 @@ export const api = {
       body: JSON.stringify({ wallet, cosmeticId }),
     }),
 
-  equipCosmetic: (wallet: string, snailId: number, cosmeticId: number) =>
-    request<{ equipped: boolean }>('/slug/equip-cosmetic', {
+  equipCosmetic: (wallet: string, slothId: number, cosmeticId: number) =>
+    request<{ equipped: boolean }>('/sloth/equip-cosmetic', {
       method: 'POST',
-      body: JSON.stringify({ wallet, snailId, cosmeticId }),
+      body: JSON.stringify({ wallet, slothId: slothId, cosmeticId }),
     }),
 
   // Accessories
@@ -262,27 +262,27 @@ export const api = {
       body: JSON.stringify({ wallet, accessoryId }),
     }),
 
-  equipAccessory: (wallet: string, snailId: number, accessoryId: number) =>
-    request<{ equipped: boolean }>('/slug/equip-accessory', {
+  equipAccessory: (wallet: string, slothId: number, accessoryId: number) =>
+    request<{ equipped: boolean }>('/sloth/equip-accessory', {
       method: 'POST',
-      body: JSON.stringify({ wallet, snailId, accessoryId }),
+      body: JSON.stringify({ wallet, slothId: slothId, accessoryId }),
     }),
 
-  unequipAccessory: (wallet: string, snailId: number) =>
-    request<{ unequipped: boolean }>('/slug/unequip-accessory', {
+  unequipAccessory: (wallet: string, slothId: number) =>
+    request<{ unequipped: boolean }>('/sloth/unequip-accessory', {
       method: 'POST',
-      body: JSON.stringify({ wallet, snailId }),
+      body: JSON.stringify({ wallet, slothId: slothId }),
     }),
 
   // Profile
   getProfile: (wallet: string) =>
-    request<{ wallet: string; balance: number; xp: number; totalRaces: number; totalWins: number; totalEarnings: number; loginDays: number; slugCount: number; snailCount: number }>(
-      `/slug/profile/${wallet}`
+    request<{ wallet: string; balance: number; xp: number; totalRaces: number; totalWins: number; totalEarnings: number; loginDays: number; freeSlothCount: number; slothCount: number }>(
+      `/sloth/profile/${wallet}`
     ),
 
   getProfileTransactions: (wallet: string) =>
     request<{ transactions: { type: string; amount: number; description: string; created_at: string }[] }>(
-      `/slug/profile/transactions/${wallet}`
+      `/sloth/profile/transactions/${wallet}`
     ),
 
   // Race replay

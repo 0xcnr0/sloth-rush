@@ -13,31 +13,31 @@ interface EvolutionModalProps {
 
 const EVOLUTION_PATHS = [
   {
-    id: 'velocity',
-    name: 'Velocity',
+    id: 'caffeine',
+    name: 'Caffeine',
     icon: '\u{26A1}',
     color: 'text-yellow-400 border-yellow-400 bg-yellow-400/10',
     statBonus: 'SPD/ACC +5 cap',
-    passive: 'Last 100m +10% speed',
-    description: 'The path of raw speed. Your snail becomes a blur on the track, excelling in final sprints.',
+    passive: 'Last 100m caffeine kicks in, +10% speed',
+    description: 'The path of raw speed. Your sloth runs on pure espresso, excelling in final sprints.',
   },
   {
-    id: 'fortress',
-    name: 'Fortress',
+    id: 'hibernate',
+    name: 'Hibernate',
     icon: '\u{1F6E1}\uFE0F',
     color: 'text-blue-400 border-blue-400 bg-blue-400/10',
     statBonus: 'STA/REF +5 cap',
-    passive: 'Fatigue builds up 50% slower',
-    description: 'The path of resilience. Your snail becomes an unstoppable tank, shrugging off fatigue and shell attacks.',
+    passive: 'Deep hibernation, fatigue builds 50% slower',
+    description: 'The path of resilience. Deep hibernation makes your sloth an unstoppable tank, shrugging off fatigue.',
   },
   {
-    id: 'mystic',
-    name: 'Mystic',
+    id: 'dreamwalk',
+    name: 'Dreamwalk',
     icon: '\u{2728}',
     color: 'text-purple-400 border-purple-400 bg-purple-400/10',
     statBonus: 'LCK/AGI +5 cap',
-    passive: 'Luck Orb +20% more frequent',
-    description: 'The path of fortune. Your snail bends luck itself, attracting beneficial events more often.',
+    passive: 'Dream Catcher attracts Luck Orbs 20% more',
+    description: 'The path of fortune. Your sloth bends reality through lucid dreams, attracting beneficial events.',
   },
 ]
 
@@ -61,10 +61,10 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
     // For tier 2->3 a path must be chosen
     if (progress?.tier === 2 && !selectedPath) return
     // Confirmation dialog
-    const slugCost = requirements?.slug || 0
+    const zzzCost = requirements?.zzz || 0
     const pathLabel = selectedPath ? ` via ${selectedPath.charAt(0).toUpperCase() + selectedPath.slice(1)} path` : ''
     const confirmed = window.confirm(
-      `Evolve ${snailName} to Tier ${tier + 1}${pathLabel}?\n\nThis will cost ${slugCost} SLUG Coins. This action cannot be undone.`
+      `Evolve ${snailName} to Tier ${tier + 1}${pathLabel}?\n\nThis will cost ${zzzCost} ZZZ Coins. This action cannot be undone.`
     )
     if (!confirmed) return
     setEvolving(true)
@@ -89,7 +89,7 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
   if (requirements.xp !== undefined) reqItems.push({ label: 'XP', current: prog.xp || 0, target: requirements.xp })
   if (requirements.races !== undefined) reqItems.push({ label: 'Races', current: prog.races || 0, target: requirements.races })
   if (requirements.wins !== undefined) reqItems.push({ label: 'Wins', current: prog.wins || 0, target: requirements.wins })
-  if (requirements.slug !== undefined) reqItems.push({ label: 'SLUG', current: prog.slug || 0, target: requirements.slug })
+  if (requirements.zzz !== undefined) reqItems.push({ label: 'ZZZ', current: prog.zzz || 0, target: requirements.zzz })
   if (requirements.stat !== undefined) reqItems.push({ label: 'Stat Total', current: prog.stat || 0, target: requirements.stat })
 
   return (
@@ -106,10 +106,10 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={e => e.stopPropagation()}
-          className="bg-slug-card border border-slug-border rounded-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="bg-sloth-card border border-sloth-border rounded-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-slug-border">
+          <div className="flex items-center justify-between p-5 border-b border-sloth-border">
             <div>
               <h2 className="text-white font-bold text-lg">Evolution</h2>
               <p className="text-gray-400 text-sm">{snailName}</p>
@@ -141,10 +141,10 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
                 >
                   {'\u{2728}'}
                 </motion.div>
-                <h3 className="text-2xl font-bold text-slug-green mb-2">Evolution Complete!</h3>
+                <h3 className="text-2xl font-bold text-sloth-green mb-2">Evolution Complete!</h3>
                 <p className="text-white font-semibold mb-1">Tier {evolveResult.tier}</p>
                 {evolveResult.evolutionPath && (
-                  <p className="text-slug-purple font-semibold mb-1">
+                  <p className="text-sloth-purple font-semibold mb-1">
                     Path: {evolveResult.evolutionPath}
                   </p>
                 )}
@@ -153,7 +153,7 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
                 )}
                 <button
                   onClick={() => { onEvolved(); onClose() }}
-                  className="px-8 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer"
+                  className="px-8 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
                 >
                   Done
                 </button>
@@ -167,14 +167,14 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
                 <div className="text-center mb-6">
                   <div className="inline-flex items-center gap-3">
                     <div className="text-center">
-                      <div className="w-16 h-16 rounded-full bg-slug-green/20 border-2 border-slug-green flex items-center justify-center text-2xl font-extrabold text-slug-green">
+                      <div className="w-16 h-16 rounded-full bg-sloth-green/20 border-2 border-sloth-green flex items-center justify-center text-2xl font-extrabold text-sloth-green">
                         T{tier}
                       </div>
                       <p className="text-xs text-gray-400 mt-1">Current</p>
                     </div>
                     <div className="text-gray-500 text-2xl">{'\u{2192}'}</div>
                     <div className="text-center">
-                      <div className="w-16 h-16 rounded-full bg-slug-purple/20 border-2 border-slug-purple flex items-center justify-center text-2xl font-extrabold text-slug-purple">
+                      <div className="w-16 h-16 rounded-full bg-sloth-purple/20 border-2 border-sloth-purple flex items-center justify-center text-2xl font-extrabold text-sloth-purple">
                         T{tier + 1}
                       </div>
                       <p className="text-xs text-gray-400 mt-1">Next</p>
@@ -193,17 +193,17 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
                         return (
                           <div key={item.label}>
                             <div className="flex items-center justify-between mb-1">
-                              <span className={`text-sm font-semibold ${done ? 'text-slug-green' : 'text-gray-300'}`}>
+                              <span className={`text-sm font-semibold ${done ? 'text-sloth-green' : 'text-gray-300'}`}>
                                 {done ? '\u{2705} ' : ''}{item.label}
                               </span>
                               <span className="text-xs text-gray-500">{item.current}/{item.target}</span>
                             </div>
-                            <div className="w-full bg-slug-dark rounded-full h-2">
+                            <div className="w-full bg-sloth-dark rounded-full h-2">
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${pct}%` }}
                                 transition={{ duration: 0.5 }}
-                                className={`h-2 rounded-full ${done ? 'bg-slug-green' : 'bg-slug-purple'}`}
+                                className={`h-2 rounded-full ${done ? 'bg-sloth-green' : 'bg-sloth-purple'}`}
                               />
                             </div>
                           </div>
@@ -227,7 +227,7 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
                           className={`w-full text-left p-4 rounded-xl border-2 cursor-pointer transition-colors ${
                             selectedPath === path.id
                               ? path.color
-                              : 'border-slug-border bg-slug-dark hover:border-gray-500'
+                              : 'border-sloth-border bg-sloth-dark hover:border-gray-500'
                           }`}
                         >
                           <div className="flex items-start gap-3">
@@ -236,7 +236,7 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
                               <p className="text-white font-bold">{path.name}</p>
                               <p className="text-gray-400 text-xs mt-0.5">{path.statBonus}</p>
                               <p className="text-gray-500 text-xs mt-1">{path.description}</p>
-                              <p className="text-slug-green text-xs font-semibold mt-1">Passive: {path.passive}</p>
+                              <p className="text-sloth-green text-xs font-semibold mt-1">Passive: {path.passive}</p>
                             </div>
                           </div>
                         </motion.button>
@@ -247,11 +247,11 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
 
                 {/* Current passive/path info */}
                 {progress.evolutionPath && (
-                  <div className="mb-4 p-3 bg-slug-dark rounded-xl border border-slug-border">
+                  <div className="mb-4 p-3 bg-sloth-dark rounded-xl border border-sloth-border">
                     <p className="text-gray-400 text-xs">Current Path</p>
                     <p className="text-white font-semibold">{progress.evolutionPath}</p>
                     {progress.passive && (
-                      <p className="text-slug-green text-xs mt-1">Passive: {progress.passive}</p>
+                      <p className="text-sloth-green text-xs mt-1">Passive: {progress.passive}</p>
                     )}
                   </div>
                 )}
@@ -260,7 +260,7 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
                 <button
                   onClick={handleEvolve}
                   disabled={!eligible || evolving || (needsPath && !selectedPath)}
-                  className="w-full py-3 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-lg"
+                  className="w-full py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-lg"
                 >
                   {evolving
                     ? 'Evolving...'

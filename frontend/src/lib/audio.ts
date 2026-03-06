@@ -29,7 +29,7 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'sine',
   osc.stop(ctx.currentTime + duration)
 }
 
-// --- Helper: noise burst (for shell/crack sounds) ---
+// --- Helper: noise burst (for pillow/impact sounds) ---
 function playNoise(duration: number, volume = 0.08) {
   if (muted) return
   const ctx = getCtx()
@@ -92,8 +92,8 @@ export function sfxBoost() {
   osc.stop(ctx.currentTime + 0.4)
 }
 
-/** Shell hit — sharp crack */
-export function sfxShellHit() {
+/** Pillow hit — sharp crack */
+export function sfxPillowHit() {
   playNoise(0.15, 0.15)
   playTone(120, 0.2, 'square', 0.1)
 }
@@ -110,14 +110,14 @@ export function sfxLuckOrb() {
   setTimeout(() => playTone(1600, 0.2, 'sine', 0.08), 100)
 }
 
-/** Slime burst — squishy bubble */
-export function sfxSlime() {
+/** Yawn wave — sleepy burst */
+export function sfxYawn() {
   playTone(200, 0.2, 'sine', 0.1)
   setTimeout(() => playTone(150, 0.3, 'sine', 0.08), 100)
 }
 
 /** Clash — metallic crash */
-export function sfxClash() {
+export function sfxPillowFight() {
   playNoise(0.1, 0.12)
   playTone(300, 0.15, 'square', 0.1)
   playTone(180, 0.2, 'triangle', 0.08)

@@ -71,15 +71,15 @@ router.post("/end", async (req: Request, res: Response) => {
             const rank = i + 1;
             if (rank >= reward.rank_min && rank <= reward.rank_max) {
               const player = rankedPlayers[i];
-              if (reward.slug_reward > 0) {
+              if (reward.sloth_reward > 0) {
                 await client.query(
                   `INSERT INTO coin_balances (wallet, balance) VALUES ($1, $2)
                    ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + $3, updated_at = NOW()`,
-                  [player.wallet, reward.slug_reward, reward.slug_reward]
+                  [player.wallet, reward.sloth_reward, reward.sloth_reward]
                 );
                 await client.query(
                   "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'season_reward', $2, $3)",
-                  [player.wallet, reward.slug_reward, `Season ${currentSeason.number} rank ${rank} reward`]
+                  [player.wallet, reward.sloth_reward, `Season ${currentSeason.number} rank ${rank} reward`]
                 );
               }
               if (reward.cosmetic_id) {

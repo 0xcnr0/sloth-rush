@@ -8,8 +8,8 @@ import { api } from '../lib/api'
 import { getCommentary } from '../data/commentary'
 import { getDialogue, getEmote, getTrashTalk, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
 import {
-  sfxRaceStart, sfxBoost, sfxShellHit, sfxRain, sfxLuckOrb,
-  sfxSlime, sfxClash, sfxOvertake, sfxHeartbeat, sfxFinish,
+  sfxRaceStart, sfxBoost, sfxPillowHit, sfxRain, sfxLuckOrb,
+  sfxYawn, sfxPillowFight, sfxOvertake, sfxHeartbeat, sfxFinish,
   sfxTrashTalkEntry, toggleMute,
 } from '../lib/audio'
 
@@ -48,7 +48,7 @@ export default function RaceBroadcast() {
   const animFrameRef = useRef<number>(0)
 
   const isTactic = location.state?.format === 'tactic'
-  const playerSnailId = location.state?.snailId as number | undefined
+  const playerSlothId = location.state?.slothId as number | undefined
 
   const [raceData, setRaceData] = useState<any>(location.state?.raceResult || null)
   const [currentTick, setCurrentTick] = useState(0)
@@ -62,21 +62,21 @@ export default function RaceBroadcast() {
   // Tactic mode state
   const [energy, setEnergy] = useState(MAX_ENERGY)
   const [boostUsed, setBoostUsed] = useState(false)
-  const [shellUsed, setShellUsed] = useState(false)
+  const [pillowUsed, setPillowUsed] = useState(false)
   const [actionFeedback, setActionFeedback] = useState<string | null>(null)
   const [boostPrice, setBoostPrice] = useState(100)
-  const [shellPrice, setShellPrice] = useState(250)
+  const [pillowPrice, setPillowPrice] = useState(250)
   const [commentary, setCommentary] = useState<string | null>(null)
   const [killFeed, setKillFeed] = useState<{ id: number; text: string; emoji: string; color: string }[]>([])
   const killFeedIdRef = useRef(0)
   const [soundMuted, setSoundMuted] = useState(false)
   const prevLeaderRef = useRef<number | null>(null)
   const last100Shown = useRef(false)
-  const [speechBubble, setSpeechBubble] = useState<{ snailId: number; text: string; lane: number } | null>(null)
+  const [speechBubble, setSpeechBubble] = useState<{ slothId: number; text: string; lane: number } | null>(null)
   const [emotes, setEmotes] = useState<{ id: number; emoji: string; lane: number; x: number }[]>([])
   const emoteIdRef = useRef(0)
   const [racePhase, setRacePhase] = useState<'trash_talk' | 'racing' | 'finished'>('trash_talk')
-  const snailRacesRef = useRef<Map<number, string>>(new Map()) // id -> race type
+  const slothRacesRef = useRef<Map<number, string>>(new Map()) // id -> race type
   const currentTickRef = useRef(0)
   const pausedRef = useRef(false)
   const resumeCallbackRef = useRef<(() => void) | null>(null)
@@ -111,7 +111,7 @@ export default function RaceBroadcast() {
       const tick = currentTickRef.current * 3
       api.getGDAPrices(id, tick).then(data => {
         setBoostPrice(data.boostPrice)
-        setShellPrice(data.shellPrice)
+        setPillowPrice(data.pillowPrice)
       }).catch((err) => { console.error('Failed to load GDA prices:', err) })
     }, 2000)
     return () => clearInterval(interval)
@@ -130,13 +130,13 @@ export default function RaceBroadcast() {
       })
   }, [id])
 
-  async function handleTacticAction(actionType: 'boost' | 'shell') {
-    if (!address || !id || !playerSnailId || raceFinished) return
+  async function handleTacticAction(actionType: 'boost' | 'pillow') {
+    if (!address || !id || !playerSlothId || raceFinished) return
 
-    const cost = actionType === 'boost' ? boostPrice : shellPrice
+    const cost = actionType === 'boost' ? boostPrice : pillowPrice
     if (energy < cost) return
     if (actionType === 'boost' && boostUsed) return
-    if (actionType === 'shell' && shellUsed) return
+    if (actionType === 'pillow' && pillowUsed) return
 
     // Pause animation
     pausedRef.current = true
@@ -144,13 +144,13 @@ export default function RaceBroadcast() {
 
     try {
       const tick = currentTickRef.current * 3 // frames are every 3rd tick
-      await api.submitAction(id, address, playerSnailId, actionType, tick)
+      await api.submitAction(id, address, playerSlothId, actionType, tick)
 
       setEnergy(prev => prev - cost)
       if (actionType === 'boost') setBoostUsed(true)
-      else setShellUsed(true)
+      else setPillowUsed(true)
 
-      setActionFeedback(actionType === 'boost' ? 'BOOST ACTIVATED!' : 'SHELL LAUNCHED!')
+      setActionFeedback(actionType === 'boost' ? 'BOOST ACTIVATED!' : 'PILLOW THROWN!')
       setTimeout(() => setActionFeedback(null), 2000)
 
       // Re-simulate with the new action
@@ -322,14 +322,14 @@ export default function RaceBroadcast() {
             showEmote(lane, 'boost_self')
           }
           sfxBoost()
-        } else if (nearEvent.type === 'tactic_shell' && nearEvent.affectedIds[0] !== undefined) {
+        } else if (nearEvent.type === 'tactic_pillow' && nearEvent.affectedIds[0] !== undefined) {
           const hitId = nearEvent.affectedIds[0]
           const lane = frame.positions.findIndex(p => p.id === hitId)
           if (lane >= 0) {
-            showBubble(hitId, 'shell_hit', lane)
-            showEmote(lane, 'shell_hit')
+            showBubble(hitId, 'pillow_hit', lane)
+            showEmote(lane, 'pillow_hit')
           }
-          sfxShellHit()
+          sfxPillowHit()
         } else if (nearEvent.type === 'rain') {
           frame.positions.forEach((_p, idx) => showEmote(idx, 'rain'))
           sfxRain()
@@ -337,25 +337,25 @@ export default function RaceBroadcast() {
           const lane = frame.positions.findIndex(p => p.id === nearEvent.affectedIds[0])
           if (lane >= 0) showEmote(lane, 'luck_orb')
           sfxLuckOrb()
-        } else if (nearEvent.type === 'slime_burst') {
+        } else if (nearEvent.type === 'yawn_wave') {
           nearEvent.affectedIds.forEach(aid => {
             const lane = frame.positions.findIndex(p => p.id === aid)
-            if (lane >= 0) showEmote(lane, 'slime')
+            if (lane >= 0) showEmote(lane, 'yawn')
           })
-          sfxSlime()
-        } else if (nearEvent.type === 'clash') {
+          sfxYawn()
+        } else if (nearEvent.type === 'pillow_fight') {
           nearEvent.affectedIds.forEach(aid => {
             const lane = frame.positions.findIndex(p => p.id === aid)
-            if (lane >= 0) showEmote(lane, 'shell_hit')
+            if (lane >= 0) showEmote(lane, 'pillow_hit')
           })
-          sfxClash()
+          sfxPillowFight()
         }
 
         // Kill feed entry
         const emojiMap: Record<string, { emoji: string; color: string }> = {
           tactic_boost: { emoji: '\u{1F4A8}', color: '#22c55e' },
-          tactic_shell: { emoji: '\u{1F41A}', color: '#ef4444' },
-          slime_burst: { emoji: '\u{1F4A5}', color: '#f59e0b' },
+          tactic_pillow: { emoji: '\u{1F41A}', color: '#ef4444' },
+          yawn_wave: { emoji: '\u{1F4A5}', color: '#f59e0b' },
           rain: { emoji: '\u{1F327}\uFE0F', color: '#3b82f6' },
           luck_orb: { emoji: '\u{2728}', color: '#a855f7' },
           clash: { emoji: '\u{1F4A2}', color: '#ef4444' },
@@ -386,7 +386,7 @@ export default function RaceBroadcast() {
             showBubble(currentLeader, 'overtake', lane)
             showEmote(lane, 'comeback')
           }
-          // Overtaken snail gets angry emote
+          // Overtaken sloth gets angry emote
           if (prevLeaderRef.current !== null) {
             const prevLane = frame.positions.findIndex(p => p.id === prevLeaderRef.current)
             if (prevLane >= 0) showEmote(prevLane, 'overtaken')
@@ -415,18 +415,18 @@ export default function RaceBroadcast() {
       }
     }
 
-    // Build snail race map for dialogue
-    const snailRaces = new Map<number, string>()
+    // Build sloth race map for dialogue
+    const slothRaces = new Map<number, string>()
     // Try to get race info from the race data (participants)
     gridPositions.forEach((gp: any) => {
-      if (gp.snailRace) snailRaces.set(gp.id, gp.snailRace)
+      if (gp.slothRace) slothRaces.set(gp.id, gp.slothRace)
     })
-    snailRacesRef.current = snailRaces
+    slothRacesRef.current = slothRaces
 
-    function showBubble(snailId: number, moment: DialogueMoment, lane: number) {
-      const race = snailRaces.get(snailId)
+    function showBubble(slothId: number, moment: DialogueMoment, lane: number) {
+      const race = slothRaces.get(slothId)
       const text = getDialogue(race, moment)
-      setSpeechBubble({ snailId, text, lane })
+      setSpeechBubble({ slothId, text, lane })
       setTimeout(() => setSpeechBubble(null), 2500)
     }
 
@@ -496,7 +496,7 @@ export default function RaceBroadcast() {
   // Trash talk phase: show for 5 seconds before race starts + entry SFX
   useEffect(() => {
     if (!raceData?.gridPositions || racePhase !== 'trash_talk') return
-    // Play entry sound for each snail with stagger
+    // Play entry sound for each sloth with stagger
     raceData.gridPositions.forEach((_: any, i: number) => {
       setTimeout(() => sfxTrashTalkEntry(), i * 1000)
     })
@@ -516,7 +516,7 @@ export default function RaceBroadcast() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-gray-400">Race not found</p>
-        <button onClick={() => navigate('/race')} className="text-slug-green underline cursor-pointer">
+        <button onClick={() => navigate('/race')} className="text-sloth-green underline cursor-pointer">
           Back to Lobby
         </button>
       </div>
@@ -529,8 +529,8 @@ export default function RaceBroadcast() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold">
-            <span className="text-slug-green">LIVE</span> — Grand Shell Track
-            {isTactic && <span className="ml-2 text-slug-purple text-sm font-normal">(TACTIC MODE)</span>}
+            <span className="text-sloth-green">LIVE</span> — Grand Pillow Throw Track
+            {isTactic && <span className="ml-2 text-sloth-purple text-sm font-normal">(TACTIC MODE)</span>}
           </h1>
           <div className="flex items-center gap-2">
             <p className="text-gray-500 text-sm">Race {raceData.raceId?.slice(-8)}</p>
@@ -554,16 +554,16 @@ export default function RaceBroadcast() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => { const m = toggleMute(); setSoundMuted(m) }}
-            className="bg-slug-card border border-slug-border rounded-lg px-2.5 py-2 text-lg cursor-pointer hover:bg-white/5 transition-colors"
+            className="bg-sloth-card border border-sloth-border rounded-lg px-2.5 py-2 text-lg cursor-pointer hover:bg-white/5 transition-colors"
             title={soundMuted ? 'Unmute' : 'Mute'}
           >
             {soundMuted ? '\u{1F507}' : '\u{1F50A}'}
           </button>
-          <div className="bg-slug-card border border-slug-border rounded-lg px-3 py-1.5">
+          <div className="bg-sloth-card border border-sloth-border rounded-lg px-3 py-1.5">
             <span className="text-gray-400 text-xs">POT</span>
-            <p className="text-slug-gold font-bold">{raceData.totalPot ?? 0} SLUG</p>
+            <p className="text-sloth-gold font-bold">{raceData.totalPot ?? 0} ZZZ</p>
           </div>
-          <div className="bg-slug-card border border-slug-border rounded-lg px-3 py-1.5">
+          <div className="bg-sloth-card border border-sloth-border rounded-lg px-3 py-1.5">
             <span className="text-gray-400 text-xs">TICK</span>
             <p className="text-white font-mono font-bold">{currentTick}</p>
           </div>
@@ -572,7 +572,7 @@ export default function RaceBroadcast() {
 
       {/* Prediction panel — show before race starts */}
       {!raceFinished && !predictionSubmitted && raceData.gridPositions && currentTick < 20 && (
-        <div className="bg-slug-card border border-slug-border rounded-xl p-3 mb-3">
+        <div className="bg-sloth-card border border-sloth-border rounded-xl p-3 mb-3">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-gray-400 text-sm font-bold">Predict:</span>
             {raceData.gridPositions.map((gp: any) => (
@@ -588,21 +588,21 @@ export default function RaceBroadcast() {
                 }}
                 className={`px-3 py-1 rounded-lg text-sm font-semibold cursor-pointer transition-colors ${
                   prediction === gp.id
-                    ? 'bg-slug-green text-slug-dark'
-                    : 'bg-slug-dark border border-slug-border text-gray-300 hover:border-slug-green'
+                    ? 'bg-sloth-green text-sloth-dark'
+                    : 'bg-sloth-dark border border-sloth-border text-gray-300 hover:border-sloth-green'
                 }`}
               >
                 {gp.name}
               </button>
             ))}
-            <span className="text-gray-500 text-xs ml-auto">Correct prediction = 15 SLUG!</span>
+            <span className="text-gray-500 text-xs ml-auto">Correct prediction = 15 ZZZ!</span>
           </div>
         </div>
       )}
       {predictionSubmitted && (
-        <div className="bg-slug-green/10 border border-slug-green/30 rounded-xl p-2 mb-3 text-center">
-          <span className="text-slug-green text-sm font-semibold">
-            Prediction submitted! Correct = +15 SLUG &#x1F3AF;
+        <div className="bg-sloth-green/10 border border-sloth-green/30 rounded-xl p-2 mb-3 text-center">
+          <span className="text-sloth-green text-sm font-semibold">
+            Prediction submitted! Correct = +15 ZZZ &#x1F3AF;
           </span>
         </div>
       )}
@@ -614,12 +614,12 @@ export default function RaceBroadcast() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, y: -30 }}
-            className="bg-slug-card border border-slug-border rounded-xl p-6 mb-4"
+            className="bg-sloth-card border border-sloth-border rounded-xl p-6 mb-4"
           >
             <motion.h2
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="text-center text-2xl font-extrabold text-slug-gold mb-6"
+              className="text-center text-2xl font-extrabold text-sloth-gold mb-6"
             >
               YARISCILAR SAHNEYE!
             </motion.h2>
@@ -639,10 +639,10 @@ export default function RaceBroadcast() {
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 1.0 + 0.5 }}
-                    className="bg-white text-slug-dark text-xs font-bold px-3 py-1.5 rounded-xl inline-block max-w-[160px]"
+                    className="bg-white text-sloth-dark text-xs font-bold px-3 py-1.5 rounded-xl inline-block max-w-[160px]"
                   >
                     {(() => {
-                      const talk = getTrashTalk(gp.snailRace)
+                      const talk = getTrashTalk(gp.slothRace)
                       return i === 0 ? talk.confident : i === 1 ? talk.taunt : talk.intro
                     })()}
                   </motion.div>
@@ -663,7 +663,7 @@ export default function RaceBroadcast() {
 
       {/* Race Canvas + Kill Feed layout */}
       <div className="flex gap-3 mb-4" style={{ display: racePhase === 'trash_talk' ? 'none' : 'flex' }}>
-      <div className="relative flex-1 bg-slug-card border border-slug-border rounded-xl overflow-hidden">
+      <div className="relative flex-1 bg-sloth-card border border-sloth-border rounded-xl overflow-hidden">
         <canvas
           ref={canvasRef}
           className="w-full"
@@ -694,9 +694,9 @@ export default function RaceBroadcast() {
               className={`absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg font-bold text-sm ${
                 activeEvent.type.startsWith('tactic_')
                   ? activeEvent.type === 'tactic_boost'
-                    ? 'bg-slug-green/90 text-slug-dark'
-                    : 'bg-slug-red/90 text-white'
-                  : 'bg-slug-gold/90 text-slug-dark'
+                    ? 'bg-sloth-green/90 text-sloth-dark'
+                    : 'bg-sloth-red/90 text-white'
+                  : 'bg-sloth-gold/90 text-sloth-dark'
               }`}
             >
               {activeEvent.description}
@@ -708,14 +708,14 @@ export default function RaceBroadcast() {
         <AnimatePresence>
           {speechBubble && (
             <motion.div
-              key={`speech-${speechBubble.snailId}`}
+              key={`speech-${speechBubble.slothId}`}
               initial={{ opacity: 0, scale: 0.5, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.5 }}
               className="absolute left-16 pointer-events-none"
               style={{ top: `${14 + speechBubble.lane * 25}%` }}
             >
-              <div className="bg-white text-slug-dark text-xs font-bold px-3 py-1.5 rounded-xl rounded-bl-none shadow-lg max-w-[200px]">
+              <div className="bg-white text-sloth-dark text-xs font-bold px-3 py-1.5 rounded-xl rounded-bl-none shadow-lg max-w-[200px]">
                 {speechBubble.text}
               </div>
             </motion.div>
@@ -729,9 +729,9 @@ export default function RaceBroadcast() {
               initial={{ y: 30, opacity: 0, scale: 0.9 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: -20, opacity: 0 }}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 px-5 py-2.5 bg-black/80 border border-slug-gold/50 rounded-xl max-w-[90%]"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 px-5 py-2.5 bg-black/80 border border-sloth-gold/50 rounded-xl max-w-[90%]"
             >
-              <p className="text-slug-gold font-bold text-sm sm:text-base text-center">{commentary}</p>
+              <p className="text-sloth-gold font-bold text-sm sm:text-base text-center">{commentary}</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -780,7 +780,7 @@ export default function RaceBroadcast() {
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 20, opacity: 0 }}
-              className="bg-slug-dark border border-slug-border rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
+              className="bg-sloth-dark border border-sloth-border rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
             >
               <span>{item.emoji}</span>
               <span style={{ color: item.color }}>{item.text}</span>
@@ -792,36 +792,36 @@ export default function RaceBroadcast() {
 
       {/* Tactic Mode Controls */}
       {isTactic && !raceFinished && (
-        <div className="bg-slug-card border border-slug-border rounded-xl p-4 mb-4">
+        <div className="bg-sloth-card border border-sloth-border rounded-xl p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-gray-300 font-semibold text-sm">TACTIC CONTROLS</span>
             <div className="flex items-center gap-2">
               <span className="text-gray-500 text-xs">ENERGY</span>
-              <div className="w-32 h-3 bg-slug-dark rounded-full overflow-hidden">
+              <div className="w-32 h-3 bg-sloth-dark rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-slug-purple rounded-full transition-all duration-300"
+                  className="h-full bg-sloth-purple rounded-full transition-all duration-300"
                   style={{ width: `${(energy / MAX_ENERGY) * 100}%` }}
                 />
               </div>
-              <span className="text-slug-purple font-bold text-sm">{energy}</span>
+              <span className="text-sloth-purple font-bold text-sm">{energy}</span>
             </div>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => handleTacticAction('boost')}
               disabled={boostUsed || energy < boostPrice || !isConnected}
-              className="flex-1 py-3 bg-slug-green/20 border border-slug-green text-slug-green font-bold rounded-xl hover:bg-slug-green/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              className="flex-1 py-3 bg-sloth-green/20 border border-sloth-green text-sloth-green font-bold rounded-xl hover:bg-sloth-green/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
-              BOOST (1.5x Speed) — {boostPrice} SLUG
+              BOOST (1.5x Speed) — {boostPrice} ZZZ
               {boostUsed && <span className="block text-xs opacity-70">USED</span>}
             </button>
             <button
-              onClick={() => handleTacticAction('shell')}
-              disabled={shellUsed || energy < shellPrice || !isConnected}
-              className="flex-1 py-3 bg-slug-red/20 border border-slug-red text-slug-red font-bold rounded-xl hover:bg-slug-red/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              onClick={() => handleTacticAction('pillow')}
+              disabled={pillowUsed || energy < pillowPrice || !isConnected}
+              className="flex-1 py-3 bg-sloth-red/20 border border-sloth-red text-sloth-red font-bold rounded-xl hover:bg-sloth-red/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
-              SHELL (Hit Leader) — {shellPrice} SLUG
-              {shellUsed && <span className="block text-xs opacity-70">USED</span>}
+              PILLOW (Hit Leader) — {pillowPrice} ZZZ
+              {pillowUsed && <span className="block text-xs opacity-70">USED</span>}
             </button>
           </div>
         </div>
@@ -854,7 +854,7 @@ export default function RaceBroadcast() {
       {/* Wallet Disconnect Overlay */}
       {!isConnected && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
-          <div className="bg-slug-card border border-slug-border rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+          <div className="bg-sloth-card border border-sloth-border rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
             <div className="text-5xl mb-4">{'\u26A0\uFE0F'}</div>
             <h2 className="text-xl font-bold text-white mb-2">Wallet Disconnected</h2>
             <p className="text-gray-400 text-sm mb-6">Reconnect your wallet to continue the race and receive your rewards.</p>
@@ -871,7 +871,7 @@ export default function RaceBroadcast() {
           const events: RaceEvent[] = raceData.events || []
           const trackLen = raceData.trackLength || 1000
 
-          // Max speed per snail
+          // Max speed per sloth
           const maxSpeeds: Record<number, number> = {}
           for (const f of frames) {
             for (const p of f.positions) {
@@ -879,15 +879,15 @@ export default function RaceBroadcast() {
             }
           }
 
-          // Count boosts and shells per snail
+          // Count boosts and pillows per sloth
           const boostCount: Record<number, number> = {}
-          const shellHitCount: Record<number, number> = {}
+          const pillowHitCount: Record<number, number> = {}
           for (const e of events) {
             if (e.type === 'tactic_boost') {
               for (const id of e.affectedIds) boostCount[id] = (boostCount[id] || 0) + 1
             }
-            if (e.type === 'tactic_shell') {
-              if (e.affectedIds[0]) shellHitCount[e.affectedIds[0]] = (shellHitCount[e.affectedIds[0]] || 0) + 1
+            if (e.type === 'tactic_pillow') {
+              if (e.affectedIds[0]) pillowHitCount[e.affectedIds[0]] = (pillowHitCount[e.affectedIds[0]] || 0) + 1
             }
           }
 
@@ -943,14 +943,14 @@ export default function RaceBroadcast() {
           // MVP 4: "Tank" — Most hits taken and still finished
           const hitCount: Record<number, number> = {}
           for (const e of events) {
-            if (['tactic_shell', 'slime_burst', 'clash'].includes(e.type)) {
+            if (['tactic_pillow', 'yawn_wave', 'pillow_fight'].includes(e.type)) {
               for (const aid of e.affectedIds) hitCount[aid] = (hitCount[aid] || 0) + 1
             }
           }
-          let tankSnail: { id: number; name: string; hits: number } | null = null
+          let tankSloth: { id: number; name: string; hits: number } | null = null
           for (const [idStr, hits] of Object.entries(hitCount)) {
-            if (hits > (tankSnail?.hits || 0)) {
-              tankSnail = { id: Number(idStr), name: names.get(Number(idStr)) || '', hits }
+            if (hits > (tankSloth?.hits || 0)) {
+              tankSloth = { id: Number(idStr), name: names.get(Number(idStr)) || '', hits }
             }
           }
 
@@ -964,15 +964,15 @@ export default function RaceBroadcast() {
           if (comebackKing) {
             mvpAwards.push({ emoji: '\u{1F451}', title: 'Comeback King', name: comebackKing.name, detail: `From P${comebackKing.worstPos} to top 2!` })
           }
-          if (tankSnail && tankSnail.hits >= 1) {
-            mvpAwards.push({ emoji: '\u{1F6E1}\uFE0F', title: 'Tank', name: tankSnail.name, detail: `Took ${tankSnail.hits} hits and still finished!` })
+          if (tankSloth && tankSloth.hits >= 1) {
+            mvpAwards.push({ emoji: '\u{1F6E1}\uFE0F', title: 'Tank', name: tankSloth.name, detail: `Took ${tankSloth.hits} hits and still finished!` })
           }
 
           return (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="fixed inset-0 z-50 bg-slug-dark overflow-y-auto"
+              className="fixed inset-0 z-50 bg-sloth-dark overflow-y-auto"
             >
               <div className="max-w-2xl mx-auto px-4 py-8">
                 {/* Winner */}
@@ -983,12 +983,12 @@ export default function RaceBroadcast() {
                   className="text-center mb-8"
                 >
                   <div className="text-7xl mb-3">&#x1f3c6;</div>
-                  <h2 className="text-4xl font-extrabold text-slug-gold mb-1">{winner?.name} WINS!</h2>
-                  <p className="text-gray-400">Total Pot: {raceData.totalPot} SLUG</p>
+                  <h2 className="text-4xl font-extrabold text-sloth-gold mb-1">{winner?.name} WINS!</h2>
+                  <p className="text-gray-400">Total Pot: {raceData.totalPot} ZZZ</p>
                 </motion.div>
 
                 {/* Standings table */}
-                <div className="bg-slug-card border border-slug-border rounded-xl p-4 mb-6">
+                <div className="bg-sloth-card border border-sloth-border rounded-xl p-4 mb-6">
                   <h3 className="text-gray-400 text-xs font-bold uppercase mb-3">Final Standings</h3>
                   <div className="space-y-2">
                     {raceData.finalOrder.map((fo: FinalOrder, i: number) => (
@@ -998,23 +998,23 @@ export default function RaceBroadcast() {
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.2 + i * 0.15 }}
                         className={`flex items-center gap-3 p-3 rounded-lg ${
-                          i === 0 ? 'bg-slug-gold/10 border border-slug-gold' : 'bg-slug-dark/50 border border-slug-border'
+                          i === 0 ? 'bg-sloth-gold/10 border border-sloth-gold' : 'bg-sloth-dark/50 border border-sloth-border'
                         }`}
                       >
                         <span className={`text-xl font-extrabold w-8 ${
-                          i === 0 ? 'text-slug-gold' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-gray-500'
+                          i === 0 ? 'text-sloth-gold' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-gray-500'
                         }`}>{i + 1}.</span>
                         <div className="flex-1 text-left">
                           <p className="text-white font-semibold">{fo.name}</p>
                           <p className="text-gray-500 text-xs">
                             Max: {(maxSpeeds[fo.id] || 0).toFixed(1)} u/t
                             {(boostCount[fo.id] || 0) > 0 && ` | Boost: ${boostCount[fo.id]}`}
-                            {(shellHitCount[fo.id] || 0) > 0 && ` | Shell hit: ${shellHitCount[fo.id]}`}
+                            {(pillowHitCount[fo.id] || 0) > 0 && ` | Pillow Throw hit: ${pillowHitCount[fo.id]}`}
                             {fo.isBot && ' | BOT'}
                           </p>
                         </div>
                         {fo.payout > 0 && (
-                          <span className="text-slug-green font-bold">+{fo.payout} SLUG</span>
+                          <span className="text-sloth-green font-bold">+{fo.payout} ZZZ</span>
                         )}
                       </motion.div>
                     ))}
@@ -1027,13 +1027,13 @@ export default function RaceBroadcast() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1 }}
-                    className="bg-slug-purple/10 border border-slug-purple/30 rounded-xl p-4 mb-6"
+                    className="bg-sloth-purple/10 border border-sloth-purple/30 rounded-xl p-4 mb-6"
                   >
-                    <h3 className="text-slug-purple font-bold text-sm mb-2">What If...?</h3>
+                    <h3 className="text-sloth-purple font-bold text-sm mb-2">What If...?</h3>
                     <p className="text-gray-300 text-sm">
-                      {runnerUp.name} was only <span className="text-slug-gold font-bold">{gap} units</span> from the finish line.
+                      {runnerUp.name} was only <span className="text-sloth-gold font-bold">{gap} units</span> from the finish line.
                       {isTactic && !boostCount[runnerUp.id] && ' A well-timed Boost could have changed everything!'}
-                      {isTactic && boostCount[runnerUp.id] && ' Different Shell timing could have flipped the result!'}
+                      {isTactic && boostCount[runnerUp.id] && ' Different Pillow Throw timing could have flipped the result!'}
                       {!isTactic && ' A higher bid could have secured Pole Position!'}
                     </p>
                   </motion.div>
@@ -1045,7 +1045,7 @@ export default function RaceBroadcast() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
-                    className="bg-slug-card border border-slug-border rounded-xl p-4 mb-6"
+                    className="bg-sloth-card border border-sloth-border rounded-xl p-4 mb-6"
                   >
                     <h3 className="text-gray-400 text-xs font-bold uppercase mb-3 text-center">MVP Awards</h3>
                     <div className="grid grid-cols-2 gap-3">
@@ -1055,10 +1055,10 @@ export default function RaceBroadcast() {
                           initial={{ scale: 0, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ delay: 1.0 + i * 0.2, type: 'spring', stiffness: 300 }}
-                          className="bg-slug-dark/60 border border-slug-gold/30 rounded-xl p-3 text-center"
+                          className="bg-sloth-dark/60 border border-sloth-gold/30 rounded-xl p-3 text-center"
                         >
                           <div className="text-3xl mb-1">{award.emoji}</div>
-                          <p className="text-slug-gold font-bold text-xs uppercase">{award.title}</p>
+                          <p className="text-sloth-gold font-bold text-xs uppercase">{award.title}</p>
                           <p className="text-white font-semibold text-sm mt-1">{award.name}</p>
                           <p className="text-gray-400 text-xs">{award.detail}</p>
                         </motion.div>
@@ -1076,33 +1076,33 @@ export default function RaceBroadcast() {
                 >
                   <button
                     onClick={async () => {
-                      if (!address || !playerSnailId) { navigate('/race'); return }
+                      if (!address || !playerSlothId) { navigate('/race'); return }
                       try {
                         const fmt = location.state?.format || 'standard'
-                        const data = await api.createRace(address, playerSnailId, fmt)
-                        navigate(`/race/${data.raceId}`, { state: { format: fmt, snailId: playerSnailId } })
+                        const data = await api.createRace(address, playerSlothId, fmt)
+                        navigate(`/race/${data.raceId}`, { state: { format: fmt, slothId: playerSlothId } })
                         window.location.reload()
                       } catch (err) { console.error('Rematch failed:', err); navigate('/race') }
                     }}
-                    className="px-8 py-3 bg-slug-green text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-green/90 transition-colors cursor-pointer"
+                    className="px-8 py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors cursor-pointer"
                   >
                     Rematch!
                   </button>
                   <button
-                    onClick={() => navigate('/stable')}
-                    className="px-6 py-2.5 border border-slug-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                    onClick={() => navigate('/treehouse')}
+                    className="px-6 py-2.5 border border-sloth-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                   >
-                    Back to Stable
+                    Back to Treehouse
                   </button>
                   <button
                     onClick={() => navigate('/shop')}
-                    className="px-6 py-2.5 border border-slug-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 border border-sloth-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                   >
-                    Buy SLUG Coins
+                    Buy ZZZ Coins
                   </button>
                   <button
                     onClick={() => navigate(`/replay/${id}`)}
-                    className="px-6 py-2.5 border border-slug-purple text-slug-purple rounded-xl hover:bg-slug-purple/10 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 border border-sloth-purple text-sloth-purple rounded-xl hover:bg-sloth-purple/10 transition-colors cursor-pointer"
                   >
                     Watch Replay
                   </button>

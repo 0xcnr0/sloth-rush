@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { api } from '../lib/api'
-import { useMintFreeSlug } from '../hooks/useContracts'
+import { useMintFreeSloth } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
 
 type MintState = 'idle' | 'minting' | 'success' | 'error' | 'already_minted'
@@ -13,15 +13,15 @@ export default function Mint() {
   const { address, isConnected } = useAccount()
   const navigate = useNavigate()
   const [state, setState] = useState<MintState>('idle')
-  const [slug, setSlug] = useState<any>(null)
+  const [sloth, setSloth] = useState<any>(null)
   const [error, setError] = useState('')
-  const onchainMint = useMintFreeSlug()
+  const onchainMint = useMintFreeSloth()
 
   // If on-chain mint succeeds, also register in backend
   useEffect(() => {
     if (onchainMint.isSuccess && address) {
-      api.mintSlug(address).then(data => {
-        setSlug(data.slug)
+      api.mintSloth(address).then(data => {
+        setSloth(data.sloth)
         setState('success')
       }).catch(() => setState('success'))
     }
@@ -50,8 +50,8 @@ export default function Mint() {
     } else {
       // Mock fallback — backend only
       try {
-        const data = await api.mintSlug(address)
-        setSlug(data.slug)
+        const data = await api.mintSloth(address)
+        setSloth(data.sloth)
         setState('success')
       } catch (err: any) {
         if (err.message?.includes('already has')) {
@@ -67,7 +67,7 @@ export default function Mint() {
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Connect your wallet to mint a Free Slug</p>
+        <p className="text-gray-400">Connect your wallet to mint a Free Sloth</p>
         <ConnectButton />
       </div>
     )
@@ -84,16 +84,16 @@ export default function Mint() {
             exit={{ opacity: 0, y: -20 }}
             className="text-center"
           >
-            <div className="text-7xl mb-6">&#x1f40c;</div>
-            <h1 className="text-3xl font-bold mb-2">Mint Your Free Slug</h1>
+            <div className="text-7xl mb-6">&#x1f9a5;</div>
+            <h1 className="text-3xl font-bold mb-2">Mint Your Free Sloth</h1>
             <p className="text-gray-400 mb-8 max-w-md">
-              Every wallet gets one Free Slug. Mint yours and upgrade it to a Snail to start racing!
+              Every wallet gets one Free Sloth. Mint yours and upgrade it to a Sloth to start racing!
             </p>
             <button
               onClick={handleMint}
-              className="px-8 py-3 bg-slug-green text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-green/90 transition-colors cursor-pointer"
+              className="px-8 py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors cursor-pointer"
             >
-              Mint Free Slug
+              Mint Free Sloth
             </button>
           </motion.div>
         )}
@@ -111,13 +111,13 @@ export default function Mint() {
               transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
               className="text-7xl mb-6 inline-block"
             >
-              &#x1f40c;
+              &#x1f9a5;
             </motion.div>
-            <p className="text-xl text-gray-300">Minting your slug...</p>
+            <p className="text-xl text-gray-300">Minting your sloth...</p>
           </motion.div>
         )}
 
-        {state === 'success' && slug && (
+        {state === 'success' && sloth && (
           <motion.div
             key="success"
             initial={{ opacity: 0, scale: 0.5 }}
@@ -133,23 +133,23 @@ export default function Mint() {
             >
               &#x1f389;
             </motion.div>
-            <h2 className="text-3xl font-bold text-slug-green mb-2">
-              {slug.name}
+            <h2 className="text-3xl font-bold text-sloth-green mb-2">
+              {sloth.name}
             </h2>
-            <p className="text-gray-400 mb-6">Your Free Slug has been minted!</p>
+            <p className="text-gray-400 mb-6">Your Free Sloth has been minted!</p>
 
-            <div className="bg-slug-card border border-slug-border rounded-xl p-6 mb-6 inline-block">
-              <div className="text-6xl mb-3">&#x1f40c;</div>
-              <p className="text-white font-semibold">{slug.name}</p>
-              <p className="text-gray-500 text-sm">Free Slug #{slug.id}</p>
+            <div className="bg-sloth-card border border-sloth-border rounded-xl p-6 mb-6 inline-block">
+              <div className="text-6xl mb-3">&#x1f9a5;</div>
+              <p className="text-white font-semibold">{sloth.name}</p>
+              <p className="text-gray-500 text-sm">Free Sloth #{sloth.id}</p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
-                onClick={() => navigate('/stable')}
-                className="px-6 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer"
+                onClick={() => navigate('/treehouse')}
+                className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
               >
-                Go to Stable
+                Go to Treehouse
               </button>
             </div>
           </motion.div>
@@ -164,12 +164,12 @@ export default function Mint() {
           >
             <div className="text-6xl mb-4">&#x2714;&#xfe0f;</div>
             <h2 className="text-2xl font-bold mb-2">Already Minted</h2>
-            <p className="text-gray-400 mb-6">This wallet already has a Free Slug.</p>
+            <p className="text-gray-400 mb-6">This wallet already has a Free Sloth.</p>
             <button
-              onClick={() => navigate('/stable')}
-              className="px-6 py-2.5 bg-slug-green text-slug-dark font-bold rounded-xl hover:bg-slug-green/90 transition-colors cursor-pointer"
+              onClick={() => navigate('/treehouse')}
+              className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
             >
-              View Your Stable
+              View Your Treehouse
             </button>
           </motion.div>
         )}
@@ -182,11 +182,11 @@ export default function Mint() {
             className="text-center"
           >
             <div className="text-6xl mb-4">&#x274c;</div>
-            <h2 className="text-2xl font-bold text-slug-red mb-2">Mint Failed</h2>
+            <h2 className="text-2xl font-bold text-sloth-red mb-2">Mint Failed</h2>
             <p className="text-gray-400 mb-6">{error}</p>
             <button
               onClick={() => setState('idle')}
-              className="px-6 py-2.5 border border-slug-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+              className="px-6 py-2.5 border border-sloth-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
             >
               Try Again
             </button>

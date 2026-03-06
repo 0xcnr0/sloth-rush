@@ -133,16 +133,16 @@ router.post("/buy-cosmetic", async (req: Request, res: Response) => {
           "SELECT balance FROM coin_balances WHERE wallet = $1 FOR UPDATE",
           [wallet]
         )).rows[0];
-        if ((balanceRow?.balance || 0) < cosmetic.slug_price) {
+        if ((balanceRow?.balance || 0) < cosmetic.sloth_price) {
           throw new Error("INSUFFICIENT_BALANCE");
         }
         await client.query(
           "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
-          [cosmetic.slug_price, wallet]
+          [cosmetic.sloth_price, wallet]
         );
         await client.query(
           "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'cosmetic_purchase', $2, $3)",
-          [wallet, -cosmetic.slug_price, `Purchased ${cosmetic.name}`]
+          [wallet, -cosmetic.sloth_price, `Purchased ${cosmetic.name}`]
         );
         await client.query(
           "INSERT INTO user_cosmetics (wallet, cosmetic_id) VALUES ($1, $2)",
@@ -151,7 +151,7 @@ router.post("/buy-cosmetic", async (req: Request, res: Response) => {
       });
     } catch (err: any) {
       if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient SLUG balance" });
+        res.status(400).json({ error: "insufficient ZZZ balance" });
         return;
       }
       throw err;
@@ -224,16 +224,16 @@ router.post("/buy-accessory", async (req: Request, res: Response) => {
           "SELECT balance FROM coin_balances WHERE wallet = $1 FOR UPDATE",
           [wallet]
         )).rows[0];
-        if ((balanceRow?.balance || 0) < accessory.slug_price) {
+        if ((balanceRow?.balance || 0) < accessory.sloth_price) {
           throw new Error("INSUFFICIENT_BALANCE");
         }
         await client.query(
           "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
-          [accessory.slug_price, wallet]
+          [accessory.sloth_price, wallet]
         );
         await client.query(
           "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'accessory_purchase', $2, $3)",
-          [wallet, -accessory.slug_price, `Purchased ${accessory.name}`]
+          [wallet, -accessory.sloth_price, `Purchased ${accessory.name}`]
         );
         await client.query(
           "INSERT INTO user_accessories (wallet, accessory_id) VALUES ($1, $2)",
@@ -242,7 +242,7 @@ router.post("/buy-accessory", async (req: Request, res: Response) => {
       });
     } catch (err: any) {
       if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient SLUG balance" });
+        res.status(400).json({ error: "insufficient ZZZ balance" });
         return;
       }
       throw err;

@@ -1,8 +1,8 @@
 {
-  "name": "slug-rush",
+  "name": "sloth-rush",
   "version": "0.1.0",
   "private": true,
-  "description": "Slug Rush — Base L2 blockchain snail racing game",
+  "description": "Sloth Rush — Sloth Racing Game",
   "workspaces": [
     "frontend",
     "backend",
