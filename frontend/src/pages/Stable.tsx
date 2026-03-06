@@ -293,26 +293,200 @@ export default function Stable() {
         </div>
       )}
 
-      {/* Free Slug Card with Upgrade */}
+      {/* Free Slug Card — Full Featured */}
       {freeSlug && (
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-300 mb-3">Free Slug</h2>
-          <div className="bg-slug-card border border-slug-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
-            <div className="text-6xl">&#x1f40c;</div>
-            <div className="flex-1 text-center sm:text-left">
-              <p className="text-white font-semibold text-lg">{freeSlug.name}</p>
-              <p className="text-gray-500 text-sm">Free Slug #{freeSlug.id}</p>
-              <p className="text-gray-400 text-sm mt-2">
-                Upgrade to a Snail to unlock racing and earn SLUG Coins!
-              </p>
+          <div className="bg-slug-card border border-slug-border rounded-xl p-5">
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="text-5xl">{'\u{1F40C}'}</div>
+              <div className="flex-1">
+                <p className="text-white font-semibold text-lg">{freeSlug.name}</p>
+                <p className="text-gray-500 text-sm">Free Slug #{freeSlug.id}</p>
+              </div>
+              <button
+                onClick={handleUpgrade}
+                disabled={upgradeState !== 'idle'}
+                className="px-4 py-2 bg-slug-purple text-white font-bold rounded-xl text-sm hover:bg-slug-purple/90 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
+              >
+                Upgrade — $3
+              </button>
             </div>
+
+            {/* Stat Grid (cap: 15) */}
+            <div className="grid grid-cols-3 gap-1 text-center text-xs mb-3">
+              {[
+                { label: 'SPD', val: freeSlug.spd },
+                { label: 'ACC', val: freeSlug.acc },
+                { label: 'STA', val: freeSlug.sta },
+                { label: 'AGI', val: freeSlug.agi },
+                { label: 'REF', val: freeSlug.ref },
+                { label: 'LCK', val: freeSlug.lck },
+              ].map(s => (
+                <div key={s.label} className="bg-slug-dark rounded px-1 py-1">
+                  <span className="text-gray-500">{s.label} </span>
+                  <span className="text-white font-bold">{Number(s.val || 0) % 1 === 0 ? (s.val || 0) : Number(s.val || 0).toFixed(1)}</span>
+                  <span className="text-gray-600 text-[10px]">/15</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Training UI — Accordion */}
+            <div className="mt-3">
+              <button
+                onClick={() => toggleSection(`training-${freeSlug.id}`)}
+                className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
+              >
+                <span className={`text-xs transition-transform ${expandedSections[`training-${freeSlug.id}`] || trainings.find(t => t.snailId === freeSlug.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                Training
+                {trainings.find(t => t.snailId === freeSlug.id) && (
+                  <span className="text-slug-purple text-xs font-normal ml-1">(Active)</span>
+                )}
+              </button>
+              {(expandedSections[`training-${freeSlug.id}`] || trainings.find(t => t.snailId === freeSlug.id)) && (() => {
+                const active = trainings.find(t => t.snailId === freeSlug.id)
+                if (active) {
+                  return (
+                    <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
+                      <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
+                      {active.isReady ? (
+                        <button
+                          onClick={() => handleClaimTraining(freeSlug.id)}
+                          disabled={trainingLoading === freeSlug.id}
+                          className="w-full py-1.5 bg-slug-green text-slug-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                        >
+                          {trainingLoading === freeSlug.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
+                        </button>
+                      ) : (
+                        <p className="text-xs text-slug-purple">
+                          Ready at {new Date(active.completedAt).toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                  )
+                }
+                const weeklyCount = weeklyTrainingCounts[freeSlug.id] || 0
+                const weeklyLimit = 1
+                const limitReached = weeklyCount >= weeklyLimit
+                return (
+                  <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-gray-400">Train a stat (6h, 10 SLUG)</p>
+                      <span className={`text-[10px] font-bold ${limitReached ? 'text-red-400' : 'text-gray-500'}`}>
+                        {weeklyCount}/{weeklyLimit} this week
+                      </span>
+                    </div>
+                    {limitReached ? (
+                      <p className="text-xs text-red-400 text-center py-2">Weekly training limit reached</p>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2">
+                          {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
+                            <button
+                              key={stat}
+                              onClick={() => setTrainingStat(prev => ({ ...prev, [freeSlug.id]: stat }))}
+                              className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
+                                trainingStat[freeSlug.id] === stat
+                                  ? 'bg-slug-purple text-white'
+                                  : 'bg-slug-card text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {stat.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => handleStartTraining(freeSlug.id)}
+                          disabled={!trainingStat[freeSlug.id] || trainingLoading === freeSlug.id}
+                          className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                        >
+                          {trainingLoading === freeSlug.id ? 'Starting...' : 'Start Training'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* Equipment — Accordion */}
+            {(ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
+              <div className="mt-3">
+                <button
+                  onClick={() => toggleSection(`equip-${freeSlug.id}`)}
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
+                >
+                  <span className={`text-xs transition-transform ${expandedSections[`equip-${freeSlug.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                  Equipment
+                </button>
+                {expandedSections[`equip-${freeSlug.id}`] && (
+                  <div className="p-3 bg-slug-dark rounded-lg border border-slug-border space-y-2">
+                    {ownedCosmetics.length > 0 && (
+                      <select
+                        value=""
+                        onChange={async e => {
+                          const cosId = Number(e.target.value)
+                          if (!cosId || !address) return
+                          try {
+                            await api.equipCosmetic(address, freeSlug.id, cosId)
+                            loadStable()
+                          } catch (err: any) { toast.error(err.message) }
+                        }}
+                        className="w-full bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                      >
+                        <option value="">{freeSlug.cosmetic ? `Cosmetic: ${typeof freeSlug.cosmetic === 'string' ? freeSlug.cosmetic : freeSlug.cosmetic.name}` : 'Equip Cosmetic...'}</option>
+                        {ownedCosmetics.map((c: any) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    {ownedAccessories.length > 0 && (
+                      <select
+                        value=""
+                        onChange={async e => {
+                          const accId = Number(e.target.value)
+                          if (!accId || !address) return
+                          try {
+                            await api.equipAccessory(address, freeSlug.id, accId)
+                            loadStable()
+                          } catch (err: any) { toast.error(err.message) }
+                        }}
+                        className="w-full bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                      >
+                        <option value="">{(freeSlug.equipped_accessory || freeSlug.accessory) ? `Accessory: ${freeSlug.equipped_accessory || (typeof freeSlug.accessory === 'string' ? freeSlug.accessory : freeSlug.accessory?.name)}` : 'Equip Accessory...'}</option>
+                        {ownedAccessories.map((a: any) => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mini Games button */}
             <button
-              onClick={handleUpgrade}
-              disabled={upgradeState !== 'idle'}
-              className="px-6 py-3 bg-slug-purple text-white font-bold rounded-xl hover:bg-slug-purple/90 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
+              onClick={() => setActiveMiniGame({ snailId: freeSlug.id, snailName: freeSlug.name })}
+              className="w-full mt-3 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
             >
-              Upgrade to Snail — $3 USDC
+              Play Mini Games
             </button>
+
+            {/* Enter Race — Exhibition only */}
+            <div className="mt-3 pt-3 border-t border-slug-border">
+              <button
+                onClick={() => navigate('/race')}
+                className="w-full py-3 bg-slug-green text-slug-dark text-lg font-bold rounded-lg hover:bg-slug-green/90 transition-colors cursor-pointer shadow-lg shadow-slug-green/20"
+              >
+                Enter Exhibition Race
+              </button>
+            </div>
+
+            {/* Upgrade Section */}
+            <div className="mt-4 pt-4 border-t border-slug-border">
+              <p className="text-gray-400 text-xs text-center mb-3">Upgrade to unlock all race formats</p>
+            </div>
           </div>
 
           {/* Free Upgrade Path */}

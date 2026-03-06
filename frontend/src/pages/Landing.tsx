@@ -29,8 +29,8 @@ export default function Landing() {
         </p>
 
         <p className="text-gray-500 mb-10 max-w-md mx-auto">
-          Mint your slug, upgrade to a snail, and compete in sealed-bid races on Base L2.
-          Every race is deterministic and verifiable on-chain.
+          Mint your slug, upgrade to a snail, and compete in races to earn SLUG Coins.
+          Every race is deterministic and verifiable.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -68,7 +68,7 @@ export default function Landing() {
         {[
           { title: 'Free Mint', desc: 'Gasless Free Slug mint — one per wallet', icon: '&#x2728;' },
           { title: 'Upgrade', desc: 'Burn your slug, pay $3 USDC, get a Snail with random rarity', icon: '&#x1f525;' },
-          { title: 'Race & Earn', desc: 'Sealed bid racing — win SLUG Coins and climb the ranks', icon: '&#x1f3c6;' },
+          { title: 'Race & Earn', desc: 'Compete in races — win SLUG Coins and climb the ranks', icon: '&#x1f3c6;' },
         ].map((f) => (
           <div
             key={f.title}

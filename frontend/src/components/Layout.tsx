@@ -139,7 +139,7 @@ export default function Layout() {
 
       <footer className="border-t border-slug-border py-4 px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-gray-500 text-xs">
-          <span>Slug Rush — Base L2 Blockchain Racing Game</span>
+          <span>Slug Rush — Snail Racing Game</span>
           <div className="flex items-center gap-4">
             <Link to="/mint" className="hover:text-white transition-colors">Mint</Link>
             <Link to="/guide" className="hover:text-white transition-colors">How to Play</Link>

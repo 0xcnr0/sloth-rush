@@ -501,9 +501,9 @@ export default function RaceLobby() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="text-center"
           >
-            <h1 className="text-2xl font-bold mb-2">SEALED BID</h1>
-            <p className="text-gray-400 mb-2">Place your raise to fight for Pole Position!</p>
-            <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">All bids are hidden until time runs out. Highest bidder starts in pole position with a small lead. You get your bid back — it only determines starting order.</p>
+            <h1 className="text-2xl font-bold mb-2">GRID BOOST</h1>
+            <p className="text-gray-400 mb-2">Boost your starting position!</p>
+            <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">Spend SLUG Coins to boost your grid position. Highest boost starts in pole position with a small lead. Coins are returned — it only determines starting order.</p>
 
             {/* Big countdown */}
             <motion.div
@@ -536,7 +536,7 @@ export default function RaceLobby() {
             {!bidSubmitted ? (
               <div className="max-w-sm mx-auto">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-400 text-sm">Raise Amount</span>
+                  <span className="text-gray-400 text-sm">Boost Amount</span>
                   <span className="text-slug-green font-bold text-lg">{bidAmount} SLUG</span>
                 </div>
                 <input
@@ -556,7 +556,7 @@ export default function RaceLobby() {
                   onClick={handleBidSubmit}
                   className="w-full mt-6 py-3 bg-slug-gold text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-gold/90 transition-colors cursor-pointer"
                 >
-                  CONFIRM BID
+                  CONFIRM BOOST
                 </button>
               </div>
             ) : (
@@ -566,8 +566,8 @@ export default function RaceLobby() {
                 className="bg-slug-green/10 border border-slug-green rounded-xl p-6 max-w-sm mx-auto"
               >
                 <div className="text-3xl mb-2">&#x1f512;</div>
-                <p className="text-slug-green font-bold">Bid Locked: {bidAmount} SLUG</p>
-                <p className="text-gray-400 text-sm mt-1">Revealing bids...</p>
+                <p className="text-slug-green font-bold">Boost Locked: {bidAmount} SLUG</p>
+                <p className="text-gray-400 text-sm mt-1">Revealing boosts...</p>
               </motion.div>
             )}
           </motion.div>
@@ -609,7 +609,7 @@ export default function RaceLobby() {
                   <span className="text-2xl">&#x1f40c;</span>
                   <div className="flex-1 text-left">
                     <p className="text-white font-semibold">{gp.name}</p>
-                    <p className="text-gray-500 text-xs">Bid: {gp.bid} SLUG</p>
+                    <p className="text-gray-500 text-xs">Boost: {gp.bid} SLUG</p>
                   </div>
                   {i === 0 && (
                     <span className="text-slug-gold text-sm font-bold">POLE</span>
@@ -694,7 +694,7 @@ export default function RaceLobby() {
             {!bidSubmitted ? (
               <div className="max-w-sm mx-auto">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-400 text-sm">Final Raise</span>
+                  <span className="text-gray-400 text-sm">Final Boost</span>
                   <span className="text-slug-green font-bold text-lg">{bidAmount} SLUG</span>
                 </div>
                 <input
@@ -722,13 +722,13 @@ export default function RaceLobby() {
                   }}
                   className="w-full mt-4 py-3 bg-slug-gold text-slug-dark font-bold rounded-xl text-lg cursor-pointer"
                 >
-                  CONFIRM FINAL BID
+                  CONFIRM FINAL BOOST
                 </button>
               </div>
             ) : (
               <div className="bg-slug-green/10 border border-slug-green rounded-xl p-6 max-w-sm mx-auto">
                 <div className="text-3xl mb-2">&#x1f512;</div>
-                <p className="text-slug-green font-bold">Final Bid Locked: {bidAmount} SLUG</p>
+                <p className="text-slug-green font-bold">Final Boost Locked: {bidAmount} SLUG</p>
                 <p className="text-gray-400 text-sm mt-1">Starting Grand Prix Final...</p>
               </div>
             )}

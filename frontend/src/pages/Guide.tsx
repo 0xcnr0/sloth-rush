@@ -8,7 +8,7 @@ const SECTIONS = [
     title: 'Getting Started',
     icon: '\u{1F680}',
     content: [
-      { q: 'What is Slug Rush?', a: 'Slug Rush is a blockchain snail racing game on Base L2. Mint your slug, upgrade to a snail, train it, and compete in sealed-bid races to earn SLUG Coins.' },
+      { q: 'What is Slug Rush?', a: 'Slug Rush is a snail racing game. Mint your slug, upgrade to a snail, train it, and compete in races to earn SLUG Coins.' },
       { q: 'How do I start?', a: 'Connect your wallet, mint a free slug (gasless!), then enter Exhibition races. When ready, upgrade to a Snail for $3 USDC to unlock all race formats.' },
       { q: 'Is it free to play?', a: 'Yes! Free Slugs can race in Exhibition mode and earn SLUG Coins. Upgrading to a Snail ($3 or free path) unlocks all features.' },
     ]
@@ -18,10 +18,10 @@ const SECTIONS = [
     title: 'Racing',
     icon: '\u{1F3C1}',
     content: [
-      { q: 'How do races work?', a: 'Each race has 4 participants. Before the race, there\'s a sealed-bid auction where you secretly bid SLUG Coins. The highest bidder gets pole position. Then the race simulates based on your snail\'s stats.' },
+      { q: 'How do races work?', a: 'Each race has 4 participants. Before the race, there\'s a Grid Boost phase where you spend SLUG Coins to boost your starting position. The highest boost gets pole position. Then the race simulates based on your snail\'s stats.' },
       { q: 'What are race formats?', a: 'Exhibition (free, practice), Standard (50 SLUG entry), Tactic (75 SLUG, use Boost & Shell), and Grand Prix (150 SLUG, multi-round championship).' },
       { q: 'How are prizes distributed?', a: 'Platform takes 15%, remaining pot: 1st gets 50%, 2nd 30%, 3rd 15%, 4th 5%. Exhibition races have flat rewards.' },
-      { q: 'What is sealed bidding?', a: 'Before each race, you have 10 seconds to secretly bid SLUG Coins. All bids are revealed simultaneously. Highest bid = pole position (starting advantage). Bid wisely!' },
+      { q: 'What is Grid Boost?', a: 'Before each race, you have 10 seconds to spend SLUG Coins to boost your grid position. All boosts are revealed simultaneously. Highest boost = pole position (starting advantage). Boost wisely!' },
     ]
   },
   {
