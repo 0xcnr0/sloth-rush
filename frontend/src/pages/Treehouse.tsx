@@ -129,11 +129,11 @@ export default function Treehouse() {
   // On-chain upgrade success: register in backend
   useEffect(() => {
     if (onchainUpgrade.isSuccess && address) {
-      api.upgradeSlug(address).then(data => {
+      api.upgradeSloth(address).then((data: any) => {
         setNewSloth(data.sloth)
         setCoinBalance(prev => prev + data.coinBonus)
         setUpgradeState('done')
-      }).catch((err) => { console.error('Backend upgrade failed:', err); setUpgradeState('done') })
+      }).catch((err: any) => { console.error('Backend upgrade failed:', err); setUpgradeState('done') })
     }
   }, [onchainUpgrade.isSuccess, address])
 
@@ -162,7 +162,7 @@ export default function Treehouse() {
       setUpgradeState('revealing')
 
       try {
-        const data = await api.upgradeSlug(address)
+        const data = await api.upgradeSloth(address)
         setNewSloth(data.sloth)
         await new Promise(r => setTimeout(r, 2000))
         setUpgradeState('done')

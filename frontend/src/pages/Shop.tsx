@@ -26,7 +26,7 @@ export default function Shop() {
   const [cosmeticsLoading, setCosmeticsLoading] = useState(false)
   const [accessoriesLoading, setAccessoriesLoading] = useState(false)
 
-  const [sloths, setSloths] = useState<any[]>([])
+  const [_sloths, setSloths] = useState<any[]>([])
 
   useEffect(() => {
     if (!address) return

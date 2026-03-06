@@ -14,7 +14,7 @@ interface ProfileData {
   totalWins: number
   totalEarnings: number
   loginDays: number
-  slothCount: number
+  freeSlothCount: number
   slothCount: number
 }
 

@@ -4,8 +4,8 @@ import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 
 interface EvolutionModalProps {
-  snailId: number
-  snailName: string
+  slothId: number
+  slothName: string
   wallet: string
   onClose: () => void
   onEvolved: () => void
@@ -41,7 +41,7 @@ const EVOLUTION_PATHS = [
   },
 ]
 
-export default function EvolutionModal({ snailId, snailName, wallet, onClose, onEvolved }: EvolutionModalProps) {
+export default function EvolutionModal({ slothId, slothName, wallet, onClose, onEvolved }: EvolutionModalProps) {
   const [progress, setProgress] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [evolving, setEvolving] = useState(false)
@@ -50,11 +50,11 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
   const [evolveResult, setEvolveResult] = useState<any>(null)
 
   useEffect(() => {
-    api.getEvolutionProgress(snailId)
+    api.getEvolutionProgress(slothId)
       .then(setProgress)
       .catch((err) => { console.error('Failed to load evolution progress:', err); toast.error('Failed to load data. Please refresh.') })
       .finally(() => setLoading(false))
-  }, [snailId])
+  }, [slothId])
 
   async function handleEvolve() {
     if (evolving) return
@@ -64,12 +64,12 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
     const zzzCost = requirements?.zzz || 0
     const pathLabel = selectedPath ? ` via ${selectedPath.charAt(0).toUpperCase() + selectedPath.slice(1)} path` : ''
     const confirmed = window.confirm(
-      `Evolve ${snailName} to Tier ${tier + 1}${pathLabel}?\n\nThis will cost ${zzzCost} ZZZ Coins. This action cannot be undone.`
+      `Evolve ${slothName} to Tier ${tier + 1}${pathLabel}?\n\nThis will cost ${zzzCost} ZZZ Coins. This action cannot be undone.`
     )
     if (!confirmed) return
     setEvolving(true)
     try {
-      const result = await api.evolve(wallet, snailId, selectedPath || undefined)
+      const result = await api.evolve(wallet, slothId, selectedPath || undefined)
       setEvolveResult(result)
       setEvolved(true)
     } catch (err: any) {
@@ -112,7 +112,7 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
           <div className="flex items-center justify-between p-5 border-b border-sloth-border">
             <div>
               <h2 className="text-white font-bold text-lg">Evolution</h2>
-              <p className="text-gray-400 text-sm">{snailName}</p>
+              <p className="text-gray-400 text-sm">{slothName}</p>
             </div>
             <button
               onClick={onClose}

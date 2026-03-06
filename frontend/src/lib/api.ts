@@ -61,7 +61,7 @@ export const api = {
     ),
 
   startBidding: (raceId: string) =>
-    request<{ raceId: string; status: string; botsAdded: number }>(
+    request<{ raceId: string; status: string; botsAdded: number; skipBidding?: boolean }>(
       '/race/start-bidding',
       { method: 'POST', body: JSON.stringify({ raceId }) }
     ),
@@ -198,7 +198,7 @@ export const api = {
     }),
 
   getTrainingStatus: (wallet: string) =>
-    request<{ trainings: { slothId: number; slothName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[] }>(
+    request<{ trainings: { slothId: number; slothName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]; weeklyCounts?: Record<number, number> }>(
       `/sloth/training-status/${wallet}`
     ),
 
