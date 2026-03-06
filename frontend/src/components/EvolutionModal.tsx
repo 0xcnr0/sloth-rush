@@ -52,7 +52,7 @@ export default function EvolutionModal({ snailId, snailName, wallet, onClose, on
   useEffect(() => {
     api.getEvolutionProgress(snailId)
       .then(setProgress)
-      .catch(() => {})
+      .catch((err) => { console.error('Failed to load evolution progress:', err); toast.error('Failed to load data. Please refresh.') })
       .finally(() => setLoading(false))
   }, [snailId])
 

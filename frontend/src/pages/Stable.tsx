@@ -9,6 +9,7 @@ import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
 import QuestPanel from '../components/QuestPanel'
 import EvolutionModal from '../components/EvolutionModal'
+import MiniGameModal from '../components/MiniGameModal'
 import Spinner from '../components/Spinner'
 
 const EVOLUTION_PATH_ICONS: Record<string, string> = {
@@ -62,6 +63,9 @@ export default function Stable() {
   const [evolveSnailName, setEvolveSnailName] = useState<string>('')
   const [ownedCosmetics, setOwnedCosmetics] = useState<any[]>([])
   const [ownedAccessories, setOwnedAccessories] = useState<any[]>([])
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
+  const [questsOpen, setQuestsOpen] = useState(true)
+  const [activeMiniGame, setActiveMiniGame] = useState<{ snailId: number; snailName: string } | null>(null)
 
   async function loadStable() {
     if (!address) return
@@ -70,7 +74,7 @@ export default function Stable() {
       const data = await api.getStable(address)
       setSlugs(data.slugs)
       setCoinBalance(data.coinBalance)
-    } catch { /* ignore */ }
+    } catch (err) { console.error('Failed to load stable:', err); toast.error('Failed to load data. Please refresh.') }
     setLoading(false)
   }
 
@@ -79,19 +83,19 @@ export default function Stable() {
   // Trigger stable_visit quest progress
   useEffect(() => {
     if (!address) return
-    api.trackQuestProgress(address, 'stable_visit').catch(() => {})
+    api.trackQuestProgress(address, 'stable_visit').catch((err) => { console.error('Failed to track quest:', err) })
   }, [address])
 
   // Load free upgrade progress
   useEffect(() => {
     if (!address) return
-    api.getUpgradeProgress(address).then(setUpgradeProgress).catch(() => {})
+    api.getUpgradeProgress(address).then(setUpgradeProgress).catch((err) => { console.error('Failed to load upgrade progress:', err) })
   }, [address])
 
   // Load training status
   function loadTrainings() {
     if (!address) return
-    api.getTrainingStatus(address).then(d => setTrainings(d.trainings)).catch(() => {})
+    api.getTrainingStatus(address).then(d => setTrainings(d.trainings)).catch((err) => { console.error('Failed to load trainings:', err) })
   }
   useEffect(() => { loadTrainings() }, [address])
 
@@ -101,7 +105,7 @@ export default function Stable() {
       const map: Record<number, any> = {}
       for (const s of data.streaks) map[s.snail_id] = s
       setStreaks(map)
-    }).catch(() => {})
+    }).catch((err) => { console.error('Failed to load streaks:', err) })
   }, [address])
 
   // Load owned cosmetics and accessories for equip dropdowns
@@ -109,10 +113,10 @@ export default function Stable() {
     if (!address) return
     api.getShopCosmetics(address)
       .then(d => setOwnedCosmetics((d.cosmetics || []).filter((c: any) => c.owned)))
-      .catch(() => {})
+      .catch((err) => { console.error('Failed to load cosmetics:', err) })
     api.getShopAccessories(address)
       .then(d => setOwnedAccessories((d.accessories || []).filter((a: any) => a.owned)))
-      .catch(() => {})
+      .catch((err) => { console.error('Failed to load accessories:', err) })
   }, [address])
 
   const freeSlug = slugs.find(s => s.type === 'free_slug')
@@ -125,7 +129,7 @@ export default function Stable() {
         setNewSnail(data.snail)
         setCoinBalance(prev => prev + data.coinBonus)
         setUpgradeState('done')
-      }).catch(() => setUpgradeState('done'))
+      }).catch((err) => { console.error('Backend upgrade failed:', err); setUpgradeState('done') })
     }
   }, [onchainUpgrade.isSuccess, address])
 
@@ -230,6 +234,10 @@ export default function Stable() {
     } catch (err: any) {
       toast.error(err.message)
     }
+  }
+
+  function toggleSection(key: string) {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
   function closeReveal() {
@@ -348,7 +356,14 @@ export default function Stable() {
 
       {/* Quest Panel */}
       <div className="mb-6">
-        <QuestPanel />
+        <button
+          onClick={() => setQuestsOpen(!questsOpen)}
+          className="flex items-center gap-2 text-lg font-semibold text-gray-300 mb-3 cursor-pointer hover:text-white transition-colors"
+        >
+          <span className={`text-sm transition-transform ${questsOpen ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+          Daily Quests
+        </button>
+        {questsOpen && <QuestPanel />}
       </div>
 
       {/* Snail Cards */}
@@ -483,57 +498,69 @@ export default function Stable() {
                   </div>
                 )}
 
-                {/* Training UI */}
-                {(() => {
-                  const active = trainings.find(t => t.snailId === snail.id)
-                  if (active) {
+                {/* Training UI — Accordion */}
+                <div className="mt-3">
+                  <button
+                    onClick={() => toggleSection(`training-${snail.id}`)}
+                    className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
+                  >
+                    <span className={`text-xs transition-transform ${expandedSections[`training-${snail.id}`] || trainings.find(t => t.snailId === snail.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                    Training
+                    {trainings.find(t => t.snailId === snail.id) && (
+                      <span className="text-slug-purple text-xs font-normal ml-1">(Active)</span>
+                    )}
+                  </button>
+                  {(expandedSections[`training-${snail.id}`] || trainings.find(t => t.snailId === snail.id)) && (() => {
+                    const active = trainings.find(t => t.snailId === snail.id)
+                    if (active) {
+                      return (
+                        <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
+                          <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
+                          {active.isReady ? (
+                            <button
+                              onClick={() => handleClaimTraining(snail.id)}
+                              disabled={trainingLoading === snail.id}
+                              className="w-full py-1.5 bg-slug-green text-slug-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                            >
+                              {trainingLoading === snail.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
+                            </button>
+                          ) : (
+                            <p className="text-xs text-slug-purple">
+                              Ready at {new Date(active.completedAt).toLocaleTimeString()}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    }
                     return (
-                      <div className="mt-3 p-3 bg-slug-dark rounded-lg border border-slug-border">
-                        <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
-                        {active.isReady ? (
-                          <button
-                            onClick={() => handleClaimTraining(snail.id)}
-                            disabled={trainingLoading === snail.id}
-                            className="w-full py-1.5 bg-slug-green text-slug-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
-                          >
-                            {trainingLoading === snail.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
-                          </button>
-                        ) : (
-                          <p className="text-xs text-slug-purple">
-                            Ready at {new Date(active.completedAt).toLocaleTimeString()}
-                          </p>
-                        )}
+                      <div className="p-3 bg-slug-dark rounded-lg border border-slug-border">
+                        <p className="text-xs text-gray-400 mb-2">Train a stat (6h, 10 SLUG)</p>
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2">
+                          {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
+                            <button
+                              key={stat}
+                              onClick={() => setTrainingStat(prev => ({ ...prev, [snail.id]: stat }))}
+                              className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
+                                trainingStat[snail.id] === stat
+                                  ? 'bg-slug-purple text-white'
+                                  : 'bg-slug-card text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {stat.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => handleStartTraining(snail.id)}
+                          disabled={!trainingStat[snail.id] || trainingLoading === snail.id}
+                          className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                        >
+                          {trainingLoading === snail.id ? 'Starting...' : 'Start Training'}
+                        </button>
                       </div>
                     )
-                  }
-                  return (
-                    <div className="mt-3 p-3 bg-slug-dark rounded-lg border border-slug-border">
-                      <p className="text-xs text-gray-400 mb-2">Train a stat (6h, 10 SLUG)</p>
-                      <div className="flex gap-1 mb-2">
-                        {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
-                          <button
-                            key={stat}
-                            onClick={() => setTrainingStat(prev => ({ ...prev, [snail.id]: stat }))}
-                            className={`flex-1 py-2 rounded text-[11px] font-bold cursor-pointer min-h-[44px] flex items-center justify-center ${
-                              trainingStat[snail.id] === stat
-                                ? 'bg-slug-purple text-white'
-                                : 'bg-slug-card text-gray-400 hover:text-white'
-                            }`}
-                          >
-                            {stat.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => handleStartTraining(snail.id)}
-                        disabled={!trainingStat[snail.id] || trainingLoading === snail.id}
-                        className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
-                      >
-                        {trainingLoading === snail.id ? 'Starting...' : 'Start Training'}
-                      </button>
-                    </div>
-                  )
-                })()}
+                  })()}
+                </div>
 
                 {/* Cosmetic / Accessory badges */}
                 {(snail.cosmetic || snail.equipped_accessory || snail.accessory) && (
@@ -551,54 +578,65 @@ export default function Stable() {
                   </div>
                 )}
 
-                {/* Equip cosmetic / accessory — auto-equip on select */}
+                {/* Equipment — Accordion */}
                 {(ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
-                  <div className="mt-3 p-3 bg-slug-dark rounded-lg border border-slug-border space-y-2">
-                    {ownedCosmetics.length > 0 && (
-                      <select
-                        value=""
-                        onChange={async e => {
-                          const cosId = Number(e.target.value)
-                          if (!cosId || !address) return
-                          try {
-                            await api.equipCosmetic(address, snail.id, cosId)
-                            loadStable()
-                          } catch (err: any) { toast.error(err.message) }
-                        }}
-                        className="w-full bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
-                      >
-                        <option value="">{snail.cosmetic ? `Cosmetic: ${typeof snail.cosmetic === 'string' ? snail.cosmetic : snail.cosmetic.name}` : 'Equip Cosmetic...'}</option>
-                        {ownedCosmetics.map((c: any) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    )}
-                    {ownedAccessories.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <select
-                          value=""
-                          onChange={async e => {
-                            const accId = Number(e.target.value)
-                            if (!accId || !address) return
-                            try {
-                              await api.equipAccessory(address, snail.id, accId)
-                              loadStable()
-                            } catch (err: any) { toast.error(err.message) }
-                          }}
-                          className="flex-1 bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
-                        >
-                          <option value="">{(snail.equipped_accessory || snail.accessory) ? `Accessory: ${snail.equipped_accessory || (typeof snail.accessory === 'string' ? snail.accessory : snail.accessory?.name)}` : 'Equip Accessory...'}</option>
-                          {ownedAccessories.map((a: any) => (
-                            <option key={a.id} value={a.id}>{a.name}</option>
-                          ))}
-                        </select>
-                        {(snail.equipped_accessory || snail.accessory) && (
-                          <button
-                            onClick={() => handleUnequipAccessory(snail.id)}
-                            className="px-3 py-2 bg-gray-500/20 text-gray-400 rounded text-xs font-bold cursor-pointer min-h-[44px]"
+                  <div className="mt-3">
+                    <button
+                      onClick={() => toggleSection(`equip-${snail.id}`)}
+                      className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
+                    >
+                      <span className={`text-xs transition-transform ${expandedSections[`equip-${snail.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                      Equipment
+                    </button>
+                    {expandedSections[`equip-${snail.id}`] && (
+                      <div className="p-3 bg-slug-dark rounded-lg border border-slug-border space-y-2">
+                        {ownedCosmetics.length > 0 && (
+                          <select
+                            value=""
+                            onChange={async e => {
+                              const cosId = Number(e.target.value)
+                              if (!cosId || !address) return
+                              try {
+                                await api.equipCosmetic(address, snail.id, cosId)
+                                loadStable()
+                              } catch (err: any) { toast.error(err.message) }
+                            }}
+                            className="w-full bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                           >
-                            &#x2715;
-                          </button>
+                            <option value="">{snail.cosmetic ? `Cosmetic: ${typeof snail.cosmetic === 'string' ? snail.cosmetic : snail.cosmetic.name}` : 'Equip Cosmetic...'}</option>
+                            {ownedCosmetics.map((c: any) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        )}
+                        {ownedAccessories.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <select
+                              value=""
+                              onChange={async e => {
+                                const accId = Number(e.target.value)
+                                if (!accId || !address) return
+                                try {
+                                  await api.equipAccessory(address, snail.id, accId)
+                                  loadStable()
+                                } catch (err: any) { toast.error(err.message) }
+                              }}
+                              className="flex-1 bg-slug-card border border-slug-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                            >
+                              <option value="">{(snail.equipped_accessory || snail.accessory) ? `Accessory: ${snail.equipped_accessory || (typeof snail.accessory === 'string' ? snail.accessory : snail.accessory?.name)}` : 'Equip Accessory...'}</option>
+                              {ownedAccessories.map((a: any) => (
+                                <option key={a.id} value={a.id}>{a.name}</option>
+                              ))}
+                            </select>
+                            {(snail.equipped_accessory || snail.accessory) && (
+                              <button
+                                onClick={() => handleUnequipAccessory(snail.id)}
+                                className="px-3 py-2 bg-gray-500/20 text-gray-400 rounded text-xs font-bold cursor-pointer min-h-[44px]"
+                              >
+                                &#x2715;
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
@@ -613,34 +651,39 @@ export default function Stable() {
                   Evolve
                 </button>
 
+                {/* Mini Games button */}
                 <button
-                  onClick={() => navigate('/race')}
-                  className="w-full mt-2 py-2 bg-slug-green/20 text-slug-green font-semibold rounded-lg hover:bg-slug-green/30 transition-colors cursor-pointer text-sm"
+                  onClick={() => setActiveMiniGame({ snailId: snail.id, snailName: snail.name })}
+                  className="w-full mt-2 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
                 >
-                  Enter Race
+                  Play Mini Games
                 </button>
+
+                {/* Enter Race — prominent */}
+                <div className="mt-3 pt-3 border-t border-slug-border">
+                  <button
+                    onClick={() => navigate('/race')}
+                    className="w-full py-3 bg-slug-green text-slug-dark text-lg font-bold rounded-lg hover:bg-slug-green/90 transition-colors cursor-pointer shadow-lg shadow-slug-green/20"
+                  >
+                    Enter Race
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Mini Games Quick Access */}
-      {snails.length > 0 && (
-        <div className="mt-6 bg-slug-card border border-slug-border rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-white font-semibold">Mini Games</h3>
-              <p className="text-gray-400 text-sm">Train your snails with fun challenges</p>
-            </div>
-            <button
-              onClick={() => navigate('/mini-games')}
-              className="px-4 py-2 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg hover:bg-slug-purple/30 transition-colors cursor-pointer text-sm"
-            >
-              Play Games
-            </button>
-          </div>
-        </div>
+      {/* MiniGameModal */}
+      {activeMiniGame && address && (
+        <MiniGameModal
+          snailId={activeMiniGame.snailId}
+          snailName={activeMiniGame.snailName}
+          wallet={address}
+          playsLeft={5}
+          onClose={() => setActiveMiniGame(null)}
+          onGameComplete={() => loadStable()}
+        />
       )}
 
       {/* Evolution Modal */}

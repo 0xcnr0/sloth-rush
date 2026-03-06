@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 
 type Quest = {
@@ -29,9 +30,9 @@ export default function QuestPanel() {
     if (!address) return
     setLoading(true)
     Promise.all([
-      api.getDailyQuests(address).then(d => setDaily(d.quests)).catch(() => {}),
-      api.getWeeklyQuests(address).then(d => setWeekly(d.quests)).catch(() => {}),
-      api.getMilestones(address).then(d => setMilestones(d.quests)).catch(() => {}),
+      api.getDailyQuests(address).then(d => setDaily(d.quests)).catch((err) => { console.error('Failed to load daily quests:', err); toast.error('Failed to load data. Please refresh.') }),
+      api.getWeeklyQuests(address).then(d => setWeekly(d.quests)).catch((err) => { console.error('Failed to load weekly quests:', err) }),
+      api.getMilestones(address).then(d => setMilestones(d.quests)).catch((err) => { console.error('Failed to load milestones:', err) }),
     ]).finally(() => setLoading(false))
   }, [address])
 

@@ -26,17 +26,15 @@ export default function Shop() {
   const [cosmeticsLoading, setCosmeticsLoading] = useState(false)
   const [accessoriesLoading, setAccessoriesLoading] = useState(false)
 
-  // Snails for equip dropdown
   const [slugs, setSlugs] = useState<any[]>([])
-  const [equipSnailId, setEquipSnailId] = useState<Record<number, number>>({})
 
   useEffect(() => {
     if (!address) return
-    api.getCoinBalance(address).then(d => setBalance(d.balance)).catch(() => {})
+    api.getCoinBalance(address).then(d => setBalance(d.balance)).catch((err) => { console.error('Failed to load balance:', err) })
     api.getStable(address).then(d => {
       const snails = d.slugs.filter((s: any) => s.type === 'snail')
       setSlugs(snails)
-    }).catch(() => {})
+    }).catch((err) => { console.error('Failed to load stable:', err) })
   }, [address])
 
   // Load cosmetics
@@ -79,7 +77,7 @@ export default function Shop() {
     try {
       const data = await api.buyCosmetic(address, cosmeticId)
       setBalance(data.newBalance)
-      // Refresh cosmetics
+      toast.success('Purchased! Go to your Stable to equip it.')
       const d = await api.getShopCosmetics(address)
       setCosmetics(d.cosmetics)
     } catch (err: any) {
@@ -88,42 +86,19 @@ export default function Shop() {
     setBuying(null)
   }
 
-  async function handleEquipCosmetic(cosmeticId: number) {
-    if (!address) return
-    const snailId = equipSnailId[cosmeticId]
-    if (!snailId) { toast.error('Select a snail first'); return }
-    try {
-      await api.equipCosmetic(address, snailId, cosmeticId)
-      toast.success('Cosmetic equipped!')
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-  }
-
   async function handleBuyAccessory(accessoryId: number) {
     if (!address || buying) return
     setBuying(`accessory-${accessoryId}`)
     try {
       const data = await api.buyAccessory(address, accessoryId)
       setBalance(data.newBalance)
+      toast.success('Purchased! Go to your Stable to equip it.')
       const d = await api.getShopAccessories(address)
       setAccessories(d.accessories)
     } catch (err: any) {
       toast.error(err.message)
     }
     setBuying(null)
-  }
-
-  async function handleEquipAccessory(accessoryId: number) {
-    if (!address) return
-    const snailId = equipSnailId[accessoryId + 10000] // offset to avoid conflict with cosmetic ids
-    if (!snailId) { toast.error('Select a snail first'); return }
-    try {
-      await api.equipAccessory(address, snailId, accessoryId)
-      toast.success('Accessory equipped!')
-    } catch (err: any) {
-      toast.error(err.message)
-    }
   }
 
   if (!isConnected) {
@@ -306,26 +281,9 @@ export default function Shop() {
                       </button>
                     </>
                   ) : (
-                    <div className="space-y-2">
-                      <p className="text-slug-green text-xs font-semibold text-center">Owned</p>
-                      <select
-                        value={equipSnailId[item.id] || ''}
-                        onChange={e => setEquipSnailId(prev => ({ ...prev, [item.id]: Number(e.target.value) }))}
-                        className="w-full bg-slug-dark border border-slug-border rounded-lg px-3 py-1.5 text-white text-xs outline-none"
-                      >
-                        <option value="">Select snail...</option>
-                        {slugs.map((s: any) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => handleEquipCosmetic(item.id)}
-                        disabled={!equipSnailId[item.id]}
-                        className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg hover:bg-slug-purple/30 transition-colors cursor-pointer disabled:opacity-40 text-xs"
-                      >
-                        Equip
-                      </button>
-                    </div>
+                    <p className="text-slug-green text-xs font-semibold text-center flex items-center justify-center gap-1">
+                      {'\u2705'} Owned — Equip in Stable
+                    </p>
                   )}
                 </motion.div>
               ))}
@@ -386,26 +344,9 @@ export default function Shop() {
                       </button>
                     </>
                   ) : (
-                    <div className="space-y-2">
-                      <p className="text-slug-purple text-xs font-semibold text-center">Owned</p>
-                      <select
-                        value={equipSnailId[item.id + 10000] || ''}
-                        onChange={e => setEquipSnailId(prev => ({ ...prev, [item.id + 10000]: Number(e.target.value) }))}
-                        className="w-full bg-slug-dark border border-slug-border rounded-lg px-3 py-1.5 text-white text-xs outline-none"
-                      >
-                        <option value="">Select snail...</option>
-                        {slugs.map((s: any) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => handleEquipAccessory(item.id)}
-                        disabled={!equipSnailId[item.id + 10000]}
-                        className="w-full py-1.5 bg-slug-purple/20 text-slug-purple font-semibold rounded-lg hover:bg-slug-purple/30 transition-colors cursor-pointer disabled:opacity-40 text-xs"
-                      >
-                        Equip
-                      </button>
-                    </div>
+                    <p className="text-slug-green text-xs font-semibold text-center flex items-center justify-center gap-1">
+                      {'\u2705'} Owned — Equip in Stable
+                    </p>
                   )}
                 </motion.div>
               ))}

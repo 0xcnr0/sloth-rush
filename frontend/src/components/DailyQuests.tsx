@@ -25,7 +25,7 @@ export default function DailyQuests() {
     setLoading(true)
     api.getDailyQuests(address)
       .then(d => setQuests(d.quests))
-      .catch(() => {})
+      .catch((err) => { console.error('Failed to load daily quests:', err) })
       .finally(() => setLoading(false))
   }, [address])
 

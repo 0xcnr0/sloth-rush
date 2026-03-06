@@ -51,12 +51,12 @@ export default function RaceLobby() {
     api.getStable(address).then(data => {
       setAllCreatures(data.slugs)
       setCoinBalance(data.coinBalance)
-    }).catch(() => {})
+    }).catch((err) => { console.error('Failed to load stable:', err); toast.error('Failed to load data. Please refresh.') })
   }, [address])
 
   // Load daily race info
   useEffect(() => {
-    api.getDailyRace().then(setDailyRace).catch(() => {})
+    api.getDailyRace().then(setDailyRace).catch((err) => { console.error('Failed to load daily race:', err) })
   }, [])
 
   // Filter creatures based on format: exhibition → all, others → snails only
@@ -335,6 +335,17 @@ export default function RaceLobby() {
               </div>
             )}
 
+            {/* Upcoming GP Banner */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-amber-500/30 rounded-xl">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{'\u{1F3C6}'}</span>
+                <div>
+                  <p className="text-white font-bold text-sm">Upcoming Grand Prix</p>
+                  <p className="text-gray-400 text-xs">Grand Prix races unlock as more players join. Stay tuned!</p>
+                </div>
+              </div>
+            </div>
+
             {snails.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">&#x1f40c;</div>
@@ -412,11 +423,13 @@ export default function RaceLobby() {
                   disabled={!selectedSnail || loading || (selectedFormat.fee > coinBalance)}
                   className="w-full py-3 bg-slug-green text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-green/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {loading ? 'Creating Race...' :
-                    selectedFormat.fee > coinBalance ? `Insufficient balance (need ${selectedFormat.fee}, have ${coinBalance} SLUG)` :
-                    `Enter Race (${selectedFormat.fee > 0 ? selectedFormat.fee + ' SLUG' : 'Free'})`
-                  }
+                  {loading ? 'Creating Race...' : `Enter Race (${selectedFormat.fee > 0 ? selectedFormat.fee + ' SLUG' : 'Free'})`}
                 </button>
+                {selectedFormat.fee > 0 && coinBalance < selectedFormat.fee && (
+                  <p className="text-red-400 text-sm text-center mt-2">
+                    Need {selectedFormat.fee} SLUG — you have {coinBalance}. Visit the Shop to buy more.
+                  </p>
+                )}
               </>
             )}
           </motion.div>

@@ -22,8 +22,8 @@ export default function Layout() {
 
   useEffect(() => {
     if (!address) { setBalance(0); setXp(0); return }
-    api.getCoinBalance(address).then(d => setBalance(d.balance)).catch(() => {})
-    api.getXP(address).then(d => setXp(d.xp)).catch(() => {})
+    api.getCoinBalance(address).then(d => setBalance(d.balance)).catch((err) => { console.error('Failed to load balance:', err) })
+    api.getXP(address).then(d => setXp(d.xp)).catch((err) => { console.error('Failed to load XP:', err) })
   }, [address, location.pathname])
 
   // Close mobile menu on route change
@@ -38,7 +38,7 @@ export default function Layout() {
           <div className="flex items-center gap-6">
             {/* Hamburger button - mobile only */}
             <button
-              className="sm:hidden p-2 text-gray-400 hover:text-white"
+              className="sm:hidden p-3 text-gray-400 hover:text-white"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? '\u2715' : '\u2630'}
@@ -70,9 +70,9 @@ export default function Layout() {
               </div>
             )}
             {address && xp > 0 && (
-              <div className="hidden sm:flex items-center gap-1.5 bg-slug-purple/10 px-3 py-1.5 rounded-lg">
-                <span className="text-slug-purple font-bold text-sm">{xp}</span>
-                <span className="text-slug-purple/70 text-xs">XP</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-slug-purple/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
+                <span className="text-slug-purple font-bold text-xs sm:text-sm">{xp}</span>
+                <span className="text-slug-purple/70 text-[10px] sm:text-xs hidden sm:inline">XP</span>
               </div>
             )}
             <ConnectButton
@@ -98,7 +98,7 @@ export default function Layout() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center ${
                     location.pathname === item.path
                       ? 'bg-green-600/20 text-green-400'
                       : 'text-gray-400 hover:text-white hover:bg-slate-800'
@@ -109,9 +109,9 @@ export default function Layout() {
               ))}
             </nav>
             <div className="mt-4 pt-4 border-t border-slate-700 flex flex-col gap-2">
-              <Link to="/mint" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors">Mint</Link>
-              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors">Profile</Link>
-              <Link to="/guide" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors">How to Play</Link>
+              <Link to="/mint" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">Mint</Link>
+              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">Profile</Link>
+              <Link to="/guide" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">How to Play</Link>
             </div>
             {address && (
               <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
@@ -144,6 +144,8 @@ export default function Layout() {
             <Link to="/mint" className="hover:text-white transition-colors">Mint</Link>
             <Link to="/guide" className="hover:text-white transition-colors">How to Play</Link>
             <Link to="/profile" className="hover:text-white transition-colors">Profile</Link>
+            <a href="https://twitter.com/SlugRushGame" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a>
+            <a href="https://discord.gg/slugrush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Discord</a>
           </div>
         </div>
       </footer>

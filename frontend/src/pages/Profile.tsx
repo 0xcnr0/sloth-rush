@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import Spinner from '../components/Spinner'
 
@@ -29,7 +30,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'overview' | 'transactions'>('overview')
+  const [tab, setTab] = useState<'overview' | 'transactions' | 'inventory'>('overview')
 
   useEffect(() => {
     if (!address) { setLoading(false); return }
@@ -42,7 +43,7 @@ export default function Profile() {
         setProfile(p)
         setTransactions(t.transactions)
       })
-      .catch(() => {})
+      .catch((err) => { console.error('Failed to load profile:', err); toast.error('Failed to load data. Please refresh.') })
       .finally(() => setLoading(false))
   }, [address])
 
@@ -102,21 +103,29 @@ export default function Profile() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
-        {(['overview', 'transactions'] as const).map(t => (
+        {([
+          { id: 'overview' as const, label: 'Race History' },
+          { id: 'transactions' as const, label: 'Transactions' },
+          { id: 'inventory' as const, label: 'Inventory' },
+        ]).map(t => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={t.id}
+            onClick={() => setTab(t.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-              tab === t ? 'bg-slug-green/20 text-slug-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              tab === t.id ? 'bg-slug-green/20 text-slug-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            {t === 'overview' ? 'Race History' : 'Transactions'}
+            {t.label}
           </button>
         ))}
       </div>
 
       {tab === 'overview' && <RaceHistorySection wallet={address!} />}
       {tab === 'transactions' && <TransactionSection transactions={transactions} />}
+      {tab === 'inventory' && <InventorySection wallet={address!} />}
+
+      {/* Settings */}
+      <SettingsSection />
     </div>
   )
 }
@@ -128,7 +137,7 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
   useEffect(() => {
     api.getRaceHistory(wallet)
       .then(d => { setRaces(d.races) })
-      .catch(() => {})
+      .catch((err) => { console.error('Failed to load race history:', err) })
       .finally(() => setLoading(false))
   }, [wallet])
 
@@ -246,6 +255,107 @@ function TransactionSection({ transactions }: { transactions: { type: string; am
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+function InventorySection({ wallet }: { wallet: string }) {
+  const [cosmetics, setCosmetics] = useState<any[]>([])
+  const [accessories, setAccessories] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([
+      api.getShopCosmetics(wallet).then(d => setCosmetics((d.cosmetics || []).filter((c: any) => c.owned))),
+      api.getShopAccessories(wallet).then(d => setAccessories((d.accessories || []).filter((a: any) => a.owned))),
+    ])
+      .catch((err) => { console.error('Failed to load inventory:', err); toast.error('Failed to load data. Please refresh.') })
+      .finally(() => setLoading(false))
+  }, [wallet])
+
+  if (loading) return <Spinner text="Loading inventory..." />
+
+  const allItems = [
+    ...cosmetics.map((c: any) => ({ ...c, itemType: 'cosmetic' })),
+    ...accessories.map((a: any) => ({ ...a, itemType: 'accessory' })),
+  ]
+
+  if (allItems.length === 0) return (
+    <div className="bg-slug-card border border-slug-border rounded-xl p-12 text-center">
+      <p className="text-gray-400 text-lg mb-2">No items yet</p>
+      <p className="text-gray-500 text-sm">Buy cosmetics and accessories from the Shop</p>
+    </div>
+  )
+
+  const RARITY_BADGE: Record<string, string> = {
+    legendary: 'bg-yellow-500/20 text-yellow-400',
+    epic: 'bg-purple-500/20 text-purple-400',
+    rare: 'bg-blue-500/20 text-blue-400',
+    uncommon: 'bg-green-500/20 text-green-400',
+    common: 'bg-gray-500/20 text-gray-400',
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {allItems.map((item: any) => (
+        <motion.div
+          key={`${item.itemType}-${item.id}`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-slug-card border border-slug-border rounded-xl p-4"
+        >
+          <div className="text-3xl text-center mb-2">{item.icon || (item.itemType === 'cosmetic' ? '\u{1F3A8}' : '\u{2699}\uFE0F')}</div>
+          <h3 className="text-white font-bold text-sm text-center">{item.name}</h3>
+          {item.rarity && (
+            <p className="text-center mt-1">
+              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${RARITY_BADGE[item.rarity] || RARITY_BADGE.common}`}>
+                {item.rarity}
+              </span>
+            </p>
+          )}
+          <p className="text-gray-500 text-xs text-center mt-2">
+            {item.equippedOn ? `Equipped on ${item.equippedOn}` : 'Not equipped'}
+          </p>
+          {item.purchasedAt && (
+            <p className="text-gray-600 text-[10px] text-center mt-1">
+              Bought {new Date(item.purchasedAt).toLocaleDateString()}
+            </p>
+          )}
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+function SettingsSection() {
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem('slug-rush-sound') !== 'off'
+  })
+
+  function toggleSound() {
+    const newVal = !soundEnabled
+    setSoundEnabled(newVal)
+    localStorage.setItem('slug-rush-sound', newVal ? 'on' : 'off')
+  }
+
+  return (
+    <div className="mt-8 bg-slug-card border border-slug-border rounded-xl p-6">
+      <h3 className="text-white font-bold text-lg mb-4">Settings</h3>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-gray-300 font-medium text-sm">Sound Effects</p>
+          <p className="text-gray-500 text-xs">Toggle race sounds and UI audio</p>
+        </div>
+        <button
+          onClick={toggleSound}
+          className={`w-12 h-7 rounded-full transition-colors cursor-pointer flex items-center px-0.5 ${
+            soundEnabled ? 'bg-slug-green' : 'bg-gray-600'
+          }`}
+        >
+          <div className={`w-6 h-6 rounded-full bg-white transition-transform ${soundEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+        </button>
       </div>
     </div>
   )

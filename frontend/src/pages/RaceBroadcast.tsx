@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAccount } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
@@ -42,7 +43,7 @@ export default function RaceBroadcast() {
   const { id } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const { address } = useAccount()
+  const { address, isConnected } = useAccount()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animFrameRef = useRef<number>(0)
 
@@ -111,7 +112,7 @@ export default function RaceBroadcast() {
       api.getGDAPrices(id, tick).then(data => {
         setBoostPrice(data.boostPrice)
         setShellPrice(data.shellPrice)
-      }).catch(() => {})
+      }).catch((err) => { console.error('Failed to load GDA prices:', err) })
     }, 2000)
     return () => clearInterval(interval)
   }, [isTactic, id, raceFinished])
@@ -122,9 +123,10 @@ export default function RaceBroadcast() {
     setLoading(true)
     api.simulateRace(id)
       .then(data => { setRaceData(data); setLoading(false) })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Failed to simulate race:', err)
         api.getRace(id).then(data => { setRaceData(data); setLoading(false) })
-          .catch(() => setLoading(false))
+          .catch((err2) => { console.error('Failed to load race:', err2); setLoading(false) })
       })
   }, [id])
 
@@ -432,7 +434,11 @@ export default function RaceBroadcast() {
       emoteIdRef.current++
       const emoji = getEmote(moment)
       const x = xPercent ?? (15 + Math.random() * 70) // random x position on track
-      setEmotes(prev => [...prev, { id: emoteIdRef.current, emoji, lane, x }])
+      setEmotes(prev => {
+        const next = [...prev, { id: emoteIdRef.current, emoji, lane, x }]
+        // Max 2 emotes at a time — remove oldest if over limit
+        return next.length > 2 ? next.slice(-2) : next
+      })
       const capturedId = emoteIdRef.current
       setTimeout(() => {
         setEmotes(prev => prev.filter(e => e.id !== capturedId))
@@ -578,7 +584,7 @@ export default function RaceBroadcast() {
                   setPredictionSubmitted(true)
                   try {
                     await api.predictWinner(id, address, gp.id)
-                  } catch { /* ignore if already predicted */ }
+                  } catch (err) { console.error('Prediction failed:', err) }
                 }}
                 className={`px-3 py-1 rounded-lg text-sm font-semibold cursor-pointer transition-colors ${
                   prediction === gp.id
@@ -655,8 +661,9 @@ export default function RaceBroadcast() {
         )}
       </AnimatePresence>
 
-      {/* Race Canvas */}
-      <div className="relative bg-slug-card border border-slug-border rounded-xl overflow-hidden mb-4" style={{ display: racePhase === 'trash_talk' ? 'none' : 'block' }}>
+      {/* Race Canvas + Kill Feed layout */}
+      <div className="flex gap-3 mb-4" style={{ display: racePhase === 'trash_talk' ? 'none' : 'flex' }}>
+      <div className="relative flex-1 bg-slug-card border border-slug-border rounded-xl overflow-hidden">
         <canvas
           ref={canvasRef}
           className="w-full"
@@ -715,9 +722,9 @@ export default function RaceBroadcast() {
           )}
         </AnimatePresence>
 
-        {/* Live commentary overlay */}
+        {/* Live commentary overlay — hidden when speech bubble is showing */}
         <AnimatePresence>
-          {commentary && (
+          {commentary && !speechBubble && (
             <motion.div
               initial={{ y: 30, opacity: 0, scale: 0.9 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -746,24 +753,6 @@ export default function RaceBroadcast() {
           ))}
         </AnimatePresence>
 
-        {/* Kill feed (right side) */}
-        <div className="absolute top-3 right-3 w-56 space-y-1.5 pointer-events-none">
-          <AnimatePresence>
-            {killFeed.map(item => (
-              <motion.div
-                key={item.id}
-                initial={{ x: 60, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 60, opacity: 0 }}
-                className="bg-black/70 rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
-              >
-                <span>{item.emoji}</span>
-                <span style={{ color: item.color }}>{item.text}</span>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-
         {/* Action feedback */}
         <AnimatePresence>
           {actionFeedback && (
@@ -779,6 +768,26 @@ export default function RaceBroadcast() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Kill Feed Panel (outside canvas) */}
+      <div className="hidden lg:block w-48 space-y-1.5 pt-2">
+        <p className="text-gray-500 text-xs font-bold uppercase mb-2">Events</p>
+        <AnimatePresence>
+          {killFeed.map(item => (
+            <motion.div
+              key={item.id}
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 20, opacity: 0 }}
+              className="bg-slug-dark border border-slug-border rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
+            >
+              <span>{item.emoji}</span>
+              <span style={{ color: item.color }}>{item.text}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
       </div>
 
       {/* Tactic Mode Controls */}
@@ -841,6 +850,18 @@ export default function RaceBroadcast() {
           </div>
         ))}
       </div>
+
+      {/* Wallet Disconnect Overlay */}
+      {!isConnected && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+          <div className="bg-slug-card border border-slug-border rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+            <div className="text-5xl mb-4">{'\u26A0\uFE0F'}</div>
+            <h2 className="text-xl font-bold text-white mb-2">Wallet Disconnected</h2>
+            <p className="text-gray-400 text-sm mb-6">Reconnect your wallet to continue the race and receive your rewards.</p>
+            <ConnectButton />
+          </div>
+        </div>
+      )}
 
       {/* Full post-race stats screen */}
       <AnimatePresence>
@@ -1061,7 +1082,7 @@ export default function RaceBroadcast() {
                         const data = await api.createRace(address, playerSnailId, fmt)
                         navigate(`/race/${data.raceId}`, { state: { format: fmt, snailId: playerSnailId } })
                         window.location.reload()
-                      } catch { navigate('/race') }
+                      } catch (err) { console.error('Rematch failed:', err); navigate('/race') }
                     }}
                     className="px-8 py-3 bg-slug-green text-slug-dark font-bold rounded-xl text-lg hover:bg-slug-green/90 transition-colors cursor-pointer"
                   >

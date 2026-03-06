@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import Spinner from '../components/Spinner'
 
@@ -41,7 +42,7 @@ export default function RaceHistory() {
     setLoading(true)
     api.getRaceHistory(address)
       .then(d => { setRaces(d.races); setSummary(d.summary) })
-      .catch(() => {})
+      .catch((err) => { console.error('Failed to load race history:', err); toast.error('Failed to load data. Please refresh.') })
       .finally(() => setLoading(false))
   }, [address])
 

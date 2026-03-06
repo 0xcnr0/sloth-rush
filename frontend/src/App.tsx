@@ -7,7 +7,6 @@ import RaceLobby from './pages/RaceLobby'
 import RaceBroadcast from './pages/RaceBroadcast'
 import Shop from './pages/Shop'
 import Leaderboard from './pages/Leaderboard'
-import MiniGames from './pages/MiniGames'
 import Spectate from './pages/Spectate'
 import RaceReplay from './pages/RaceReplay'
 import Profile from './pages/Profile'
@@ -25,7 +24,7 @@ export default function App() {
         <Route path="/race/:id" element={<RaceBroadcast />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/mini-games" element={<MiniGames />} />
+        <Route path="/mini-games" element={<Navigate to="/stable" replace />} />
         <Route path="/spectate" element={<Spectate />} />
         <Route path="/replay/:id" element={<RaceReplay />} />
         <Route path="/profile" element={<Profile />} />
