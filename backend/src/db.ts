@@ -99,6 +99,8 @@ export async function initDB() {
     `UPDATE sloths SET evolution_path = 'caffeine' WHERE evolution_path = 'velocity'`,
     `UPDATE sloths SET evolution_path = 'hibernate' WHERE evolution_path = 'fortress'`,
     `UPDATE sloths SET evolution_path = 'dreamwalk' WHERE evolution_path = 'mystic'`,
+    // Update quest requirement types
+    `UPDATE quests SET requirement_type = 'treehouse_visit' WHERE requirement_type = 'stable_visit'`,
   ];
 
   for (const sql of migrations) {
@@ -479,7 +481,7 @@ export async function initDB() {
     );
     await query(
       "INSERT INTO quests (type, title, description, requirement_type, requirement_value, sloth_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      ["daily", "Visit Treehouse", "Check on your sloths in the treehouse", "stable_visit", 1, 5, 10]
+      ["daily", "Visit Treehouse", "Check on your sloths in the treehouse", "treehouse_visit", 1, 5, 10]
     );
   }
 

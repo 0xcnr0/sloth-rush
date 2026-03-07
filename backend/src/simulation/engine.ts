@@ -226,8 +226,8 @@ export function simulateRace(participants: SlothStats[], seed: string, actions: 
             const weights = activeSloths.map((s) => {
               const distBehind = maxDist - s.distance;
               const rubberBand = 1 + distBehind * 0.02; // +2% weight per unit behind
-              const luckMagnetMul = s.passive === 'dream_catcher' ? 1.20 : 1;
-              return s.luck * rubberBand * luckMagnetMul;
+              const dreamCatcherMul = s.passive === 'dream_catcher' ? 1.20 : 1;
+              return s.luck * rubberBand * dreamCatcherMul;
             });
             const totalWeight = weights.reduce((a, b) => a + b, 0);
             let pick = rng() * totalWeight;
@@ -307,8 +307,8 @@ export function simulateRace(participants: SlothStats[], seed: string, actions: 
           : activeSloths.reduce((a, b) => (a.distance > b.distance ? a : b));
         const shooter = state.find((s) => s.id === action.slothId);
         if (leader && shooter && leader.id !== shooter.id && !leader.finished) {
-          const shellSlowdown = leader.passive === 'thick_fur' ? 5 : 10;
-          leader.slowdown = shellSlowdown; // speed drops for ticks (reduced by thick_fur)
+          const pillowSlowdown = leader.passive === 'thick_fur' ? 5 : 10;
+          leader.slowdown = pillowSlowdown; // speed drops for ticks (reduced by thick_fur)
           leader.speed = leader.passive === 'thick_fur' ? leader.speed * 0.5 : 1;
           events.push({
             tick,

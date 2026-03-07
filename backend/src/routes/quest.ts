@@ -215,7 +215,7 @@ router.get("/milestones/:wallet", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/quests/progress — Manually trigger quest progress (e.g. stable_visit)
+// POST /api/quests/progress — Manually trigger quest progress (e.g. treehouse_visit)
 router.post("/progress", async (req: Request, res: Response) => {
   try {
     const { wallet, requirementType } = req.body;
