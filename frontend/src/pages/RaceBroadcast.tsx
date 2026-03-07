@@ -34,8 +34,13 @@ interface FinalOrder {
   payout: number
 }
 
-const RACER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7']
-const RACER_BG = ['rgba(34,197,94,0.15)', 'rgba(59,130,246,0.15)', 'rgba(245,158,11,0.15)', 'rgba(168,85,247,0.15)']
+const RACER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
+const RACER_BG = [
+  'rgba(34,197,94,0.15)', 'rgba(59,130,246,0.15)',
+  'rgba(245,158,11,0.15)', 'rgba(168,85,247,0.15)',
+  'rgba(239,68,68,0.15)', 'rgba(6,182,212,0.15)',
+  'rgba(249,115,22,0.15)', 'rgba(236,72,153,0.15)'
+]
 
 const MAX_ENERGY = 1000
 
@@ -191,10 +196,14 @@ export default function RaceBroadcast() {
       if (!names.has(fo.id)) names.set(fo.id, fo.name)
     })
 
-    const TRACK_MARGIN = 60
-    const TRACK_WIDTH = width - TRACK_MARGIN * 2
-    const LANE_HEIGHT = (height - 100) / 4
-    const SLOTH_SIZE = 28
+    const numRacers = frames[0]?.positions.length || 4
+    const TOP_MARGIN = 50
+    const BOTTOM_MARGIN = 50
+    const SIDE_MARGIN = 20
+    const TRACK_HEIGHT = height - TOP_MARGIN - BOTTOM_MARGIN
+    const LANE_WIDTH = (width - SIDE_MARGIN * 2) / numRacers
+    const SLOTH_SIZE = numRacers <= 4 ? 28 : 22
+    const TREE_TRUNK_WIDTH = numRacers <= 4 ? 20 : 12
     const FRAME_DELAY = 280 // ~65s animation for a typical race (~230 frames * 280ms)
 
     function drawFrame(fi: number) {
@@ -203,90 +212,151 @@ export default function RaceBroadcast() {
       if (!frame) return
 
       ctx.clearRect(0, 0, width, height)
-      ctx.fillStyle = '#0f1520'
-      ctx.fillRect(0, 0, width, height)
 
-      for (let i = 0; i < 4; i++) {
-        const y = 50 + i * LANE_HEIGHT
-        ctx.fillStyle = i % 2 === 0 ? '#111827' : '#0d1117'
-        ctx.fillRect(0, y, width, LANE_HEIGHT)
-        ctx.strokeStyle = '#1f2937'
+      // Draw tree trunks
+      for (let i = 0; i < numRacers; i++) {
+        const cx = SIDE_MARGIN + i * LANE_WIDTH + LANE_WIDTH / 2
+
+        // Tree trunk (brown rectangle, full height)
+        ctx.fillStyle = '#5a3a1a'
+        ctx.fillRect(cx - TREE_TRUNK_WIDTH / 2, TOP_MARGIN, TREE_TRUNK_WIDTH, TRACK_HEIGHT)
+
+        // Tree trunk border (darker)
+        ctx.strokeStyle = '#3a2510'
         ctx.lineWidth = 1
-        ctx.setLineDash([5, 5])
-        ctx.beginPath()
-        ctx.moveTo(0, y + LANE_HEIGHT)
-        ctx.lineTo(width, y + LANE_HEIGHT)
-        ctx.stroke()
-        ctx.setLineDash([])
+        ctx.strokeRect(cx - TREE_TRUNK_WIDTH / 2, TOP_MARGIN, TREE_TRUNK_WIDTH, TRACK_HEIGHT)
+
+        // Subtle horizontal wood grain lines
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)'
+        ctx.lineWidth = 1
+        for (let gy = TOP_MARGIN + 30; gy < TOP_MARGIN + TRACK_HEIGHT; gy += 40 + (i * 7) % 20) {
+          ctx.beginPath()
+          ctx.moveTo(cx - TREE_TRUNK_WIDTH / 2 + 2, gy)
+          ctx.lineTo(cx + TREE_TRUNK_WIDTH / 2 - 2, gy)
+          ctx.stroke()
+        }
+
+        // For 4-racer mode: add small leaf clusters between trees
+        if (numRacers <= 4 && i < numRacers - 1) {
+          const midX = cx + LANE_WIDTH / 2
+          const leafPositions = [0.2, 0.5, 0.8]
+          leafPositions.forEach(pct => {
+            const ly = TOP_MARGIN + TRACK_HEIGHT * pct + ((i * 37) % 30) - 15
+            ctx.fillStyle = 'rgba(34, 120, 34, 0.3)'
+            ctx.beginPath()
+            ctx.ellipse(midX, ly, 12, 8, 0, 0, Math.PI * 2)
+            ctx.fill()
+          })
+        }
       }
 
+      // Start line (bottom)
       ctx.strokeStyle = '#374151'
       ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.moveTo(TRACK_MARGIN, 50)
-      ctx.lineTo(TRACK_MARGIN, 50 + LANE_HEIGHT * 4)
+      ctx.moveTo(SIDE_MARGIN, height - BOTTOM_MARGIN)
+      ctx.lineTo(width - SIDE_MARGIN, height - BOTTOM_MARGIN)
       ctx.stroke()
 
-      ctx.strokeStyle = '#f59e0b'
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.moveTo(TRACK_MARGIN + TRACK_WIDTH, 50)
-      ctx.lineTo(TRACK_MARGIN + TRACK_WIDTH, 50 + LANE_HEIGHT * 4)
-      ctx.stroke()
+      // START label
+      ctx.fillStyle = '#374151'
+      ctx.font = 'bold 9px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('START', width / 2, height - BOTTOM_MARGIN + 12)
 
-      ctx.save()
-      ctx.translate(TRACK_MARGIN + TRACK_WIDTH + 8, 50 + LANE_HEIGHT * 2)
-      ctx.rotate(Math.PI / 2)
+      // Finish line - checkered pattern at top
+      const checkerSize = 8
+      const checkerY = TOP_MARGIN - checkerSize * 2
+      const checkerStartX = SIDE_MARGIN
+      const checkerEndX = width - SIDE_MARGIN
+      const numCheckers = Math.floor((checkerEndX - checkerStartX) / checkerSize)
+
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < numCheckers; col++) {
+          const isBlack = (row + col) % 2 === 0
+          ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5'
+          ctx.fillRect(
+            checkerStartX + col * checkerSize,
+            checkerY + row * checkerSize,
+            checkerSize,
+            checkerSize
+          )
+        }
+      }
+
+      // FINISH label above checkered
       ctx.fillStyle = '#f59e0b'
       ctx.font = 'bold 10px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('FINISH', 0, 0)
-      ctx.restore()
+      ctx.fillText('FINISH', width / 2, checkerY - 4)
 
+      // Progress markers
       for (let m = 0.25; m < 1; m += 0.25) {
-        const mx = TRACK_MARGIN + TRACK_WIDTH * m
-        ctx.strokeStyle = '#1a2332'
+        const my = height - BOTTOM_MARGIN - TRACK_HEIGHT * m
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
         ctx.lineWidth = 1
+        ctx.setLineDash([3, 6])
         ctx.beginPath()
-        ctx.moveTo(mx, 50)
-        ctx.lineTo(mx, 50 + LANE_HEIGHT * 4)
+        ctx.moveTo(SIDE_MARGIN, my)
+        ctx.lineTo(width - SIDE_MARGIN, my)
         ctx.stroke()
-        ctx.fillStyle = '#374151'
+        ctx.setLineDash([])
+
+        // Percentage label on left
+        ctx.fillStyle = '#4a5568'
         ctx.font = '9px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(`${Math.round(m * 100)}%`, mx, 45)
+        ctx.textAlign = 'right'
+        ctx.fillText(Math.round(m * 100) + '%', SIDE_MARGIN - 4, my + 3)
       }
 
+      // Sort for ranking
       const sorted = [...frame.positions].sort((a, b) => b.distance - a.distance)
 
       frame.positions.forEach((pos, i) => {
-        const y = 50 + i * LANE_HEIGHT + LANE_HEIGHT / 2
-        const x = TRACK_MARGIN + (pos.distance / trackLength) * TRACK_WIDTH
+        const cx = SIDE_MARGIN + i * LANE_WIDTH + LANE_WIDTH / 2
+        const cy = height - BOTTOM_MARGIN - (pos.distance / trackLength) * TRACK_HEIGHT
         const color = RACER_COLORS[i] || '#fff'
         const rank = sorted.findIndex(s => s.id === pos.id) + 1
 
+        // Glowing circle (sloth on tree)
         ctx.shadowColor = color
-        ctx.shadowBlur = 8
+        ctx.shadowBlur = 10
         ctx.fillStyle = color
         ctx.beginPath()
-        ctx.arc(x, y, SLOTH_SIZE / 2, 0, Math.PI * 2)
+        ctx.arc(cx, cy, SLOTH_SIZE / 2, 0, Math.PI * 2)
         ctx.fill()
         ctx.shadowBlur = 0
 
-        ctx.font = `${SLOTH_SIZE - 4}px sans-serif`
+        // White border for visibility
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)'
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.arc(cx, cy, SLOTH_SIZE / 2, 0, Math.PI * 2)
+        ctx.stroke()
+
+        // Rank badge (small circle above sloth)
+        ctx.fillStyle = rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : '#78716c'
+        ctx.beginPath()
+        ctx.arc(cx, cy - SLOTH_SIZE / 2 - 8, 7, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 9px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText('\u{1F9A5}', x, y)
+        ctx.fillText(String(rank), cx, cy - SLOTH_SIZE / 2 - 8)
 
-        const name = names.get(pos.id) || `#${pos.id}`
+        // Name label at the bottom of each tree
+        const name = names.get(pos.id) || '#' + pos.id
         ctx.fillStyle = '#e5e7eb'
-        ctx.font = 'bold 11px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.fillText(`P${rank} ${name}`, 4, 50 + i * LANE_HEIGHT + 16)
+        ctx.font = numRacers <= 4 ? 'bold 11px sans-serif' : 'bold 9px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillText(name, cx, height - BOTTOM_MARGIN + 4)
 
+        // Speed below name
         ctx.fillStyle = '#6b7280'
-        ctx.font = '9px sans-serif'
-        ctx.fillText(`${pos.speed.toFixed(1)} u/t`, 4, 50 + i * LANE_HEIGHT + 28)
+        ctx.font = '8px sans-serif'
+        ctx.fillText(pos.speed.toFixed(1) + ' u/t', cx, height - BOTTOM_MARGIN + 18)
       })
 
       const live = frame.positions.map((pos) => ({
@@ -663,12 +733,15 @@ export default function RaceBroadcast() {
 
       {/* Race Canvas + Kill Feed layout */}
       <div className="flex gap-3 mb-4" style={{ display: racePhase === 'trash_talk' ? 'none' : 'flex' }}>
-      <div className="relative flex-1 bg-sloth-card border border-sloth-border rounded-xl overflow-hidden">
+      <div
+        className="relative flex-1 border border-sloth-border rounded-xl overflow-hidden"
+        style={{ background: 'linear-gradient(to top, #0a1a0a 0%, #0f2a0f 30%, #1a3a1a 60%, #2a5a2a 85%, #3a7a3a 100%)' }}
+      >
         <canvas
           ref={canvasRef}
           className="w-full"
           style={{
-            height: 'clamp(200px, 40vh, 320px)',
+            height: 'clamp(400px, 65vh, 650px)',
             filter: raceData?.weather === 'foggy' ? 'blur(0.5px) brightness(0.85)' : undefined,
           }}
         />
@@ -706,20 +779,26 @@ export default function RaceBroadcast() {
 
         {/* Speech bubble */}
         <AnimatePresence>
-          {speechBubble && (
+          {speechBubble && (() => {
+            const canvasW = canvasRef.current?.clientWidth || 800
+            const numR = raceData?.frames?.[0]?.positions?.length || 4
+            const laneW = (canvasW - 40) / numR
+            const leftPct = ((20 + speechBubble.lane * laneW + laneW / 2) / canvasW) * 100
+            return (
             <motion.div
               key={`speech-${speechBubble.slothId}`}
               initial={{ opacity: 0, scale: 0.5, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.5 }}
-              className="absolute left-16 pointer-events-none"
-              style={{ top: `${14 + speechBubble.lane * 25}%` }}
+              className="absolute pointer-events-none"
+              style={{ left: `${leftPct}%`, top: '20%', transform: 'translateX(-50%)' }}
             >
               <div className="bg-white text-sloth-dark text-xs font-bold px-3 py-1.5 rounded-xl rounded-bl-none shadow-lg max-w-[200px]">
                 {speechBubble.text}
               </div>
             </motion.div>
-          )}
+            )
+          })()}
         </AnimatePresence>
 
         {/* Live commentary overlay — hidden when speech bubble is showing */}
@@ -738,7 +817,12 @@ export default function RaceBroadcast() {
 
         {/* Floating emotes */}
         <AnimatePresence>
-          {emotes.map(emote => (
+          {emotes.map(emote => {
+            const canvasW = canvasRef.current?.clientWidth || 800
+            const numR = raceData?.frames?.[0]?.positions?.length || 4
+            const laneW = (canvasW - 40) / numR
+            const leftPct = ((20 + emote.lane * laneW + laneW / 2) / canvasW) * 100
+            return (
             <motion.div
               key={emote.id}
               initial={{ opacity: 1, y: 0, scale: 0.5 }}
@@ -746,11 +830,12 @@ export default function RaceBroadcast() {
               exit={{ opacity: 0 }}
               transition={{ duration: 1.5, ease: 'easeOut' }}
               className="absolute text-2xl sm:text-3xl pointer-events-none z-10"
-              style={{ left: `${emote.x}%`, top: `${12 + emote.lane * 22}%` }}
+              style={{ left: `${leftPct}%`, top: `${20 + emote.lane * 8}%` }}
             >
               {emote.emoji}
             </motion.div>
-          ))}
+            )
+          })}
         </AnimatePresence>
 
         {/* Action feedback */}
