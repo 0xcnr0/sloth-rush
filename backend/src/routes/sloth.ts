@@ -66,14 +66,18 @@ router.post("/mint", async (req: Request, res: Response) => {
       return;
     }
 
-    // Check if wallet already has a free sloth (not burned)
-    const existing = await getOne(
-      "SELECT id FROM sloths WHERE wallet = $1 AND type = 'free_sloth' AND is_burned = 0",
+    // Check if wallet already has ANY active (non-burned) creature
+    const existingActive = await getOne(
+      "SELECT id, type FROM sloths WHERE wallet = $1 AND is_burned = 0",
       [wallet]
     );
 
-    if (existing) {
-      res.status(409).json({ error: "wallet already has a Free Sloth" });
+    if (existingActive) {
+      if (existingActive.type === 'free_sloth') {
+        res.status(409).json({ error: "wallet already has a Free Sloth" });
+      } else {
+        res.status(409).json({ error: "wallet already has a Sloth. Free Sloth mint is not available after upgrade." });
+      }
       return;
     }
 
@@ -1181,7 +1185,7 @@ router.get("/profile/:wallet", async (req: Request, res: Response) => {
     }
 
     // Get all creatures
-    const sloths = await getAll("SELECT * FROM sloths WHERE wallet = $1 AND is_burned = false ORDER BY id", [wallet]);
+    const sloths = await getAll("SELECT * FROM sloths WHERE wallet = $1 AND is_burned = 0 ORDER BY id", [wallet]);
 
     // Get coin balance
     const balRow = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
