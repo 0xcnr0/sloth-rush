@@ -12,6 +12,12 @@
     "frontend": "npm run dev --workspace=frontend",
     "backend": "npm run dev --workspace=backend",
     "contracts": "npx hardhat compile --config contracts/hardhat.config.ts",
-    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "qa": "tsx qa-agent.ts"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.18.0",
+    "pg": "^8.20.0",
+    "tsx": "^4.21.0"
   }
 }
