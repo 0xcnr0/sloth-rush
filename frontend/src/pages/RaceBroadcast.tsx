@@ -691,7 +691,7 @@ export default function RaceBroadcast() {
               animate={{ scale: 1, opacity: 1 }}
               className="text-center text-2xl font-extrabold text-sloth-gold mb-6"
             >
-              YARISCILAR SAHNEYE!
+              RACERS TO THE STAGE!
             </motion.h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {raceData.gridPositions.map((gp: any, i: number) => (
