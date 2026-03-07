@@ -11,8 +11,10 @@ import { Pool } from "pg";
 // ============================================================
 
 const BASE_URL = process.env.QA_BASE_URL || "http://localhost:3001";
-const WALLET_A = "0xTEST000000000000000000000000000000000001";
-const WALLET_B = "0xTEST000000000000000000000000000000000002";
+const WALLET_A = "0x1111000000000000000000000000000000000001";
+const WALLET_B = "0x2222000000000000000000000000000000000002";
+const OLD_WALLET_A = "0xTEST000000000000000000000000000000000001";
+const OLD_WALLET_B = "0xTEST000000000000000000000000000000000002";
 
 const pool = new Pool({
   connectionString:
@@ -60,6 +62,19 @@ async function api(
   }
 }
 
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Throttled API call — adds 100ms delay after each request to avoid rate limits */
+async function tapi(
+  method: "GET" | "POST",
+  path: string,
+  body?: any
+): Promise<ApiResponse> {
+  const res = await api(method, path, body);
+  await delay(100);
+  return res;
+}
+
 // ============================================================
 // SECTION 3: DATABASE HELPERS
 // ============================================================
@@ -90,7 +105,7 @@ async function fastForwardTraining(slothId: number): Promise<void> {
 }
 
 async function cleanup(): Promise<void> {
-  const wallets = [WALLET_A, WALLET_B];
+  const wallets = [WALLET_A, WALLET_B, OLD_WALLET_A, OLD_WALLET_B];
   // Get sloth IDs
   let slothIds: number[] = [];
   try {
@@ -321,8 +336,6 @@ function printReport(results: TestResult[]): void {
   console.log("\n" + "=".repeat(60));
 }
 
-// Small delay helper
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ============================================================
 // SECTION 5: TEST SUITES
@@ -334,7 +347,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A01: Health check", "Happy Path", async () => {
-      const res = await api("GET", "/health");
+      const res = await tapi("GET", "/health");
       assertStatus(res, 200);
       assertEqual(res.data.status, "ok", "health status");
     })
@@ -342,7 +355,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A02: Mint free sloth (wallet A)", "Happy Path", async () => {
-      const res = await api("POST", "/api/sloth/mint", { wallet: WALLET_A });
+      const res = await tapi("POST", "/api/sloth/mint", { wallet: WALLET_A });
       assert(res.status === 200 || res.status === 201, `Expected 200/201, got ${res.status}`);
       assert(res.data.sloth != null, "sloth should exist");
       assertEqual(res.data.sloth.type, "free_sloth", "type should be free_sloth");
@@ -352,7 +365,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A03: Mint free sloth (wallet B)", "Happy Path", async () => {
-      const res = await api("POST", "/api/sloth/mint", { wallet: WALLET_B });
+      const res = await tapi("POST", "/api/sloth/mint", { wallet: WALLET_B });
       assert(res.status === 200 || res.status === 201, `Expected 200/201, got ${res.status}`);
       assert(res.data.sloth != null, "sloth should exist");
       ctx.freeSlothIdB = res.data.sloth.id;
@@ -361,7 +374,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A04: View treehouse", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/treehouse/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/treehouse/${WALLET_A}`);
       assertStatus(res, 200);
       assert(Array.isArray(res.data.sloths), "sloths should be array");
       assertEqual(res.data.sloths.length, 1, "should have 1 sloth");
@@ -371,7 +384,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A05: Check balance (should be 0)", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/coin/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/coin/${WALLET_A}`);
       assertStatus(res, 200);
       assertEqual(res.data.balance, 0, "balance should be 0");
     })
@@ -379,7 +392,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A06: Daily login", "Happy Path", async () => {
-      const res = await api("POST", "/api/sloth/daily-login", {
+      const res = await tapi("POST", "/api/sloth/daily-login", {
         wallet: WALLET_A,
       });
       assertStatus(res, 200);
@@ -390,7 +403,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A07: Check balance after login (15)", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/coin/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/coin/${WALLET_A}`);
       assertStatus(res, 200);
       assertEqual(res.data.balance, 15, "balance should be 15");
     })
@@ -398,7 +411,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A08: Check XP", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/xp/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/xp/${WALLET_A}`);
       assertStatus(res, 200);
       assert(res.data.xp >= 0, "xp should exist");
     })
@@ -406,7 +419,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A09: View profile", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/profile/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/profile/${WALLET_A}`);
       assertStatus(res, 200);
       assertEqual(res.data.wallet, WALLET_A, "wallet should match");
     })
@@ -414,7 +427,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A10: View transactions", "Happy Path", async () => {
-      const res = await api(
+      const res = await tapi(
         "GET",
         `/api/sloth/profile/transactions/${WALLET_A}`
       );
@@ -428,7 +441,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A11: Get daily race", "Happy Path", async () => {
-      const res = await api("GET", "/api/race/daily");
+      const res = await tapi("GET", "/api/race/daily");
       assertStatus(res, 200);
       assert(res.data.raceId != null, "raceId should exist");
       ctx.raceId = res.data.raceId;
@@ -437,7 +450,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A12: Join exhibition race", "Happy Path", async () => {
-      const res = await api("POST", "/api/race/join", {
+      const res = await tapi("POST", "/api/race/join", {
         raceId: ctx.raceId,
         slothId: ctx.freeSlothIdA,
         wallet: WALLET_A,
@@ -449,7 +462,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A13: Start bidding (exhibition skips)", "Happy Path", async () => {
-      const res = await api("POST", "/api/race/start-bidding", {
+      const res = await tapi("POST", "/api/race/start-bidding", {
         raceId: ctx.raceId,
       });
       assertStatus(res, 200);
@@ -463,7 +476,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A14: Simulate race", "Happy Path", async () => {
-      const res = await api("POST", "/api/race/simulate", {
+      const res = await tapi("POST", "/api/race/simulate", {
         raceId: ctx.raceId,
       });
       assertStatus(res, 200);
@@ -475,7 +488,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A15: View race results", "Happy Path", async () => {
-      const res = await api("GET", `/api/race/${ctx.raceId}`);
+      const res = await tapi("GET", `/api/race/${ctx.raceId}`);
       assertStatus(res, 200);
       assertEqual(res.data.status, "finished", "race should be finished");
     })
@@ -483,7 +496,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A16: View race replay", "Happy Path", async () => {
-      const res = await api("GET", `/api/race/${ctx.raceId}/replay`);
+      const res = await tapi("GET", `/api/race/${ctx.raceId}/replay`);
       assertStatus(res, 200);
       assert(res.data.frames != null, "frames should exist");
     })
@@ -491,7 +504,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A17: View race history", "Happy Path", async () => {
-      const res = await api("GET", `/api/race/history/${WALLET_A}`);
+      const res = await tapi("GET", `/api/race/history/${WALLET_A}`);
       assertStatus(res, 200);
       assert(Array.isArray(res.data.races), "races should be array");
       assert(res.data.races.length >= 1, "should have at least 1 race");
@@ -500,8 +513,8 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A18: Buy coins (starter pack)", "Happy Path", async () => {
-      ctx.balanceA = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
-      const res = await api("POST", "/api/shop/buy-coins", {
+      ctx.balanceA = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const res = await tapi("POST", "/api/shop/buy-coins", {
         wallet: WALLET_A,
         packageId: "starter",
       });
@@ -513,7 +526,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A19: Check balance after shop (+120)", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/coin/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/coin/${WALLET_A}`);
       assertStatus(res, 200);
       const expected = (ctx.balanceA || 0) + 120;
       assertEqual(res.data.balance, expected, "balance should increase by 120");
@@ -523,9 +536,9 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A20: Upgrade free sloth to sloth", "Happy Path", async () => {
-      const balBefore = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const balBefore = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
       ctx.balanceA = balBefore;
-      const res = await api("POST", "/api/sloth/upgrade", {
+      const res = await tapi("POST", "/api/sloth/upgrade", {
         wallet: WALLET_A,
       });
       assert(res.status === 200 || res.status === 201, `Expected 200/201, got ${res.status}`);
@@ -538,7 +551,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A21: Verify upgrade bonus (+500 ZZZ)", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/coin/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/coin/${WALLET_A}`);
       assertStatus(res, 200);
       const expected = (ctx.balanceA || 0) + 500;
       assertEqual(res.data.balance, expected, "balance should increase by 500");
@@ -548,7 +561,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A22: Rename sloth", "Happy Path", async () => {
-      const res = await api("POST", "/api/sloth/rename", {
+      const res = await tapi("POST", "/api/sloth/rename", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         name: "TestSloth",
@@ -560,8 +573,8 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A23: Start training", "Happy Path", async () => {
-      const balBefore = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
-      const res = await api("POST", "/api/sloth/train", {
+      const balBefore = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const res = await tapi("POST", "/api/sloth/train", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         stat: "spd",
@@ -569,7 +582,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
       assertStatus(res, 200);
       assertEqual(res.data.started, true, "started should be true");
       // Verify 10 ZZZ deducted
-      const balAfter = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const balAfter = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
       assertEqual(balAfter, balBefore - 10, "should deduct 10 ZZZ");
       ctx.balanceA = balAfter;
     })
@@ -577,7 +590,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A24: Check training status", "Happy Path", async () => {
-      const res = await api(
+      const res = await tapi(
         "GET",
         `/api/sloth/training-status/${WALLET_A}`
       );
@@ -596,7 +609,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
   results.push(
     await runTest("A25: Fast-forward + claim training", "Happy Path", async () => {
       await fastForwardTraining(ctx.slothIdA!);
-      const res = await api("POST", "/api/sloth/claim-training", {
+      const res = await tapi("POST", "/api/sloth/claim-training", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
       });
@@ -616,7 +629,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
         "speed_tap",
       ];
       for (const gameType of gameTypes) {
-        const res = await api("POST", "/api/sloth/mini-game", {
+        const res = await tapi("POST", "/api/sloth/mini-game", {
           wallet: WALLET_A,
           slothId: ctx.slothIdA,
           gameType,
@@ -631,14 +644,14 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
   results.push(
     await runTest("A27: Standard race full flow", "Happy Path", async () => {
       // Create
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "standard",
       });
       assert(createRes.status === 200 || createRes.status === 201, "create race");
       const raceId = createRes.data.raceId;
 
       // Join
-      const joinRes = await api("POST", "/api/race/join", {
+      const joinRes = await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
@@ -646,13 +659,13 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
       assertStatus(joinRes, 200);
 
       // Start bidding
-      const bidStartRes = await api("POST", "/api/race/start-bidding", {
+      const bidStartRes = await tapi("POST", "/api/race/start-bidding", {
         raceId,
       });
       assertStatus(bidStartRes, 200);
 
       // Bid
-      const bidRes = await api("POST", "/api/race/bid", {
+      const bidRes = await tapi("POST", "/api/race/bid", {
         raceId,
         wallet: WALLET_A,
         amount: 20,
@@ -660,7 +673,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
       assertStatus(bidRes, 200);
 
       // Simulate
-      const simRes = await api("POST", "/api/race/simulate", { raceId });
+      const simRes = await tapi("POST", "/api/race/simulate", { raceId });
       assertStatus(simRes, 200);
       assert(simRes.data.finalOrder != null, "finalOrder should exist");
     })
@@ -668,7 +681,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A28: Check daily quests", "Happy Path", async () => {
-      const res = await api("GET", `/api/quests/daily/${WALLET_A}`);
+      const res = await tapi("GET", `/api/quests/daily/${WALLET_A}`);
       assertStatus(res, 200);
       assert(Array.isArray(res.data.quests), "quests should be array");
     })
@@ -676,21 +689,21 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A29: Check weekly quests", "Happy Path", async () => {
-      const res = await api("GET", `/api/quests/weekly/${WALLET_A}`);
+      const res = await tapi("GET", `/api/quests/weekly/${WALLET_A}`);
       assertStatus(res, 200);
     })
   );
 
   results.push(
     await runTest("A30: Check milestones", "Happy Path", async () => {
-      const res = await api("GET", `/api/quests/milestones/${WALLET_A}`);
+      const res = await tapi("GET", `/api/quests/milestones/${WALLET_A}`);
       assertStatus(res, 200);
     })
   );
 
   results.push(
     await runTest("A31: Trigger treehouse visit quest", "Happy Path", async () => {
-      const res = await api("POST", "/api/quests/progress", {
+      const res = await tapi("POST", "/api/quests/progress", {
         wallet: WALLET_A,
         requirementType: "treehouse_visit",
       });
@@ -700,7 +713,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A32: Buy cosmetic", "Happy Path", async () => {
-      const listRes = await api(
+      const listRes = await tapi(
         "GET",
         `/api/shop/cosmetics?wallet=${WALLET_A}`
       );
@@ -717,15 +730,15 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
       );
       const cheapest = unowned[0];
       // Ensure enough balance
-      const bal = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const bal = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
       if (bal < (cheapest.sloth_price || 0)) {
         // Buy more coins
-        await api("POST", "/api/shop/buy-coins", {
+        await tapi("POST", "/api/shop/buy-coins", {
           wallet: WALLET_A,
           packageId: "whale",
         });
       }
-      const res = await api("POST", "/api/shop/buy-cosmetic", {
+      const res = await tapi("POST", "/api/shop/buy-cosmetic", {
         wallet: WALLET_A,
         cosmeticId: cheapest.id,
       });
@@ -737,7 +750,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A33: Equip cosmetic", "Happy Path", async () => {
-      const res = await api("POST", "/api/sloth/equip-cosmetic", {
+      const res = await tapi("POST", "/api/sloth/equip-cosmetic", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         cosmeticId: ctx.cosmeticId,
@@ -748,7 +761,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A34: View sloth cosmetics", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/cosmetics/${ctx.slothIdA}`);
+      const res = await tapi("GET", `/api/sloth/cosmetics/${ctx.slothIdA}`);
       assertStatus(res, 200);
       assert(Array.isArray(res.data.cosmetics), "cosmetics should be array");
     })
@@ -756,7 +769,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A35: Buy accessory", "Happy Path", async () => {
-      const listRes = await api(
+      const listRes = await tapi(
         "GET",
         `/api/shop/accessories?wallet=${WALLET_A}`
       );
@@ -772,14 +785,14 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
       );
       const cheapest = unowned[0];
       // Ensure enough balance
-      const bal = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const bal = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
       if (bal < (cheapest.sloth_price || 0)) {
-        await api("POST", "/api/shop/buy-coins", {
+        await tapi("POST", "/api/shop/buy-coins", {
           wallet: WALLET_A,
           packageId: "whale",
         });
       }
-      const res = await api("POST", "/api/shop/buy-accessory", {
+      const res = await tapi("POST", "/api/shop/buy-accessory", {
         wallet: WALLET_A,
         accessoryId: cheapest.id,
       });
@@ -791,7 +804,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A36: Equip accessory", "Happy Path", async () => {
-      const res = await api("POST", "/api/sloth/equip-accessory", {
+      const res = await tapi("POST", "/api/sloth/equip-accessory", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         accessoryId: ctx.accessoryId,
@@ -802,7 +815,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A37: Unequip accessory", "Happy Path", async () => {
-      const res = await api("POST", "/api/sloth/unequip-accessory", {
+      const res = await tapi("POST", "/api/sloth/unequip-accessory", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
       });
@@ -812,7 +825,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A38: Evolution progress", "Happy Path", async () => {
-      const res = await api(
+      const res = await tapi(
         "GET",
         `/api/sloth/evolution-progress/${ctx.slothIdA}`
       );
@@ -823,14 +836,14 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A39: Leaderboard (me)", "Happy Path", async () => {
-      const res = await api("GET", `/api/leaderboard/me/${WALLET_A}`);
+      const res = await tapi("GET", `/api/leaderboard/me/${WALLET_A}`);
       assertStatus(res, 200);
     })
   );
 
   results.push(
     await runTest("A40: Career leaderboard", "Happy Path", async () => {
-      const res = await api("GET", "/api/leaderboard/career");
+      const res = await tapi("GET", "/api/leaderboard/career");
       assertStatus(res, 200);
       assert(
         Array.isArray(res.data.leaderboard),
@@ -841,35 +854,35 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A41: Hall of fame", "Happy Path", async () => {
-      const res = await api("GET", "/api/leaderboard/hall-of-fame");
+      const res = await tapi("GET", "/api/leaderboard/hall-of-fame");
       assertStatus(res, 200);
     })
   );
 
   results.push(
     await runTest("A42: League leaderboard", "Happy Path", async () => {
-      const res = await api("GET", "/api/leaderboard/bronze");
+      const res = await tapi("GET", "/api/leaderboard/bronze");
       assertStatus(res, 200);
     })
   );
 
   results.push(
     await runTest("A43: Current season", "Happy Path", async () => {
-      const res = await api("GET", "/api/season/current");
+      const res = await tapi("GET", "/api/season/current");
       assertStatus(res, 200);
     })
   );
 
   results.push(
     await runTest("A44: Active races", "Happy Path", async () => {
-      const res = await api("GET", "/api/race/active");
+      const res = await tapi("GET", "/api/race/active");
       assertStatus(res, 200);
     })
   );
 
   results.push(
     await runTest("A45: Shop packages", "Happy Path", async () => {
-      const res = await api("GET", "/api/shop/packages");
+      const res = await tapi("GET", "/api/shop/packages");
       assertStatus(res, 200);
       assert(Array.isArray(res.data.packages), "packages should be array");
       assertEqual(res.data.packages.length, 4, "should have 4 packages");
@@ -878,7 +891,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A46: Upgrade progress", "Happy Path", async () => {
-      const res = await api(
+      const res = await tapi(
         "GET",
         `/api/sloth/upgrade-progress/${WALLET_A}`
       );
@@ -888,7 +901,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("A47: Streaks", "Happy Path", async () => {
-      const res = await api("GET", `/api/sloth/streaks/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/streaks/${WALLET_A}`);
       assertStatus(res, 200);
     })
   );
@@ -903,7 +916,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
   results.push(
     await runTest("B01: Double mint -> 409", "Edge Cases", async () => {
       // Wallet A already has a sloth from happy path
-      const res = await api("POST", "/api/sloth/mint", { wallet: WALLET_A });
+      const res = await tapi("POST", "/api/sloth/mint", { wallet: WALLET_A });
       assert(
         res.status === 409 || res.status === 400,
         `Expected 409/400, got ${res.status}`
@@ -913,14 +926,14 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B02: Mint with empty wallet -> 400", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/mint", { wallet: "" });
+      const res = await tapi("POST", "/api/sloth/mint", { wallet: "" });
       assertStatus(res, 400);
     })
   );
 
   results.push(
     await runTest("B03: Upgrade without free sloth -> 400/404", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/upgrade", {
+      const res = await tapi("POST", "/api/sloth/upgrade", {
         wallet: "0xTEST000000000000000000000000000000000099",
       });
       assert(
@@ -933,7 +946,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
   results.push(
     await runTest("B04: Train with 0 balance", "Edge Cases", async () => {
       // Wallet B has free sloth but 0 balance
-      const res = await api("POST", "/api/sloth/train", {
+      const res = await tapi("POST", "/api/sloth/train", {
         wallet: WALLET_B,
         slothId: ctx.freeSlothIdB,
         stat: "spd",
@@ -947,11 +960,11 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B05: Free sloth joins standard race -> 400", "Edge Cases", async () => {
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "standard",
       });
       const raceId = createRes.data.raceId;
-      const res = await api("POST", "/api/race/join", {
+      const res = await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.freeSlothIdB,
         wallet: WALLET_B,
@@ -963,17 +976,17 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
   results.push(
     await runTest("B06: Bid on exhibition race -> 400", "Edge Cases", async () => {
       // Create fresh exhibition
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "exhibition",
       });
       const raceId = createRes.data.raceId;
-      await api("POST", "/api/race/join", {
+      await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
-      await api("POST", "/api/race/start-bidding", { raceId });
-      const res = await api("POST", "/api/race/bid", {
+      await tapi("POST", "/api/race/start-bidding", { raceId });
+      const res = await tapi("POST", "/api/race/bid", {
         raceId,
         wallet: WALLET_A,
         amount: 10,
@@ -984,7 +997,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B07: Mini-game with score > 1000 -> 400", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/mini-game", {
+      const res = await tapi("POST", "/api/sloth/mini-game", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         gameType: "speed_tap",
@@ -996,7 +1009,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B08: Rename with < 3 chars -> 400", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/rename", {
+      const res = await tapi("POST", "/api/sloth/rename", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         name: "AB",
@@ -1007,7 +1020,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B09: Rename with > 20 chars -> 400", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/rename", {
+      const res = await tapi("POST", "/api/sloth/rename", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         name: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -1021,7 +1034,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
       if (!ctx.cosmeticId) {
         throw new Error("No cosmetic ID from happy path");
       }
-      const res = await api("POST", "/api/shop/buy-cosmetic", {
+      const res = await tapi("POST", "/api/shop/buy-cosmetic", {
         wallet: WALLET_A,
         cosmeticId: ctx.cosmeticId,
       });
@@ -1031,7 +1044,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B11: Daily login twice same day -> already claimed", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/daily-login", {
+      const res = await tapi("POST", "/api/sloth/daily-login", {
         wallet: WALLET_A,
       });
       assertStatus(res, 200);
@@ -1041,7 +1054,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B12: Invalid game type -> 400", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/mini-game", {
+      const res = await tapi("POST", "/api/sloth/mini-game", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         gameType: "invalid_game",
@@ -1053,7 +1066,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B13: Invalid stat for training -> 400", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/train", {
+      const res = await tapi("POST", "/api/sloth/train", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         stat: "xyz",
@@ -1064,7 +1077,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B14: Join non-existent race -> 404", "Edge Cases", async () => {
-      const res = await api("POST", "/api/race/join", {
+      const res = await tapi("POST", "/api/race/join", {
         raceId: "race_nonexistent_999",
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
@@ -1075,7 +1088,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B15: Invalid package ID -> 404", "Edge Cases", async () => {
-      const res = await api("POST", "/api/shop/buy-coins", {
+      const res = await tapi("POST", "/api/shop/buy-coins", {
         wallet: WALLET_A,
         packageId: "invalid_pack",
       });
@@ -1085,7 +1098,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("B16: Rename with profanity -> 400", "Edge Cases", async () => {
-      const res = await api("POST", "/api/sloth/rename", {
+      const res = await tapi("POST", "/api/sloth/rename", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         name: "fuck you",
@@ -1103,7 +1116,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C01: Rename another wallet's sloth -> 403/404", "Security", async () => {
-      const res = await api("POST", "/api/sloth/rename", {
+      const res = await tapi("POST", "/api/sloth/rename", {
         wallet: WALLET_B,
         slothId: ctx.slothIdA,
         name: "Hacked",
@@ -1117,7 +1130,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C02: Train another wallet's sloth -> 403/404", "Security", async () => {
-      const res = await api("POST", "/api/sloth/train", {
+      const res = await tapi("POST", "/api/sloth/train", {
         wallet: WALLET_B,
         slothId: ctx.slothIdA,
         stat: "spd",
@@ -1131,7 +1144,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C03: Invalid wallet format (no 0x) -> 400", "Security", async () => {
-      const res = await api("POST", "/api/sloth/mint", {
+      const res = await tapi("POST", "/api/sloth/mint", {
         wallet: "TEST000000000000000000000000000000000099",
       });
       assertStatus(res, 400);
@@ -1140,7 +1153,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C04: Invalid wallet format (too short) -> 400", "Security", async () => {
-      const res = await api("POST", "/api/sloth/mint", {
+      const res = await tapi("POST", "/api/sloth/mint", {
         wallet: "0x123",
       });
       assertStatus(res, 400);
@@ -1149,7 +1162,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C05: SQL injection in wallet -> 400", "Security", async () => {
-      const res = await api("POST", "/api/sloth/mint", {
+      const res = await tapi("POST", "/api/sloth/mint", {
         wallet: "0x' OR '1'='1",
       });
       assertStatus(res, 400);
@@ -1158,7 +1171,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C06: SQL injection in name -> 400", "Security", async () => {
-      const res = await api("POST", "/api/sloth/rename", {
+      const res = await tapi("POST", "/api/sloth/rename", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         name: "'; DROP TABLE sloths;--",
@@ -1169,24 +1182,24 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C07: Negative bid -> 400 or clamped", "Security", async () => {
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "standard",
       });
       const raceId = createRes.data.raceId;
-      await api("POST", "/api/race/join", {
+      await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
-      await api("POST", "/api/race/start-bidding", { raceId });
-      const balBefore = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
-      const res = await api("POST", "/api/race/bid", {
+      await tapi("POST", "/api/race/start-bidding", { raceId });
+      const balBefore = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const res = await tapi("POST", "/api/race/bid", {
         raceId,
         wallet: WALLET_A,
         amount: -100,
       });
       // Should either reject (400) or clamp to 0
-      const balAfter = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const balAfter = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
       assert(
         res.status === 400 || balAfter >= balBefore,
         "Negative bid should not give free money"
@@ -1196,7 +1209,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C08: Equip cosmetic not owned -> 400", "Security", async () => {
-      const res = await api("POST", "/api/sloth/equip-cosmetic", {
+      const res = await tapi("POST", "/api/sloth/equip-cosmetic", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         cosmeticId: 999999,
@@ -1207,7 +1220,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C09: Equip accessory not owned -> 400", "Security", async () => {
-      const res = await api("POST", "/api/sloth/equip-accessory", {
+      const res = await tapi("POST", "/api/sloth/equip-accessory", {
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
         accessoryId: 999999,
@@ -1218,7 +1231,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("C10: Invalid league name -> 400", "Security", async () => {
-      const res = await api("GET", "/api/leaderboard/platinum");
+      const res = await tapi("GET", "/api/leaderboard/platinum");
       assertStatus(res, 400);
     })
   );
@@ -1287,7 +1300,7 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
       // Double check from DB
       const walletC = "0xTEST000000000000000000000000000000000003";
       const balBefore = await getDbBalance(walletC);
-      const res = await api("POST", "/api/sloth/mint", { wallet: walletC });
+      const res = await tapi("POST", "/api/sloth/mint", { wallet: walletC });
       assert(res.status === 200 || res.status === 201, "mint should succeed");
       const balAfter = await getDbBalance(walletC);
       assertEqual(balAfter, balBefore, "Mint should not change balance");
@@ -1313,7 +1326,7 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
     await runTest("E03: Daily login gives exactly 15 ZZZ", "Economy", async () => {
       // Use wallet B for clean test
       const balBefore = await getDbBalance(WALLET_B);
-      const res = await api("POST", "/api/sloth/daily-login", {
+      const res = await tapi("POST", "/api/sloth/daily-login", {
         wallet: WALLET_B,
       });
       assertStatus(res, 200);
@@ -1335,18 +1348,18 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
   results.push(
     await runTest("E05: Race entry fee correct (50 ZZZ standard)", "Economy", async () => {
       // Create standard race and track balance delta
-      const balBefore = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
-      const createRes = await api("POST", "/api/race/create", {
+      const balBefore = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "standard",
       });
       const raceId = createRes.data.raceId;
-      const joinRes = await api("POST", "/api/race/join", {
+      const joinRes = await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
       assertStatus(joinRes, 200);
-      const balAfter = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const balAfter = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
       const charged = joinRes.data.entryFeeCharged || 0;
       // May be free race (daily free), so check accordingly
       if (joinRes.data.dailyFreeRace) {
@@ -1355,22 +1368,22 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
         assertEqual(balBefore - balAfter, 50, "Standard race should cost 50 ZZZ");
       }
       // Cleanup: simulate to finish the race
-      await api("POST", "/api/race/start-bidding", { raceId });
-      await api("POST", "/api/race/bid", { raceId, wallet: WALLET_A, amount: 0 });
-      await api("POST", "/api/race/simulate", { raceId });
+      await tapi("POST", "/api/race/start-bidding", { raceId });
+      await tapi("POST", "/api/race/bid", { raceId, wallet: WALLET_A, amount: 0 });
+      await tapi("POST", "/api/race/simulate", { raceId });
     })
   );
 
   results.push(
     await runTest("E06: Shop starter pack gives 120 ZZZ", "Economy", async () => {
-      const balBefore = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
-      const res = await api("POST", "/api/shop/buy-coins", {
+      const balBefore = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const res = await tapi("POST", "/api/shop/buy-coins", {
         wallet: WALLET_A,
         packageId: "starter",
       });
       assertStatus(res, 200);
       assertEqual(res.data.coinsAdded, 120, "starter should give 120");
-      const balAfter = (await api("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
+      const balAfter = (await tapi("GET", `/api/sloth/coin/${WALLET_A}`)).data.balance;
       assertEqual(balAfter - balBefore, 120, "balance delta should be 120");
     })
   );
@@ -1384,7 +1397,7 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
         [WALLET_B]
       );
       // Try to train (costs 10)
-      const trainRes = await api("POST", "/api/sloth/train", {
+      const trainRes = await tapi("POST", "/api/sloth/train", {
         wallet: WALLET_B,
         slothId: ctx.freeSlothIdB,
         stat: "spd",
@@ -1405,59 +1418,59 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("F01: Exhibition full flow", "Race Logic", async () => {
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "exhibition",
       });
       assert(createRes.status === 200 || createRes.status === 201, "create");
       const raceId = createRes.data.raceId;
 
-      const joinRes = await api("POST", "/api/race/join", {
+      const joinRes = await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
       assertStatus(joinRes, 200);
 
-      const bidRes = await api("POST", "/api/race/start-bidding", { raceId });
+      const bidRes = await tapi("POST", "/api/race/start-bidding", { raceId });
       assertStatus(bidRes, 200);
       assert(
         bidRes.data.skipBidding === true || bidRes.data.status === "racing",
         "exhibition should skip bidding"
       );
 
-      const simRes = await api("POST", "/api/race/simulate", { raceId });
+      const simRes = await tapi("POST", "/api/race/simulate", { raceId });
       assertStatus(simRes, 200);
       assert(simRes.data.finalOrder != null, "finalOrder");
       assert(simRes.data.frames != null, "frames");
 
-      const raceRes = await api("GET", `/api/race/${raceId}`);
+      const raceRes = await tapi("GET", `/api/race/${raceId}`);
       assertEqual(raceRes.data.status, "finished", "race finished");
     })
   );
 
   results.push(
     await runTest("F02: Standard full flow", "Race Logic", async () => {
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "standard",
       });
       const raceId = createRes.data.raceId;
 
-      await api("POST", "/api/race/join", {
+      await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
 
-      await api("POST", "/api/race/start-bidding", { raceId });
+      await tapi("POST", "/api/race/start-bidding", { raceId });
 
-      const bidRes = await api("POST", "/api/race/bid", {
+      const bidRes = await tapi("POST", "/api/race/bid", {
         raceId,
         wallet: WALLET_A,
         amount: 50,
       });
       assertStatus(bidRes, 200);
 
-      const simRes = await api("POST", "/api/race/simulate", { raceId });
+      const simRes = await tapi("POST", "/api/race/simulate", { raceId });
       assertStatus(simRes, 200);
       assert(simRes.data.finalOrder != null, "finalOrder");
       assert(simRes.data.gridPositions != null, "gridPositions");
@@ -1471,32 +1484,32 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("F03: Tactic full flow", "Race Logic", async () => {
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "tactic",
       });
       const raceId = createRes.data.raceId;
 
-      await api("POST", "/api/race/join", {
+      await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
 
-      await api("POST", "/api/race/start-bidding", { raceId });
-      await api("POST", "/api/race/bid", {
+      await tapi("POST", "/api/race/start-bidding", { raceId });
+      await tapi("POST", "/api/race/bid", {
         raceId,
         wallet: WALLET_A,
         amount: 30,
       });
 
       // Check GDA prices
-      const pricesRes = await api("GET", `/api/race/${raceId}/prices?tick=0`);
+      const pricesRes = await tapi("GET", `/api/race/${raceId}/prices?tick=0`);
       assertStatus(pricesRes, 200);
       assert(pricesRes.data.boostPrice != null, "boostPrice should exist");
       assert(pricesRes.data.pillowPrice != null, "pillowPrice should exist");
 
       // Submit action
-      const actionRes = await api("POST", "/api/race/action", {
+      const actionRes = await tapi("POST", "/api/race/action", {
         raceId,
         wallet: WALLET_A,
         slothId: ctx.slothIdA,
@@ -1505,14 +1518,14 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
       });
       assertStatus(actionRes, 200);
 
-      const simRes = await api("POST", "/api/race/simulate", { raceId });
+      const simRes = await tapi("POST", "/api/race/simulate", { raceId });
       assertStatus(simRes, 200);
     })
   );
 
   results.push(
     await runTest("F04: GP create", "Race Logic", async () => {
-      const res = await api("POST", "/api/race/gp/create", {});
+      const res = await tapi("POST", "/api/race/gp/create", {});
       assert(res.status === 200 || res.status === 201, "gp create");
       assert(
         res.data.qualifyRaceId != null || res.data.gpId != null,
@@ -1523,23 +1536,23 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("F05: Bot filling (3 bots for 1 player)", "Race Logic", async () => {
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "exhibition",
       });
       const raceId = createRes.data.raceId;
 
-      await api("POST", "/api/race/join", {
+      await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
 
-      const bidRes = await api("POST", "/api/race/start-bidding", { raceId });
+      const bidRes = await tapi("POST", "/api/race/start-bidding", { raceId });
       assertStatus(bidRes, 200);
       assertEqual(bidRes.data.botsAdded, 3, "should add 3 bots");
 
       // Verify total participants = 4
-      const raceRes = await api("GET", `/api/race/${raceId}`);
+      const raceRes = await tapi("GET", `/api/race/${raceId}`);
       assertEqual(
         raceRes.data.participants.length,
         4,
@@ -1547,14 +1560,14 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
       );
 
       // Cleanup
-      await api("POST", "/api/race/simulate", { raceId });
+      await tapi("POST", "/api/race/simulate", { raceId });
     })
   );
 
   results.push(
     await runTest("F06: Daily race same ID same day", "Race Logic", async () => {
-      const res1 = await api("GET", "/api/race/daily");
-      const res2 = await api("GET", "/api/race/daily");
+      const res1 = await tapi("GET", "/api/race/daily");
+      const res2 = await tapi("GET", "/api/race/daily");
       assertStatus(res1, 200);
       assertStatus(res2, 200);
       assertEqual(
@@ -1567,25 +1580,25 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("F07: Prediction system", "Race Logic", async () => {
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "exhibition",
       });
       const raceId = createRes.data.raceId;
 
-      await api("POST", "/api/race/join", {
+      await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
-      await api("POST", "/api/race/start-bidding", { raceId });
+      await tapi("POST", "/api/race/start-bidding", { raceId });
 
       // Get participants to know a sloth ID to predict
-      const raceRes = await api("GET", `/api/race/${raceId}`);
+      const raceRes = await tapi("GET", `/api/race/${raceId}`);
       const firstSlothId = raceRes.data.participants[0]?.sloth_id;
       assert(firstSlothId != null, "should have participants");
 
       // Predict
-      const predRes = await api("POST", "/api/race/predict", {
+      const predRes = await tapi("POST", "/api/race/predict", {
         raceId,
         wallet: WALLET_A,
         slothId: firstSlothId,
@@ -1593,10 +1606,10 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
       assertStatus(predRes, 200);
 
       // Simulate
-      await api("POST", "/api/race/simulate", { raceId });
+      await tapi("POST", "/api/race/simulate", { raceId });
 
       // Check predictions
-      const predsRes = await api("GET", `/api/race/${raceId}/predictions`);
+      const predsRes = await tapi("GET", `/api/race/${raceId}/predictions`);
       assertStatus(predsRes, 200);
       assert(
         Array.isArray(predsRes.data.predictions),
@@ -1611,7 +1624,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("F08: Streak tracking", "Race Logic", async () => {
-      const res = await api("GET", `/api/sloth/streaks/${WALLET_A}`);
+      const res = await tapi("GET", `/api/sloth/streaks/${WALLET_A}`);
       assertStatus(res, 200);
       assert(Array.isArray(res.data.streaks), "streaks should be array");
     })
@@ -1620,11 +1633,11 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
   results.push(
     await runTest("F09: Race replay saved", "Race Logic", async () => {
       // Use a race we've already simulated — find one from history
-      const histRes = await api("GET", `/api/race/history/${WALLET_A}`);
+      const histRes = await tapi("GET", `/api/race/history/${WALLET_A}`);
       assertStatus(histRes, 200);
       if (histRes.data.races && histRes.data.races.length > 0) {
         const lastRaceId = histRes.data.races[0].raceId;
-        const replayRes = await api("GET", `/api/race/${lastRaceId}/replay`);
+        const replayRes = await tapi("GET", `/api/race/${lastRaceId}/replay`);
         assertStatus(replayRes, 200);
         assert(replayRes.data.frames != null, "replay frames should exist");
       } else {
@@ -1635,17 +1648,17 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
 
   results.push(
     await runTest("F10: Weather exists in simulation", "Race Logic", async () => {
-      const createRes = await api("POST", "/api/race/create", {
+      const createRes = await tapi("POST", "/api/race/create", {
         format: "exhibition",
       });
       const raceId = createRes.data.raceId;
-      await api("POST", "/api/race/join", {
+      await tapi("POST", "/api/race/join", {
         raceId,
         slothId: ctx.slothIdA,
         wallet: WALLET_A,
       });
-      await api("POST", "/api/race/start-bidding", { raceId });
-      const simRes = await api("POST", "/api/race/simulate", { raceId });
+      await tapi("POST", "/api/race/start-bidding", { raceId });
+      const simRes = await tapi("POST", "/api/race/simulate", { raceId });
       assertStatus(simRes, 200);
       assert(simRes.data.weather != null, "weather should exist");
       const validWeathers = ["sunny", "rainy", "windy", "foggy", "stormy"];
