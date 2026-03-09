@@ -1,8 +1,24 @@
 /**
- * MVP Feature Flags
- * Set MVP_MODE = false to enable all features
+ * MVP Feature Flags — Runtime Hostname Detection
+ *
+ * Demo mode (slothrush.xyz, *.vercel.app): Only core features (mint + race)
+ * Dev mode (app.slothrush.xyz, localhost): All features enabled
  */
-export const MVP_MODE = true
+
+function isMvpMode(): boolean {
+  if (typeof window === 'undefined') return true
+
+  const hostname = window.location.hostname
+
+  // Full features on app subdomain and localhost
+  if (hostname === 'app.slothrush.xyz') return false
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return false
+
+  // Everything else is MVP/demo mode (slothrush.xyz, Vercel preview URLs, etc.)
+  return true
+}
+
+export const MVP_MODE = isMvpMode()
 
 export const FEATURES = {
   mint: true,            // Always on
