@@ -37,5 +37,8 @@ contracts/cache/
 # Claude
 .claude/
 
+# Vercel
+.vercel/
+
 # Misc
 *.local

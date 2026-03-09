@@ -1,0 +1,438 @@
+SLOTH RUSH REBRAND — COMPLETE IMPLEMENTATION PROMPT
+=====================================================
+
+This is a FULL rebrand from "Slug Rush" (snail racing) to "Sloth Rush" (sloth racing).
+Execute ALL phases below in order. Do NOT ask questions — just implement everything.
+Do NOT skip any step. Do NOT stop between phases.
+
+IMPORTANT: After each phase, run `npx tsc --noEmit` in both frontend/ and backend/ to catch errors before moving on.
+
+=====================================================
+FAZ 1: VERITABANI SEMASI (backend/src/db.ts)
+=====================================================
+
+1.1) In db.ts, rename ALL table creation statements:
+   - Table "slugs" -> "sloths"
+   - In sloths table: type CHECK change from ('free_slug', 'snail') to ('free_sloth', 'sloth')
+   - All columns named "snail_id" -> "sloth_id" in ALL tables (race_participants, trainings, daily_minigame_plays, cosmetic_ownership, accessory_ownership, etc.)
+   - Column "slug_reward" -> "sloth_reward" (if exists)
+   - Column "slug_price" -> "sloth_price" (if exists)
+
+1.2) In db.ts, update the tactic_actions table CHECK constraint:
+   - action_type CHECK change from ('boost', 'shell') to ('boost', 'pillow')
+
+1.3) In db.ts, update ALL seed data:
+   Race personality types in any INSERT statements:
+   - 'turbo_slug' -> 'caffeine_junkie'
+   - 'shell_knight' -> 'pillow_knight'
+   - 'goo_mage' -> 'dream_weaver'
+   - 'storm_racer' -> 'thunder_nap'
+
+   Accessory names and descriptions:
+   - "Speed Boots" -> "Running Slippers", desc: "Comfy slippers for extra speed"
+   - "Armor Shell" -> "Cozy Blanket", desc: "Warm blanket for endurance"
+   - "Lucky Charm" -> "Dream Catcher Charm", desc: "A dream catcher for luck"
+   - "Light Shoes" -> "Cloud Sandals", desc: "Lightweight sandals for agility"
+   - "Reflective Shield" -> "Sleep Mask", desc: "A reflective sleep mask"
+   - "Turbo Shell" -> "Double Espresso", desc: "Max speed, less endurance"
+
+   Quest texts: Replace any "slug"/"snail" references with "sloth".
+   - "Visit Stable" -> "Visit Treehouse"
+   - "Check on your slugs in the stable" -> "Check on your sloths in the treehouse"
+   - Any SLUG coin references -> ZZZ coin
+
+1.4) In db.ts, update ALL index names that reference "slugs":
+   - idx_slugs_wallet -> idx_sloths_wallet
+   - idx_slugs_wallet_burned -> idx_sloths_wallet_burned
+   - etc.
+
+1.5) Add a migration block at the end of initDB() (run BEFORE table creation):
+   This handles existing databases that still have the old schema.
+   Add try-catch blocks for each ALTER:
+
+   -- Rename table
+   ALTER TABLE IF EXISTS slugs RENAME TO sloths;
+
+   -- Rename columns in all tables
+   ALTER TABLE IF EXISTS sloths RENAME COLUMN snail_id TO sloth_id; (if applicable)
+   ALTER TABLE IF EXISTS race_participants RENAME COLUMN snail_id TO sloth_id;
+   ALTER TABLE IF EXISTS trainings RENAME COLUMN snail_id TO sloth_id;
+   ALTER TABLE IF EXISTS daily_minigame_plays RENAME COLUMN snail_id TO sloth_id;
+   (and any other tables with snail_id)
+
+   -- Update type values
+   UPDATE sloths SET type = 'free_sloth' WHERE type = 'free_slug';
+   UPDATE sloths SET type = 'sloth' WHERE type = 'snail';
+
+   -- Update race personalities
+   UPDATE sloths SET race = 'caffeine_junkie' WHERE race = 'turbo_slug';
+   UPDATE sloths SET race = 'pillow_knight' WHERE race = 'shell_knight';
+   UPDATE sloths SET race = 'dream_weaver' WHERE race = 'goo_mage';
+   UPDATE sloths SET race = 'thunder_nap' WHERE race = 'storm_racer';
+
+   -- Update passives
+   UPDATE sloths SET passive = 'caffeine_rush' WHERE passive = 'speed_burst';
+   UPDATE sloths SET passive = 'adrenaline_wake' WHERE passive = 'speed_overtake';
+   UPDATE sloths SET passive = 'deep_sleep' WHERE passive = 'fatigue_slow';
+   UPDATE sloths SET passive = 'thick_fur' WHERE passive = 'shell_resist';
+   UPDATE sloths SET passive = 'dream_catcher' WHERE passive = 'luck_magnet';
+   UPDATE sloths SET passive = 'lucid_dream' WHERE passive = 'bad_to_good';
+
+   -- Update tactic actions
+   UPDATE tactic_actions SET action_type = 'pillow' WHERE action_type = 'shell';
+
+   Wrap each in try-catch so it does not fail if already migrated.
+
+=====================================================
+FAZ 2: BACKEND KOD (Routes + Simulation)
+=====================================================
+
+2.1) Rename file: backend/src/routes/slug.ts -> backend/src/routes/sloth.ts
+
+2.2) In backend/src/index.ts:
+   - Change import from './routes/slug' to './routes/sloth'
+   - Change route mounting: app.use("/api/slug", ...) -> app.use("/api/sloth", ...)
+   - Change health check response from "slug-rush-api" to "sloth-rush-api"
+
+2.3) In backend/src/routes/sloth.ts (formerly slug.ts), do ALL these replacements:
+   - All SQL queries: table "slugs" -> "sloths"
+   - All SQL queries: column "snail_id" -> "sloth_id"
+   - Variable names: slugs -> sloths, snail -> sloth, snailId -> slothId (be thorough)
+   - Type values in queries: 'free_slug' -> 'free_sloth', 'snail' -> 'sloth'
+   - Race personality constants:
+     RACES array: ["turbo_slug", "shell_knight", "goo_mage", "storm_racer"] ->
+                  ["caffeine_junkie", "pillow_knight", "dream_weaver", "thunder_nap"]
+   - RACE_BIAS keys: turbo_slug -> caffeine_junkie, shell_knight -> pillow_knight, goo_mage -> dream_weaver, storm_racer -> thunder_nap
+   - Passive ability names in passiveMap:
+     speed_burst -> caffeine_rush
+     speed_overtake -> adrenaline_wake
+     fatigue_slow -> deep_sleep
+     shell_resist -> thick_fur
+     luck_magnet -> dream_catcher
+     bad_to_good -> lucid_dream
+   - Evolution path names if they appear: velocity -> caffeine, fortress -> hibernate, mystic -> dreamwalk
+   - Error/success messages: replace "slug"/"snail" with "sloth", "SLUG" currency with "ZZZ"
+   - Comments: update to reflect sloth theme
+
+2.4) In backend/src/routes/race.ts:
+   - All SQL: "slugs" table -> "sloths", "snail_id" -> "sloth_id"
+   - Type checks: 'free_slug' -> 'free_sloth', 'snail' -> 'sloth'
+   - Bot templates: Update names and race types:
+     { name: "Turbo Bot" -> "Espresso Bot", race: "turbo_slug" -> "caffeine_junkie" }
+     { name: "Shell Guard" -> "Pillow Guard", race: "shell_knight" -> "pillow_knight" }
+     { name: "Goo Master" -> "Dream Master", race: "goo_mage" -> "dream_weaver" }
+     { name: "Storm Bolt" -> "Thunder Bolt", race: "storm_racer" -> "thunder_nap" }
+     { name: "Iron Reflex" -> "Iron Snooze", race: "shell_knight" -> "pillow_knight" }
+     { name: "Lucky Slime" -> "Lucky Dreamer", race: "goo_mage" -> "dream_weaver" }
+     { name: "Balanced Ace" -> "Balanced Napper", race: "turbo_slug" -> "caffeine_junkie" }
+     { name: "Tough Cookie" -> "Tough Sleeper", race: "storm_racer" -> "thunder_nap" }
+   - Tactic action: 'shell' -> 'pillow' everywhere
+   - Error messages: "Not your snail" -> "Not your sloth", etc.
+   - Variable names: snail/snailId -> sloth/slothId
+   - XP reward keys: if "free_slug" -> "free_sloth"
+
+2.5) In backend/src/routes/shop.ts:
+   - Replace "SLUG" currency references with "ZZZ" in response messages
+   - Replace "slugs"/"sloths" table references
+   - Update any "slug_price" column references
+
+2.6) In backend/src/routes/quest.ts:
+   - "slug_reward" -> "sloth_reward" (if column renamed)
+   - Replace snail/slug text in quest logic
+
+2.7) In backend/src/routes/leaderboard.ts:
+   - Table "slugs" -> "sloths", "snail_id" -> "sloth_id"
+
+2.8) In backend/src/routes/season.ts:
+   - Same replacements as above
+
+2.9) In simulation/engine.ts:
+   - Interface name: SnailStats -> SlothStats (and all references)
+   - Event types: 'slime_burst' -> 'yawn_wave', 'clash' -> 'pillow_fight'
+   - Passive ability code names:
+     speed_burst -> caffeine_rush
+     speed_overtake -> adrenaline_wake
+     fatigue_slow -> deep_sleep
+     shell_resist -> thick_fur
+     luck_magnet -> dream_catcher
+     bad_to_good -> lucid_dream
+   - Tactic action: 'shell' -> 'pillow' everywhere
+   - Comments: update "Slug Rush" -> "Sloth Rush", "snail" -> "sloth"
+
+2.10) Run: npx tsc --noEmit in backend/ directory. Fix any errors.
+
+=====================================================
+FAZ 3: FRONTEND KOD
+=====================================================
+
+3.1) Rename file: frontend/src/pages/Stable.tsx -> frontend/src/pages/Treehouse.tsx
+
+3.2) In frontend/src/App.tsx:
+   - Import Treehouse instead of Stable
+   - Route path: /stable -> /treehouse
+   - Add redirect: /stable -> /treehouse (for bookmarks)
+
+3.3) In frontend/src/lib/api.ts:
+   - ALL endpoint URLs: /api/slug/ -> /api/sloth/
+   - Variable names: slugs -> sloths, snail -> sloth
+
+3.4) In frontend/src/index.css:
+   - --color-slug-green -> --color-sloth-green
+   - --color-slug-dark -> --color-sloth-dark
+   - --color-slug-card -> --color-sloth-card
+   - --color-slug-border -> --color-sloth-border
+   - --color-slug-gold -> --color-sloth-gold
+   - --color-slug-purple -> --color-sloth-purple
+   - --color-slug-blue -> --color-sloth-blue
+   - --color-slug-red -> --color-sloth-red
+
+3.5) GLOBAL CSS CLASS REPLACE across ALL frontend/src/ files:
+   Do a project-wide find-replace in ALL .tsx and .ts files:
+   - "slug-green" -> "sloth-green" (everywhere)
+   - "slug-dark" -> "sloth-dark" (everywhere)
+   - "slug-card" -> "sloth-card" (everywhere)
+   - "slug-border" -> "sloth-border" (everywhere)
+   - "slug-gold" -> "sloth-gold" (everywhere)
+   - "slug-purple" -> "sloth-purple" (everywhere)
+   - "slug-blue" -> "sloth-blue" (everywhere)
+   - "slug-red" -> "sloth-red" (everywhere)
+   This affects 300+ class references across 25+ files.
+
+3.6) In frontend/src/components/Layout.tsx:
+   - "SLUG RUSH" -> "SLOTH RUSH" (nav brand)
+   - "Slug Rush -- Snail Racing Game" -> "Sloth Rush -- Sloth Racing Game" (footer)
+   - Nav link "Stable" -> "Treehouse", href /stable -> /treehouse
+   - All "SLUG"/"slug" references -> "ZZZ"/"sloth"
+
+3.7) In frontend/src/pages/Landing.tsx:
+   - Title: "SLUG" -> "SLOTH" in the styled span
+   - "RUSH" stays
+   - Tagline: "Slug up. Race hard. Win big." -> "Wake up. Race hard. Nap later."
+   - Hero text: "Mint your slug, upgrade to a snail, and compete in races to earn SLUG Coins. Every race is deterministic and verifiable." -> "Mint your sloth, evolve and upgrade, and compete in races to earn ZZZ Coins. Every race is deterministic and verifiable."
+   - "Mint Free Slug" button -> "Mint Free Sloth"
+   - "Burn your slug, pay $3 USDC, get a Snail with random rarity" -> "Upgrade your sloth for $3 USDC and get random rarity"
+   - All other slug/snail references -> sloth
+   - aria-label="snail" -> aria-label="sloth"
+
+3.8) In frontend/src/pages/Treehouse.tsx (formerly Stable.tsx):
+   - SNAIL_EMOJI mapping keys: turbo_slug -> caffeine_junkie, shell_knight -> pillow_knight, goo_mage -> dream_weaver, storm_racer -> thunder_nap
+   - Update emoji values to sloth-themed if desired (or keep existing ones)
+   - All variable names: slugs -> sloths, snail -> sloth, freeSlug -> freeSloth
+   - All user-facing text: "slug"/"snail" -> "sloth", "Stable" -> "Treehouse"
+   - "SLUG" currency -> "ZZZ"
+   - Evolution path labels: Velocity -> Caffeine, Fortress -> Hibernate, Mystic -> Dreamwalk
+   - "Enter Exhibition Race" stays (no slug/snail reference)
+   - "Play Mini Games" stays
+   - Section toggle keys that use slug references -> sloth
+
+3.9) In frontend/src/pages/Shop.tsx:
+   - "SLUG Shop" -> "ZZZ Shop"
+   - "SLUG Coins" -> "ZZZ Coins" (everywhere)
+   - "SLUG" standalone -> "ZZZ"
+   - "What can you do with SLUG Coins?" -> "What can you do with ZZZ Coins?"
+   - "Grid Boost" stays (already renamed)
+   - "Sealed Bids" (if still exists) -> "Grid Boost"
+   - "Equip in Stable" -> "Equip in Treehouse"
+   - All slug/snail text -> sloth
+
+3.10) In frontend/src/pages/Guide.tsx:
+   - "What is Slug Rush?" -> "What is Sloth Rush?"
+   - "Slug Rush is a snail racing game..." -> "Sloth Rush is a sloth racing game..."
+   - "Mint your slug, upgrade to a snail" -> "Mint your sloth, evolve and upgrade"
+   - "Free Slugs can race in Exhibition" -> "Free Sloths can race in Exhibition"
+   - Evolution text: "Free Slug -> Snail (Tier 1) -> Elite (Tier 2) -> Specialized (Tier 3) -> Master (Tier 4)" -> "Free Sloth -> Sloth (Tier 1) -> Elite (Tier 2) -> Specialized (Tier 3) -> Master (Tier 4)"
+   - Evolution paths: "Velocity (speed focus), Fortress (defense focus), Mystic (luck focus)" -> "Caffeine (speed focus), Hibernate (defense focus), Dreamwalk (luck focus)"
+   - "slug coins" -> "ZZZ coins"
+   - "slime burst resistance" -> "yawn wave resistance"
+   - "My slime is ready" -> "My dream spell is ready"
+   - All other slug/snail/slime references -> sloth/dream
+
+3.11) In frontend/src/pages/RaceLobby.tsx:
+   - Format descriptions: "50 SLUG entry" -> "50 ZZZ entry"
+   - "FREE SLUG" badge -> "FREE SLOTH"
+   - "Free Slug" type label -> "Free Sloth"
+   - "Need {fee} SLUG" -> "Need {fee} ZZZ"
+   - Variable names: snails -> sloths, data.slugs -> data.sloths
+   - All slug/snail text -> sloth
+
+3.12) In frontend/src/pages/RaceBroadcast.tsx:
+   - All canvas text: "snail" -> "sloth"
+   - Event display: "Slime Burst" -> "Yawn Wave", "Clash" -> "Pillow Fight"
+   - "Shell" action label -> "Pillow Throw"
+   - Variable names: snail -> sloth
+
+3.13) In frontend/src/pages/Mint.tsx:
+   - "Free Slug" -> "Free Sloth"
+   - "Snail" -> "Sloth"
+   - "SLUG" -> "ZZZ" where currency
+   - All minting text updated
+
+3.14) In frontend/src/pages/RaceHistory.tsx:
+   - slug/snail references -> sloth
+
+3.15) In frontend/src/pages/Profile.tsx:
+   - slug/snail references -> sloth
+   - "Stable" links -> "Treehouse"
+
+3.16) In frontend/src/pages/Leaderboard.tsx:
+   - slug/snail references -> sloth
+
+3.17) In frontend/src/pages/NotFound.tsx:
+   - "This snail got lost..." -> "This sloth fell asleep..."
+
+3.18) In frontend/src/components/EvolutionModal.tsx:
+   - Path names: velocity -> caffeine, fortress -> hibernate, mystic -> dreamwalk
+   - Path descriptions:
+     Velocity: "The path of raw speed. Your snail becomes a blur on the track, excelling in final sprints." ->
+     Caffeine: "The path of raw speed. Your sloth runs on pure espresso, excelling in final sprints."
+     Fortress: "The path of resilience. Your snail becomes an unstoppable tank, shrugging off fatigue and shell attacks." ->
+     Hibernate: "The path of resilience. Deep hibernation makes your sloth an unstoppable tank, shrugging off fatigue."
+     Mystic: "The path of fortune. Your snail bends luck itself, attracting beneficial events more often." ->
+     Dreamwalk: "The path of fortune. Your sloth bends reality through lucid dreams, attracting beneficial events."
+   - Passive descriptions:
+     "Last 100m +10% speed" -> "Last 100m caffeine kicks in, +10% speed"
+     "Fatigue builds up 50% slower" -> "Deep hibernation, fatigue builds 50% slower"
+     "Luck Orb +20% more frequent" -> "Dream Catcher attracts Luck Orbs 20% more"
+   - All "snail" -> "sloth" in UI text
+
+3.19) In frontend/src/components/OnboardingTutorial.tsx:
+   - Step 1: "Mint Your Free Slug" -> "Mint Your Free Sloth"
+     "Connect your wallet and mint a Free Slug to get started." -> "Connect your wallet and mint a Free Sloth to get started."
+   - Step 2: "Visit Your Stable" -> "Visit Your Treehouse"
+     "Check out your slug's stats, upgrade to a Snail" -> "Check out your sloth's stats, upgrade and evolve"
+   - Step 3: "Join an Exhibition race for free, or enter a Standard Race with your Snail to win SLUG Coins" ->
+     "Join an Exhibition race for free, or enter a Standard Race to win ZZZ Coins"
+   - Step 4: "Train your Snail to boost stats" -> "Train your Sloth to boost stats"
+
+3.20) In frontend/src/data/dialogues.ts:
+   Rename personality type keys:
+   - TURBO_SLUG -> CAFFEINE_JUNKIE
+   - SHELL_KNIGHT -> PILLOW_KNIGHT
+   - GOO_MAGE -> DREAM_WEAVER
+   - STORM_RACER -> THUNDER_NAP
+
+   Rename DIALOGUE_MAP keys:
+   - turbo_slug -> caffeine_junkie
+   - shell_knight -> pillow_knight
+   - goo_mage -> dream_weaver
+   - storm_racer -> thunder_nap
+
+   Rename TRASH_TALK_MAP keys the same way.
+
+   Update GOO_MAGE (now DREAM_WEAVER) dialogues - replace slime references:
+   - "My bubbles give me power" -> "My dreams give me power"
+   - "My slime is ready" -> "My dream spell is ready"
+   - "Slime magic" -> "Dream magic"
+   - "Bubble pass" -> "Dream pass"
+   - "Sticky surprise" -> "Sleepy surprise"
+   - "My slime" -> "My dream"
+   - "My spell broke" -> "My dream broke"
+   - "MEGA SLIME" -> "MEGA DREAM"
+   - "With spell power" -> "With dream power"
+   - "Sticky turbo" -> "Sleepy turbo"
+   - "Magic wins" -> "Dream magic wins"
+   - "Slime always wins" -> "Dreams always win"
+   - "My spell wasn't enough" -> "My dream wasn't enough"
+   - "My slime dried up" -> "My dream faded"
+   - "Need more bubbles" -> "Need more sleep"
+
+   Update RACE_EMOTES: rename "slime" key -> "yawn"
+   All slime emote text -> yawn/sleep themed
+
+3.21) In frontend/src/data/commentary.ts:
+   - "4 brave snails on the track" -> "4 brave sloths on the track"
+   - "3... 2... 1... GO! The snails are off" -> "3... 2... 1... GO! The sloths are off"
+   - "Lights on at the Grand Shell track" -> "Lights on at the Grand Treehouse track"
+   - "slime_burst" event key -> "yawn_wave"
+   - "Slime Burst! Everyone is sliding! CHAOS!" -> "Yawn Wave! Everyone is getting drowsy! CHAOS!"
+   - "The leader left a slime trail!" -> "The leader spread a massive yawn!"
+   - "Slime on the track! Watch out!" -> "Yawning on the track! Watch out!"
+   - "clash" event key -> "pillow_fight"
+   - Clash commentary: "Two snails collided" -> "Two sloths had a pillow fight"
+   - "slime" emote key -> "yawn"
+   - All slime disgust reactions -> yawn/sleepy reactions
+   - All "snail" -> "sloth" in commentary templates
+
+3.22) In frontend/src/config/contracts.ts:
+   - Rename variables: freeSlugContract -> freeSlothContract, snailContract -> slothContract (etc.)
+   - Update any display names
+
+3.23) In frontend/src/components/QuestPanel.tsx and DailyQuests.tsx:
+   - "SLUG" rewards -> "ZZZ"
+   - "slug"/"snail" -> "sloth"
+   - "Stable" -> "Treehouse"
+
+3.24) In frontend/src/components/MiniGameModal.tsx:
+   - Any slug/snail references -> sloth
+
+3.25) Run: npx tsc --noEmit in frontend/ directory. Fix ALL errors.
+
+=====================================================
+FAZ 4: CONFIG & DOCS
+=====================================================
+
+4.1) Root package.json:
+   - "name": "slug-rush" -> "name": "sloth-rush"
+   - "description": update to "Sloth Rush -- Sloth Racing Game"
+
+4.2) frontend/package.json:
+   - Update name if it contains "slug"
+
+4.3) CLAUDE.md:
+   - Replace ALL "Slug Rush" -> "Sloth Rush"
+   - Replace ALL "slug" -> "sloth", "snail" -> "sloth"
+   - Replace "SLUG" currency -> "ZZZ"
+   - Replace slogan
+   - Update personality names, evolution paths, passive abilities
+   - Replace "Stable" -> "Treehouse"
+   - Update "salyangoz" (Turkish) -> "tembel hayvan" where applicable
+
+=====================================================
+FAZ 5: FINAL VERIFICATION
+=====================================================
+
+5.1) Run npx tsc --noEmit in both frontend/ and backend/. MUST be 0 errors.
+
+5.2) Search entire codebase for leftover references:
+   - grep -r "slug" --include="*.ts" --include="*.tsx" --include="*.css" frontend/src/ backend/src/ simulation/
+   - grep -r "snail" --include="*.ts" --include="*.tsx" frontend/src/ backend/src/ simulation/
+   - grep -r "slime" --include="*.ts" --include="*.tsx" frontend/src/ backend/src/ simulation/
+   - grep -r "Stable" --include="*.ts" --include="*.tsx" frontend/src/ (should only be in redirect logic)
+
+   Fix ANY remaining references. The ONLY acceptable "slug"/"snail"/"slime" references are:
+   - The redirect from /stable to /treehouse
+   - Import paths that happen to contain these words in library names (unlikely)
+
+5.3) Commit and push:
+   git add -A
+   git commit -m "refactor: full rebrand from Slug Rush to Sloth Rush
+
+   - Renamed game from Slug Rush to Sloth Rush
+   - Currency: SLUG -> ZZZ
+   - Creatures: slug/snail -> sloth, free_slug -> free_sloth
+   - Personalities: turbo_slug/shell_knight/goo_mage/storm_racer -> caffeine_junkie/pillow_knight/dream_weaver/thunder_nap
+   - Evolution paths: Velocity/Fortress/Mystic -> Caffeine/Hibernate/Dreamwalk
+   - Passives: speed_burst etc -> caffeine_rush etc
+   - Events: slime_burst/clash -> yawn_wave/pillow_fight
+   - Tactic: shell -> pillow
+   - Page: Stable -> Treehouse
+   - CSS prefix: slug- -> sloth-
+   - API routes: /api/slug -> /api/sloth
+   - DB schema: slugs table -> sloths, snail_id -> sloth_id
+   - All accessories, dialogues, commentary, bot names updated
+   - Database migration included for existing data
+
+   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+   git push
+
+=====================================================
+RULES
+=====================================================
+- Do NOT ask questions. Execute everything.
+- Do NOT skip any file or replacement.
+- PostgreSQL async/await with $1,$2... params.
+- Use react-hot-toast for any error messages (already installed).
+- npx tsc --noEmit MUST pass with 0 errors in both projects.
+- When renaming files, update ALL imports that reference them.
+- The grep check in 5.2 is MANDATORY — fix every leftover.
+- Commit and push when done.

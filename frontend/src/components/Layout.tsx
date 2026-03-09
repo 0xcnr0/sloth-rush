@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi'
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import OnboardingTutorial from './OnboardingTutorial'
+import { FEATURES } from '../config/features'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home' },
@@ -11,7 +12,10 @@ const NAV_ITEMS = [
   { path: '/race', label: 'Race' },
   { path: '/shop', label: 'Shop' },
   { path: '/leaderboard', label: 'Leaderboard' },
-]
+].filter(item => {
+  if (item.path === '/shop' && !FEATURES.shop) return false
+  return true
+})
 
 export default function Layout() {
   const location = useLocation()
@@ -110,7 +114,7 @@ export default function Layout() {
             </nav>
             <div className="mt-4 pt-4 border-t border-slate-700 flex flex-col gap-2">
               <Link to="/mint" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">Mint</Link>
-              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">Profile</Link>
+              {FEATURES.profile && <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">Profile</Link>}
               <Link to="/guide" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">How to Play</Link>
             </div>
             {address && (
@@ -143,7 +147,7 @@ export default function Layout() {
           <div className="flex items-center gap-4">
             <Link to="/mint" className="hover:text-white transition-colors">Mint</Link>
             <Link to="/guide" className="hover:text-white transition-colors">How to Play</Link>
-            <Link to="/profile" className="hover:text-white transition-colors">Profile</Link>
+            {FEATURES.profile && <Link to="/profile" className="hover:text-white transition-colors">Profile</Link>}
             <a href="https://twitter.com/SlothRushGame" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a>
             <a href="https://discord.gg/slothrush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Discord</a>
           </div>

@@ -12,6 +12,7 @@ import RaceReplay from './pages/RaceReplay'
 import Profile from './pages/Profile'
 import Guide from './pages/Guide'
 import NotFound from './pages/NotFound'
+import { FEATURES } from './config/features'
 
 export default function App() {
   return (
@@ -22,12 +23,12 @@ export default function App() {
         <Route path="/treehouse" element={<Treehouse />} />
         <Route path="/race" element={<RaceLobby />} />
         <Route path="/race/:id" element={<RaceBroadcast />} />
-        <Route path="/shop" element={<Shop />} />
+        <Route path="/shop" element={FEATURES.shop ? <Shop /> : <Navigate to="/" replace />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/mini-games" element={<Navigate to="/treehouse" replace />} />
-        <Route path="/spectate" element={<Spectate />} />
-        <Route path="/replay/:id" element={<RaceReplay />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/spectate" element={FEATURES.spectate ? <Spectate /> : <Navigate to="/" replace />} />
+        <Route path="/replay/:id" element={FEATURES.replay ? <RaceReplay /> : <Navigate to="/" replace />} />
+        <Route path="/profile" element={FEATURES.profile ? <Profile /> : <Navigate to="/" replace />} />
         <Route path="/guide" element={<Guide />} />
         {/* Redirects for old routes */}
         <Route path="/stable" element={<Navigate to="/treehouse" replace />} />

@@ -1,0 +1,600 @@
+QA TEST AGENT — IMPLEMENTATION PROMPT
+=======================================
+
+Create a single file: qa-agent.ts in the project root (/Users/canerpinarbasi/slug-rush/qa-agent.ts)
+This is an automated QA test agent that plays the entire Sloth Rush game and finds bugs.
+Do NOT ask questions — just implement everything.
+Do NOT modify any existing files except adding a "qa" script to root package.json.
+
+=======================================
+ARCHITECTURE
+=======================================
+
+Single TypeScript file with these sections:
+1. Configuration & Constants
+2. HTTP Client (fetch wrapper)
+3. Database Helpers (pg direct connection)
+4. Test Framework (runner, assertions, reporting)
+5. Test Suites (6 categories, ~126 tests)
+6. Cleanup
+7. Main entry point
+
+Dependencies: Only `pg` (already in backend) + native fetch (Node 18+).
+Run with: npx tsx qa-agent.ts
+
+=======================================
+SECTION 1: CONFIGURATION
+=======================================
+
+```typescript
+import { Pool } from "pg";
+
+const BASE_URL = process.env.QA_BASE_URL || "http://localhost:3001";
+const WALLET_A = "0xTEST000000000000000000000000000000000001";
+const WALLET_B = "0xTEST000000000000000000000000000000000002";
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || "postgresql://localhost:5432/sloth_rush",
+});
+```
+
+=======================================
+SECTION 2: HTTP CLIENT
+=======================================
+
+Create an `api()` helper that wraps fetch:
+- Takes method, path, optional body
+- Prepends BASE_URL
+- Sets Content-Type: application/json
+- Returns { status: number, data: any }
+- Handles JSON parse errors gracefully
+- Logs request/response on failure for debugging
+
+=======================================
+SECTION 3: DATABASE HELPERS
+=======================================
+
+- `dbQuery(sql, params)`: Runs SQL via pool, returns rows
+- `dbGetOne(sql, params)`: Returns first row or null
+- `getDbBalance(wallet)`: Gets ZZZ balance from coin_balances table
+- `fastForwardTraining(slothId)`: Updates trainings SET completed_at = NOW() - interval '1 minute' WHERE sloth_id = $1 AND claimed = 0
+- `cleanup()`: Deletes ALL test data for WALLET_A and WALLET_B from ALL tables. Order matters for FK constraints:
+  1. Get sloth IDs for both wallets
+  2. Delete from child tables using sloth IDs: race_participants (by sloth_id), trainings, daily_minigame_plays, cosmetic_ownership/user_cosmetics, accessory_ownership/user_accessories, streaks, daily_stat_gains
+  3. Delete from wallet-keyed tables: coin_balances, transactions, daily_logins, user_xp, user_quest_progress, daily_free_races, predictions, tactic_actions, weather_log, gp_points, race_points
+  4. Delete sloths last
+  5. Wrap each DELETE in try-catch (table might not exist)
+
+=======================================
+SECTION 4: TEST FRAMEWORK
+=======================================
+
+Types:
+```typescript
+interface TestResult {
+  name: string;
+  category: string;
+  passed: boolean;
+  duration: number;
+  error?: string;
+  response?: any;
+}
+
+interface TestContext {
+  walletA: string;
+  walletB: string;
+  freeSlothIdA?: number;
+  slothIdA?: number;
+  freeSlothIdB?: number;
+  raceId?: string;
+  balanceA?: number;
+  cosmeticId?: number;
+  accessoryId?: number;
+}
+```
+
+Functions:
+- `runTest(name, category, fn)`: Executes test function, catches errors, returns TestResult. Prints [PASS] or [FAIL] with duration.
+- `assert(condition, message)`: Throws if false
+- `assertEqual(actual, expected, message)`: Throws if not equal
+- `assertStatus(res, expected)`: Checks HTTP status code
+- `printReport(results)`: Prints summary + failures detail
+
+=======================================
+SECTION 5: TEST SUITES
+=======================================
+
+IMPORTANT: Read the actual backend route files to understand the exact API structure.
+Before writing tests, read these files:
+- backend/src/routes/sloth.ts (now renamed to sloth.ts after rebrand)
+- backend/src/routes/race.ts
+- backend/src/routes/shop.ts
+- backend/src/routes/quest.ts
+- backend/src/routes/leaderboard.ts
+- backend/src/routes/season.ts
+- backend/src/index.ts
+- backend/src/db.ts
+
+Match the EXACT endpoint paths, parameter names, and response structures from the code.
+
+--- SUITE A: Happy Path (sequential, uses TestContext) ---
+
+A01. Health check
+  GET /health -> status 200, data.status === "ok"
+
+A02. Mint free sloth (wallet A)
+  POST /api/sloth/mint { wallet: WALLET_A }
+  -> status 200, data.sloth exists, data.sloth.type === "free_sloth"
+  Save: ctx.freeSlothIdA = data.sloth.id
+
+A03. Mint free sloth (wallet B)
+  POST /api/sloth/mint { wallet: WALLET_B }
+  -> status 200
+  Save: ctx.freeSlothIdB = data.sloth.id
+
+A04. View treehouse
+  GET /api/sloth/treehouse/WALLET_A
+  -> status 200, data.sloths.length === 1, data.sloths[0].type === "free_sloth"
+
+A05. Check balance (should be 0)
+  GET /api/sloth/coin/WALLET_A
+  -> status 200, data.balance === 0
+
+A06. Daily login
+  POST /api/sloth/daily-login { wallet: WALLET_A }
+  -> status 200, data.claimed === true, data.bonus exists
+
+A07. Check balance after login (should be 15)
+  GET /api/sloth/coin/WALLET_A
+  -> status 200, data.balance === 15
+
+A08. Check XP
+  GET /api/sloth/xp/WALLET_A
+  -> status 200, data.xp > 0
+
+A09. View profile
+  GET /api/sloth/profile/WALLET_A
+  -> status 200, data.wallet === WALLET_A
+
+A10. View transactions
+  GET /api/sloth/profile/transactions/WALLET_A
+  -> status 200, Array.isArray(data.transactions)
+
+A11. Get daily race
+  GET /api/race/daily
+  -> status 200, data.raceId exists
+  Save: ctx.raceId = data.raceId
+
+A12. Join exhibition race
+  POST /api/race/join { raceId: ctx.raceId, slothId: ctx.freeSlothIdA, wallet: WALLET_A }
+  -> status 200, data.joined === true
+
+A13. Start bidding (should skip for exhibition)
+  POST /api/race/start-bidding { raceId: ctx.raceId }
+  -> status 200, data.skipBidding === true OR data.status === "racing"
+
+A14. Simulate race
+  POST /api/race/simulate { raceId: ctx.raceId }
+  -> status 200, data.finalOrder exists, data.frames exists, data.weather exists
+
+A15. View race results
+  GET /api/race/{ctx.raceId}
+  -> status 200, data.status === "finished"
+
+A16. View race replay
+  GET /api/race/{ctx.raceId}/replay
+  -> status 200, data.frames exists
+
+A17. View race history
+  GET /api/race/history/WALLET_A
+  -> status 200, data.races.length >= 1
+
+A18. Buy coins (starter pack to get funds for upgrade + training)
+  POST /api/shop/buy-coins { wallet: WALLET_A, packageId: "starter" }
+  -> status 200, data.purchased === true, data.coinsAdded === 120
+
+A19. Check balance after shop (should be previous + 120)
+  GET /api/sloth/coin/WALLET_A
+  -> verify balance increased by 120
+
+A20. Upgrade free sloth to paid sloth
+  POST /api/sloth/upgrade { wallet: WALLET_A }
+  -> status 200, data.sloth exists, data.sloth.type === "sloth", data.coinBonus === 500
+  Save: ctx.slothIdA = data.sloth.id
+
+A21. Verify upgrade bonus (+500 ZZZ)
+  GET /api/sloth/coin/WALLET_A
+  -> balance should have increased by 500 from pre-upgrade
+
+A22. Rename sloth
+  POST /api/sloth/rename { wallet: WALLET_A, slothId: ctx.slothIdA, name: "TestSloth" }
+  -> status 200, data.renamed === true
+
+A23. Start training
+  POST /api/sloth/train { wallet: WALLET_A, slothId: ctx.slothIdA, stat: "spd" }
+  -> status 200, data.started === true
+  Cost: 10 ZZZ deducted
+
+A24. Check training status
+  GET /api/sloth/training-status/WALLET_A
+  -> status 200, data.trainings.length >= 1
+
+A25. Fast-forward + claim training
+  Call fastForwardTraining(ctx.slothIdA) via DB
+  POST /api/sloth/claim-training { wallet: WALLET_A, slothId: ctx.slothIdA }
+  -> status 200, data.claimed === true, data.gain > 0
+
+A26. Play mini-game (all 5 types)
+  For each gameType in ['salt_dodge', 'yawn_stretch', 'pillow_lift', 'lucky_leaf', 'speed_tap']:
+    POST /api/sloth/mini-game { wallet: WALLET_A, slothId: ctx.slothIdA, gameType, score: 500 }
+    -> status 200, data.played === true
+
+A27. Create standard race + join + bid + simulate
+  POST /api/race/create { format: "standard" }
+  Save raceId
+  POST /api/race/join { raceId, slothId: ctx.slothIdA, wallet: WALLET_A }
+  POST /api/race/start-bidding { raceId }
+  POST /api/race/bid { raceId, wallet: WALLET_A, amount: 20 }
+  POST /api/race/simulate { raceId }
+  -> All return 200, final order exists
+
+A28. Check quest progress
+  GET /api/quests/daily/WALLET_A
+  -> status 200, data.quests is array
+
+A29. Check weekly quests
+  GET /api/quests/weekly/WALLET_A
+  -> status 200
+
+A30. Check milestones
+  GET /api/quests/milestones/WALLET_A
+  -> status 200
+
+A31. Trigger treehouse visit quest
+  POST /api/quests/progress { wallet: WALLET_A, requirementType: "treehouse_visit" }
+  -> status 200
+
+A32. Buy cosmetic
+  First GET /api/shop/cosmetics?wallet=WALLET_A to find cheapest unowned
+  POST /api/shop/buy-cosmetic { wallet: WALLET_A, cosmeticId: cheapestId }
+  -> status 200, data.purchased === true
+  Save: ctx.cosmeticId
+
+A33. Equip cosmetic
+  POST /api/sloth/equip-cosmetic { wallet: WALLET_A, slothId: ctx.slothIdA, cosmeticId: ctx.cosmeticId }
+  -> status 200
+
+A34. View sloth cosmetics
+  GET /api/sloth/cosmetics/{ctx.slothIdA}
+  -> status 200, cosmetics array includes equipped one
+
+A35. Buy accessory
+  First GET /api/shop/accessories?wallet=WALLET_A to find cheapest unowned
+  POST /api/shop/buy-accessory { wallet: WALLET_A, accessoryId: cheapestId }
+  -> status 200
+  Save: ctx.accessoryId
+
+A36. Equip accessory
+  POST /api/sloth/equip-accessory { wallet: WALLET_A, slothId: ctx.slothIdA, accessoryId: ctx.accessoryId }
+  -> status 200
+
+A37. Unequip accessory
+  POST /api/sloth/unequip-accessory { wallet: WALLET_A, slothId: ctx.slothIdA }
+  -> status 200
+
+A38. Evolution progress
+  GET /api/sloth/evolution-progress/{ctx.slothIdA}
+  -> status 200, data.currentTier exists
+
+A39. Leaderboard (me)
+  GET /api/leaderboard/me/WALLET_A
+  -> status 200
+
+A40. Career leaderboard
+  GET /api/leaderboard/career
+  -> status 200, Array.isArray(data.leaderboard)
+
+A41. Hall of fame
+  GET /api/leaderboard/hall-of-fame
+  -> status 200
+
+A42. League leaderboard
+  GET /api/leaderboard/bronze
+  -> status 200
+
+A43. Current season
+  GET /api/season/current
+  -> status 200
+
+A44. Active races
+  GET /api/race/active
+  -> status 200
+
+A45. Shop packages
+  GET /api/shop/packages
+  -> status 200, data.packages.length === 4
+
+A46. Upgrade progress
+  GET /api/sloth/upgrade-progress/WALLET_A
+  -> status 200
+
+A47. Streaks
+  GET /api/sloth/streaks/WALLET_A
+  -> status 200
+
+--- SUITE B: Edge Cases ---
+
+B01. Double mint -> 409
+  POST /api/sloth/mint { wallet: WALLET_A } (already minted in happy path, but we cleaned up... so mint fresh, then try again)
+  Actually: use a new wallet for this test or ensure wallet A already has a sloth
+  -> second attempt returns 409 or 400
+
+B02. Mint with empty wallet -> 400
+  POST /api/sloth/mint { wallet: "" }
+  -> status 400
+
+B03. Upgrade without having free sloth -> 400/404
+  POST /api/sloth/upgrade { wallet: "0xTEST000000000000000000000000000000000099" }
+  -> status 400 or 404
+
+B04. Train with 0 balance
+  Create a new test: use WALLET_B which might have 0 balance
+  POST /api/sloth/train { wallet: WALLET_B, slothId: ctx.freeSlothIdB, stat: "spd" }
+  -> should fail (need 10 ZZZ)
+
+B05. Free sloth joins standard race -> 400
+  POST /api/race/create { format: "standard" }
+  POST /api/race/join { raceId, slothId: ctx.freeSlothIdB, wallet: WALLET_B }
+  -> status 400
+
+B06. Bid on exhibition race -> 400
+  Create exhibition race, join, start-bidding (skips to racing)
+  POST /api/race/bid { raceId, wallet: WALLET_A, amount: 10 }
+  -> status 400
+
+B07. Mini-game with score > 1000 -> 400
+  POST /api/sloth/mini-game { wallet: WALLET_A, slothId: ctx.slothIdA, gameType: "speed_tap", score: 1500 }
+  -> status 400
+
+B08. Rename with < 3 chars -> 400
+  POST /api/sloth/rename { wallet: WALLET_A, slothId: ctx.slothIdA, name: "AB" }
+  -> status 400
+
+B09. Rename with > 20 chars -> 400
+  POST /api/sloth/rename { wallet: WALLET_A, slothId: ctx.slothIdA, name: "ABCDEFGHIJKLMNOPQRSTUVWXYZ" }
+  -> status 400
+
+B10. Buy already owned cosmetic -> 409
+  POST /api/shop/buy-cosmetic { wallet: WALLET_A, cosmeticId: ctx.cosmeticId }
+  -> status 409
+
+B11. Daily login twice same day -> already claimed
+  POST /api/sloth/daily-login { wallet: WALLET_A }
+  -> data.claimed === false
+
+B12. Invalid game type -> 400
+  POST /api/sloth/mini-game { wallet: WALLET_A, slothId: ctx.slothIdA, gameType: "invalid_game", score: 100 }
+  -> status 400
+
+B13. Invalid stat for training -> 400
+  POST /api/sloth/train { wallet: WALLET_A, slothId: ctx.slothIdA, stat: "xyz" }
+  -> status 400
+
+Add more edge cases as you see fit based on the actual code.
+
+--- SUITE C: Security ---
+
+C01. Rename another wallet's sloth -> 403/404
+  POST /api/sloth/rename { wallet: WALLET_B, slothId: ctx.slothIdA, name: "Hacked" }
+  -> should fail (sloth belongs to WALLET_A)
+
+C02. Train another wallet's sloth -> 403/404
+  POST /api/sloth/train { wallet: WALLET_B, slothId: ctx.slothIdA, stat: "spd" }
+  -> should fail
+
+C03. Invalid wallet format (no 0x) -> 400
+  POST /api/sloth/mint { wallet: "TEST000000000000000000000000000000000099" }
+  -> status 400
+
+C04. Invalid wallet format (too short) -> 400
+  POST /api/sloth/mint { wallet: "0x123" }
+  -> status 400
+
+C05. SQL injection in wallet -> 400
+  POST /api/sloth/mint { wallet: "0x' OR '1'='1" }
+  -> status 400 (regex rejects)
+
+C06. SQL injection in name -> 400
+  POST /api/sloth/rename { wallet: WALLET_A, slothId: ctx.slothIdA, name: "'; DROP TABLE sloths;--" }
+  -> status 400 (alphanumeric filter)
+
+C07. Negative bid -> 400 or clamped to 0
+  Create standard race, join, start-bidding
+  POST /api/race/bid { raceId, wallet: WALLET_A, amount: -100 }
+  -> should not give free money
+
+C08. Race action wrong ownership -> 403
+  Create tactic race with WALLET_A's sloth
+  POST /api/race/action { raceId, wallet: WALLET_B, slothId: ctx.slothIdA, actionType: "boost", tick: 50 }
+  -> status 403 "Not your sloth"
+
+--- SUITE D: Rate Limits ---
+
+D01. General rate limit
+  Send 101 rapid GET /health requests
+  Last one should return 429
+
+D02. Strict rate limit on mint
+  Send 11 rapid POST /api/sloth/mint requests (use different invalid wallets)
+  -> One of the later ones should return 429
+
+--- SUITE E: Economy Audit ---
+
+E01. Mint gives 0 coins
+  Balance before mint === balance after mint
+
+E02. Upgrade gives exactly 500 ZZZ
+  Track balance before/after upgrade, delta should be 500
+
+E03. Daily login gives exactly 15 ZZZ
+  Track balance delta === 15
+
+E04. Training costs exactly 10 ZZZ
+  Track balance delta === -10
+
+E05. Race entry fee correct
+  Join standard race (50 ZZZ entry), track balance delta === -50
+
+E06. Shop packages give correct amounts
+  Buy starter: balance delta === 120
+  (Other packages can be spot-checked)
+
+E07. Balance never goes negative
+  With 0 balance, try to train (10 ZZZ) -> rejected
+  With 0 balance, try to join standard race (50 ZZZ) -> rejected
+  Verify balance still 0
+
+--- SUITE F: Race Logic ---
+
+F01. Exhibition full flow
+  create -> join -> start-bidding (skip) -> simulate -> results
+  Verify: skipBidding true, winner gets reward, frames exist
+
+F02. Standard full flow
+  create -> join -> start-bidding -> bid -> simulate -> results
+  Verify: grid position based on bid, payouts exist
+
+F03. Tactic full flow
+  create -> join -> start-bidding -> bid -> action (boost) -> simulate
+  Verify: GDA price returned, action recorded
+
+F04. GP create
+  POST /api/race/gp/create
+  Verify: qualifyRaceId and finalRaceId returned
+
+F05. Bot filling
+  Create race, join with 1 player, start-bidding
+  Verify: 3 bots added (total 4)
+
+F06. Grid position based on bid
+  Create standard race with 2 real players (WALLET_A bids 80, WALLET_B bids 20)
+  After simulate: WALLET_A should have grid_position 1
+
+F07. Daily race same ID same day
+  GET /api/race/daily twice -> same raceId
+
+F08. Prediction system
+  Create race, join, predict winner (pick first slot)
+  Simulate
+  GET /api/race/{raceId}/predictions -> prediction exists
+
+F09. Streak tracking
+  GET /api/sloth/streaks/WALLET_A
+  -> streaks data exists with win/loss counts
+
+F10. Race replay saved
+  After simulate, GET /api/race/{raceId}/replay
+  -> frames and events arrays exist
+
+=======================================
+SECTION 6: MAIN RUNNER
+=======================================
+
+```typescript
+async function main() {
+  console.log("\\n=== SLOTH RUSH QA AGENT ===");
+  console.log("Target: " + BASE_URL);
+  console.log("Wallets: " + WALLET_A + ", " + WALLET_B);
+  console.log("Started: " + new Date().toISOString());
+  console.log("");
+
+  // 1. Verify server
+  try {
+    const health = await api("GET", "/health");
+    if (health.status !== 200) {
+      console.error("Backend not running at " + BASE_URL);
+      process.exit(1);
+    }
+  } catch {
+    console.error("Cannot connect to " + BASE_URL + ". Start backend first.");
+    process.exit(1);
+  }
+
+  // 2. Cleanup
+  console.log("Cleaning up test data...");
+  await cleanup();
+  console.log("Cleanup done.\\n");
+
+  const ctx: TestContext = { walletA: WALLET_A, walletB: WALLET_B };
+  const allResults: TestResult[] = [];
+
+  // 3. Run suites
+  console.log("--- HAPPY PATH ---");
+  allResults.push(...await runHappyPath(ctx));
+
+  console.log("\\n--- EDGE CASES ---");
+  allResults.push(...await runEdgeCases(ctx));
+
+  console.log("\\n--- SECURITY ---");
+  allResults.push(...await runSecurity(ctx));
+
+  console.log("\\n--- RATE LIMITS ---");
+  allResults.push(...await runRateLimits());
+
+  console.log("\\n--- ECONOMY AUDIT ---");
+  allResults.push(...await runEconomyAudit(ctx));
+
+  console.log("\\n--- RACE LOGIC ---");
+  allResults.push(...await runRaceLogic(ctx));
+
+  // 4. Report
+  printReport(allResults);
+
+  // 5. Cleanup + exit
+  await cleanup();
+  await pool.end();
+
+  const failures = allResults.filter(r => r.passed === false).length;
+  process.exit(failures > 0 ? 1 : 0);
+}
+
+main().catch(err => {
+  console.error("Fatal error:", err);
+  process.exit(1);
+});
+```
+
+=======================================
+SECTION 7: PACKAGE.JSON UPDATE
+=======================================
+
+Add to ROOT package.json scripts:
+  "qa": "tsx qa-agent.ts"
+
+Also ensure tsx is available. If not in root package.json, add as devDependency:
+  "tsx": "^4.0.0"
+
+And ensure pg types are available. If needed:
+  "pg": "^8.11.0" (should already be in backend)
+
+The qa-agent.ts imports pg from the backend's node_modules. Use:
+  import { Pool } from "../backend/node_modules/pg" or configure tsconfig paths.
+
+  Alternatively, add pg as a root devDependency:
+  npm install --save-dev pg @types/pg tsx
+
+=======================================
+RULES
+=======================================
+- Do NOT ask questions. Implement the entire qa-agent.ts file.
+- Read the actual backend route files to match exact endpoint paths and parameter names.
+- Every test must have a clear assertion that produces PASS or FAIL.
+- Tests should be robust — handle async properly, clean up after themselves.
+- The script must be runnable with: npx tsx qa-agent.ts
+- Output must be clear: [PASS] or [FAIL] for each test, summary at end.
+- If the backend is not running, exit with clear error message.
+- TypeScript strict mode compatible.
+- After writing qa-agent.ts, install any needed dependencies.
+- Run: npx tsc --noEmit to verify no type errors.
+- Do a quick test run: npx tsx qa-agent.ts (backend must be running).
+- Commit and push when done.

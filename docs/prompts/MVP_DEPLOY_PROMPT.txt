@@ -1,0 +1,307 @@
+Sloth Rush — MVP Feature Trimming + Deploy Hazirlik + README
+Base Batches Season 3 Startup Track basvurusu icin. Soru sorma, hepsini uygula.
+
+============================================================
+BOLUM A: MVP FEATURE FLAGS
+============================================================
+
+A1. Yeni dosya olustur: frontend/src/config/features.ts
+
+Icerik:
+```typescript
+/**
+ * MVP Feature Flags
+ * Set MVP_MODE = false to enable all features
+ */
+export const MVP_MODE = true
+
+export const FEATURES = {
+  mint: true,            // Always on
+  race: true,            // Always on
+  leaderboard: true,     // Always on
+  treehouse: true,       // Always on
+  guide: true,           // Always on
+
+  shop: !MVP_MODE,       // Hide in MVP
+  training: !MVP_MODE,   // Hide in MVP
+  evolution: !MVP_MODE,  // Hide in MVP
+  miniGames: !MVP_MODE,  // Hide in MVP
+  quests: !MVP_MODE,     // Hide in MVP
+  grandPrix: !MVP_MODE,  // Hide in MVP
+  tacticRace: !MVP_MODE, // Hide in MVP
+  spectate: !MVP_MODE,   // Hide in MVP
+  replay: !MVP_MODE,     // Hide in MVP
+  profile: !MVP_MODE,    // Hide in MVP
+  accessories: !MVP_MODE,// Hide in MVP
+  cosmetics: !MVP_MODE,  // Hide in MVP
+} as const
+```
+
+---
+
+A2. Layout.tsx navigasyonu MVP'ye gore duzelt
+Dosya: frontend/src/components/Layout.tsx
+
+NAV_ITEMS dizisinde Shop linkini kosullu yap.
+Ust kisma import ekle:
+  import { FEATURES } from '../config/features'
+
+NAV_ITEMS dizisini bul ve degistir. Mevcut dizi:
+  - Home, Treehouse, Race, Shop, Leaderboard seklinde
+
+Shop'u filtrele. NAV_ITEMS tanimini bul ve sonrasina filter ekle:
+  .filter(item => {
+    if (item.path === '/shop' && !FEATURES.shop) return false
+    return true
+  })
+
+Mobile drawer'da da Profile ve Mint linklerini kontrol et:
+  - Profile linkini FEATURES.profile ile kosullu yap
+  - Mint her zaman gorunsun
+
+---
+
+A3. App.tsx route'larini MVP'ye gore duzelt
+Dosya: frontend/src/App.tsx
+
+Ust kisma import ekle:
+  import { FEATURES } from './config/features'
+
+Asagidaki route'lari kosullu yap veya redirect'e cevir:
+  - /shop → FEATURES.shop ? <Shop /> : <Navigate to="/" />
+  - /spectate → FEATURES.spectate ? <Spectate /> : <Navigate to="/" />
+  - /replay/:id → FEATURES.replay ? <RaceReplay /> : <Navigate to="/" />
+  - /profile → FEATURES.profile ? <Profile /> : <Navigate to="/" />
+
+/mint, /treehouse, /race, /race/:id, /leaderboard, /guide → her zaman aktif kalsin.
+Navigate import'unu react-router-dom'dan ekle (zaten olabilir).
+
+---
+
+A4. Treehouse.tsx'de MVP olmayan ozellikleri gizle
+Dosya: frontend/src/pages/Treehouse.tsx
+
+Ust kisma import ekle:
+  import { FEATURES } from '../config/features'
+
+Asagidaki bolumleri FEATURES flag'leri ile sar:
+  - Training bolumunu: {FEATURES.training && (<TrainingSection ... />)}
+  - Evolution modal: {FEATURES.evolution && (<EvolutionModal ... />)}
+  - MiniGame modal: {FEATURES.miniGames && (<MiniGameModal ... />)}
+  - Quest panel: {FEATURES.quests && (<QuestPanel ... />)}
+  - Cosmetics/accessories tabs: {FEATURES.cosmetics && (...)}
+
+Eger bu componentler inline render ediliyorsa (ayri component degil), ilgili JSX bloklarini
+  {FEATURES.xxx && (
+    <div>...mevcut JSX...</div>
+  )}
+ile sar.
+
+Training butonlarini, evolution butonlarini, mini-game butonlarini da gizle.
+Sadece sloth kartlari, coin bakiye, upgrade butonu ve "Race" butonu gorunsun.
+
+---
+
+A5. RaceLobby.tsx'de MVP olmayan formatlari gizle
+Dosya: frontend/src/pages/RaceLobby.tsx
+
+Ust kisma import ekle:
+  import { FEATURES } from '../config/features'
+
+FORMATS dizisini filtrele:
+  const visibleFormats = FORMATS.filter(f => {
+    if (f.id === 'grand_prix' && !FEATURES.grandPrix) return false
+    if (f.id === 'tactic' && !FEATURES.tacticRace) return false
+    return true
+  })
+
+Render'da FORMATS yerine visibleFormats kullan.
+Exhibition ve Standard her zaman gorunsun.
+
+============================================================
+BOLUM B: README.md OLUSTUR
+============================================================
+
+Proje kokunde (~/slug-rush/) README.md olustur. Icerik:
+
+```markdown
+# Sloth Rush
+
+> Wake up. Race hard. Nap later.
+
+Free-to-play sloth racing game built natively on **Base L2**. Mint a Free Sloth, race in deterministic simulations, earn ZZZ Coins, and upgrade your racer.
+
+## Features
+
+- **Free Sloth Minting** — Gasless, one per wallet
+- **Deterministic Racing** — Seeded PRNG engine, provably fair results recorded on-chain
+- **4 Race Formats** — Exhibition (free), Standard, Tactic, Grand Prix
+- **Training & Evolution** — 7 tiers, 3 evolution paths (Caffeine, Hibernate, Dreamwalk)
+- **Economy** — ZZZ Coins, daily bonuses, quests, seasonal rewards
+- **Leaderboards** — Career stats, ranked leagues, Hall of Fame
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19 + TypeScript + Vite + Tailwind CSS 4 |
+| Backend | Express + PostgreSQL |
+| Blockchain | Base L2 (Sepolia), Solidity, Hardhat |
+| Wallet | RainbowKit + Wagmi + Viem |
+| Race Engine | Deterministic simulation (mulberry32 PRNG) |
+
+## Architecture
+
+```
+sloth-rush/
+├── frontend/        # React SPA (Vercel)
+├── backend/         # Express API + PostgreSQL (Railway)
+├── contracts/       # Solidity smart contracts (Base L2)
+└── docs/            # Light paper, prompts
+```
+
+**Hybrid Model:** High-integrity operations (minting, upgrades, race hashes) live on-chain. High-frequency gameplay (racing, training, economy) runs off-chain for speed and zero gas costs.
+
+## Smart Contracts
+
+- **FreeSloth.sol** — ERC-721 NFT, one per wallet, burnable
+- **Sloth.sol** — ERC-721 with on-chain stats (SPD, ACC, STA, AGI, REF, LCK)
+- **SlothRush.sol** — Upgrade (burn FreeSloth + mint Sloth), race result recording
+
+## Local Development
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL
+- npm
+
+### Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Start backend (terminal 1)
+cd backend && npm run dev
+
+# Start frontend (terminal 2)
+cd frontend && npm run dev
+```
+
+Frontend runs on http://localhost:5173, backend on http://localhost:3001.
+
+### Environment Variables
+
+**Backend (.env):**
+```
+DATABASE_URL=postgresql://localhost:5432/sloth_rush
+NODE_ENV=development
+PORT=3001
+```
+
+## QA
+
+92 automated tests covering happy path, edge cases, security, rate limits, economy, and race logic.
+
+```bash
+cd ~/slug-rush && npx tsx qa-agent.ts
+```
+
+## License
+
+MIT
+```
+
+---
+
+Prompt dosyalarini (*.txt) docs/ klasorune tasi:
+
+mkdir -p docs/prompts
+mv ~/slug-rush/SLOTH_REBRAND_PROMPT.txt docs/prompts/ 2>/dev/null
+mv ~/slug-rush/VERTICAL_RACE_PROMPT.txt docs/prompts/ 2>/dev/null
+mv ~/slug-rush/QA_AGENT_PROMPT.txt docs/prompts/ 2>/dev/null
+mv ~/slug-rush/FIX_QA_BUGS_PROMPT.txt docs/prompts/ 2>/dev/null
+mv ~/slug-rush/MEGA_FIX_PROMPT.txt docs/prompts/ 2>/dev/null
+
+============================================================
+BOLUM C: DEPLOY HAZIRLIK
+============================================================
+
+C1. Backend build test
+```bash
+cd ~/slug-rush/backend && npx tsc --noEmit
+```
+0 hata olmali. Hata varsa duzelt.
+
+C2. Frontend build test
+```bash
+cd ~/slug-rush/frontend && npm run build
+```
+0 hata olmali. Hata varsa duzelt. (tsc -b && vite build calisir)
+
+C3. WalletConnect Project ID icin env var desteği ekle
+Dosya: frontend/src/config/wagmi.ts
+
+BUL:
+  projectId: 'sloth-rush-demo',
+
+DEGISTIR:
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'sloth-rush-demo',
+
+---
+
+C4. .gitignore kontrol
+Dosya: .gitignore (kok dizinde)
+
+Asagidakilerin gitignore'da oldugunu dogrula, yoksa ekle:
+  .env
+  .env.local
+  node_modules/
+  dist/
+  .vercel/
+
+============================================================
+BOLUM D: DOGRULAMA
+============================================================
+
+1. Frontend build basarili: cd frontend && npm run build — 0 hata
+2. Backend build basarili: cd backend && npx tsc --noEmit — 0 hata
+3. features.ts dosyasi olusturuldu
+4. Layout.tsx'de Shop navigasyonu gizlendi
+5. App.tsx'de MVP disindaki route'lar redirect oluyor
+6. Treehouse.tsx'de training/evolution/miniGame/quest gizlendi
+7. RaceLobby.tsx'de GP ve Tactic gizlendi
+8. README.md olusturuldu
+9. Prompt dosyalari docs/prompts/ altina tasindi
+10. wagmi.ts env var destegi eklendi
+
+============================================================
+BOLUM E: COMMIT
+============================================================
+
+git add -A
+git commit -m "feat: MVP mode + README + deploy preparation
+
+- Add feature flags (MVP_MODE) for launch trimming
+- Hide shop, training, evolution, mini-games, quests in MVP
+- Hide Grand Prix and Tactic race formats in MVP
+- Keep: mint, exhibition/standard race, treehouse, leaderboard
+- Add README.md with project docs
+- Move prompt files to docs/prompts/
+- Add WalletConnect env var support in wagmi.ts
+- Both frontend and backend build successfully
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+git push
+
+============================================================
+KURALLAR
+============================================================
+- Soru sorma, hepsini uygula
+- Feature flag'leri FEATURES objesi uzerinden yonet, hardcode etme
+- JSX'te gizleme icin {FEATURES.xxx && (...)} pattern kullan
+- Build hatasiz olmali (tsc + vite build)
+- Mevcut islevsellikte degisiklik yapma — sadece gizle
+- MVP_MODE = true iken: mint, exhibition/standard race, treehouse (basit), leaderboard, guide gorunsun
+- MVP_MODE = false iken: tum ozellikler gorunsun (gelecekte tek degisiklik ile ac)
+- Bitince commit + push

@@ -6,6 +6,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import Spinner from '../components/Spinner'
+import { FEATURES } from '../config/features'
 
 type Phase = 'select' | 'lobby' | 'bidding' | 'reveal' | 'starting' | 'gp_break' | 'gp_final_bid'
 
@@ -15,6 +16,12 @@ const FORMATS = [
   { id: 'grand_prix', name: 'Grand Prix', fee: 150, maxRaise: 300, desc: 'High stakes racing' },
   { id: 'tactic', name: 'Tactic Challenge', fee: 75, maxRaise: 150, desc: 'Use Boost & Pillow during race!' },
 ]
+
+const visibleFormats = FORMATS.filter(f => {
+  if (f.id === 'grand_prix' && !FEATURES.grandPrix) return false
+  if (f.id === 'tactic' && !FEATURES.tacticRace) return false
+  return true
+})
 
 export default function RaceLobby() {
   const { address, isConnected } = useAccount()
@@ -353,6 +360,7 @@ export default function RaceLobby() {
             )}
 
             {/* Upcoming GP Banner */}
+            {FEATURES.grandPrix && (
             <div className="mb-6 p-4 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-amber-500/30 rounded-xl">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{'\u{1F3C6}'}</span>
@@ -362,6 +370,7 @@ export default function RaceLobby() {
                 </div>
               </div>
             </div>
+            )}
 
             {sloths.length === 0 ? (
               <div className="text-center py-16">
@@ -386,7 +395,7 @@ export default function RaceLobby() {
                 {/* Format selection */}
                 <h2 className="text-lg font-semibold text-gray-300 mb-3">Select Race Format</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-                  {FORMATS.map(fmt => (
+                  {visibleFormats.map(fmt => (
                     <button
                       key={fmt.id}
                       onClick={() => setSelectedFormat(fmt)}

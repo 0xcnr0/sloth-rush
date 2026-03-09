@@ -11,6 +11,7 @@ import QuestPanel from '../components/QuestPanel'
 import EvolutionModal from '../components/EvolutionModal'
 import MiniGameModal from '../components/MiniGameModal'
 import Spinner from '../components/Spinner'
+import { FEATURES } from '../config/features'
 
 const EVOLUTION_PATH_ICONS: Record<string, string> = {
   caffeine: '\u26A1',
@@ -333,7 +334,7 @@ export default function Treehouse() {
             </div>
 
             {/* Training UI — Accordion */}
-            <div className="mt-3">
+            {FEATURES.training && (<div className="mt-3">
               <button
                 onClick={() => toggleSection(`training-${freeSloth.id}`)}
                 className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
@@ -408,10 +409,10 @@ export default function Treehouse() {
                   </div>
                 )
               })()}
-            </div>
+            </div>)}
 
             {/* Equipment — Accordion */}
-            {(ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
+            {FEATURES.cosmetics && (ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
               <div className="mt-3">
                 <button
                   onClick={() => toggleSection(`equip-${freeSloth.id}`)}
@@ -466,12 +467,14 @@ export default function Treehouse() {
             )}
 
             {/* Mini Games button */}
+            {FEATURES.miniGames && (
             <button
               onClick={() => setActiveMiniGame({ slothId: freeSloth.id, slothName: freeSloth.name })}
               className="w-full mt-3 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
             >
               Play Mini Games
             </button>
+            )}
 
             {/* Enter Race — Exhibition only */}
             <div className="mt-3 pt-3 border-t border-sloth-border">
@@ -533,6 +536,7 @@ export default function Treehouse() {
       )}
 
       {/* Quest Panel */}
+      {FEATURES.quests && (
       <div className="mb-6">
         <button
           onClick={() => setQuestsOpen(!questsOpen)}
@@ -543,6 +547,7 @@ export default function Treehouse() {
         </button>
         {questsOpen && <QuestPanel />}
       </div>
+      )}
 
       {/* Sloth Cards */}
       {slothList.length > 0 && (
@@ -677,7 +682,7 @@ export default function Treehouse() {
                 )}
 
                 {/* Training UI — Accordion */}
-                <div className="mt-3">
+                {FEATURES.training && (<div className="mt-3">
                   <button
                     onClick={() => toggleSection(`training-${sloth.id}`)}
                     className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
@@ -752,10 +757,10 @@ export default function Treehouse() {
                       </div>
                     )
                   })()}
-                </div>
+                </div>)}
 
                 {/* Cosmetic / Accessory badges */}
-                {(sloth.cosmetic || sloth.equipped_accessory || sloth.accessory) && (
+                {FEATURES.cosmetics && (sloth.cosmetic || sloth.equipped_accessory || sloth.accessory) && (
                   <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
                     {sloth.cosmetic && (
                       <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-pink-500/10 text-pink-400 border-pink-500/30">
@@ -771,7 +776,7 @@ export default function Treehouse() {
                 )}
 
                 {/* Equipment — Accordion */}
-                {(ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
+                {FEATURES.cosmetics && (ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
                   <div className="mt-3">
                     <button
                       onClick={() => toggleSection(`equip-${sloth.id}`)}
@@ -836,20 +841,24 @@ export default function Treehouse() {
                 )}
 
                 {/* Evolve button */}
+                {FEATURES.evolution && (
                 <button
                   onClick={() => { setEvolveSlothId(sloth.id); setEvolveSlothName(sloth.name) }}
                   className="w-full mt-3 py-2 bg-sloth-purple/20 text-sloth-purple font-semibold rounded-lg hover:bg-sloth-purple/30 transition-colors cursor-pointer text-sm"
                 >
                   Evolve
                 </button>
+                )}
 
                 {/* Mini Games button */}
+                {FEATURES.miniGames && (
                 <button
                   onClick={() => setActiveMiniGame({ slothId: sloth.id, slothName: sloth.name })}
                   className="w-full mt-2 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
                 >
                   Play Mini Games
                 </button>
+                )}
 
                 {/* Enter Race — prominent */}
                 <div className="mt-3 pt-3 border-t border-sloth-border">
@@ -867,7 +876,7 @@ export default function Treehouse() {
       )}
 
       {/* MiniGameModal */}
-      {activeMiniGame && address && (
+      {FEATURES.miniGames && activeMiniGame && address && (
         <MiniGameModal
           slothId={activeMiniGame.slothId}
           slothName={activeMiniGame.slothName}
@@ -879,7 +888,7 @@ export default function Treehouse() {
       )}
 
       {/* Evolution Modal */}
-      {evolveSlothId !== null && address && (
+      {FEATURES.evolution && evolveSlothId !== null && address && (
         <EvolutionModal
           slothId={evolveSlothId}
           slothName={evolveSlothName}

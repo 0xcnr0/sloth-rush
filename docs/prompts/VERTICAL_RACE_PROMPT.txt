@@ -1,0 +1,376 @@
+VERTICAL TREE CLIMBING RACE LAYOUT — IMPLEMENTATION PROMPT
+============================================================
+
+IMPORTANT: Run this AFTER the Sloth Rush rebrand is complete.
+This changes ONLY the race visualization in RaceBroadcast.tsx.
+The simulation engine, backend, and all other files stay UNCHANGED.
+Do NOT ask questions — just implement everything.
+
+============================================================
+WHAT WE ARE BUILDING
+============================================================
+
+Replace the horizontal left-to-right race canvas with a vertical
+bottom-to-top tree climbing layout. Sloths climb trees upward.
+The finish line is at the top (checkered pattern).
+Names are at the bottom of each tree.
+
+The simulation engine outputs linear distance (0-2800).
+Currently: distance maps to horizontal X position.
+New: distance maps to vertical Y position (inverted: 0=bottom, 2800=top).
+
+This supports both 4-racer and 8-racer modes:
+- 4 racers: thick tree trunks, large sprites (28px)
+- 8 racers: thin vines/lianas, smaller sprites (22px)
+
+============================================================
+STEP 1: CANVAS CONTAINER STYLING
+============================================================
+
+In RaceBroadcast.tsx, find the canvas container div and canvas element.
+Change the canvas height from the current short horizontal layout to a taller vertical layout:
+
+FIND the canvas style:
+  height: 'clamp(200px, 40vh, 320px)'
+REPLACE with:
+  height: 'clamp(400px, 65vh, 650px)'
+
+Add a CSS gradient background to the canvas container div.
+Add this style to the container div that wraps the canvas:
+  background: 'linear-gradient(to top, #0a1a0a 0%, #0f2a0f 30%, #1a3a1a 60%, #2a5a2a 85%, #3a7a3a 100%)'
+
+This creates a dark forest floor at the bottom fading to lighter canopy at the top.
+
+============================================================
+STEP 2: LAYOUT CONSTANTS
+============================================================
+
+In the drawFrame function (inside the useEffect), replace the current layout constants.
+
+REMOVE these constants:
+  const TRACK_MARGIN = 60
+  const TRACK_WIDTH = width - TRACK_MARGIN * 2
+  const LANE_HEIGHT = (height - 100) / 4
+  const SLOTH_SIZE = 28
+
+REPLACE with these new constants:
+  const numRacers = frame.positions.length || 4
+  const TOP_MARGIN = 50
+  const BOTTOM_MARGIN = 50
+  const SIDE_MARGIN = 20
+  const TRACK_HEIGHT = height - TOP_MARGIN - BOTTOM_MARGIN
+  const LANE_WIDTH = (width - SIDE_MARGIN * 2) / numRacers
+  const SLOTH_SIZE = numRacers <= 4 ? 28 : 22
+  const TREE_TRUNK_WIDTH = numRacers <= 4 ? 20 : 12
+
+============================================================
+STEP 3: CLEAR AND DRAW BACKGROUND
+============================================================
+
+Replace the current background clearing code.
+
+REMOVE the old background fill:
+  ctx.clearRect(0, 0, width, height)
+  ctx.fillStyle = '#0f1520'
+  ctx.fillRect(0, 0, width, height)
+
+REPLACE with transparent clear (CSS gradient handles background):
+  ctx.clearRect(0, 0, width, height)
+
+============================================================
+STEP 4: DRAW TREE TRUNKS (replaces lane drawing)
+============================================================
+
+REMOVE the entire lane drawing loop (the for loop that draws alternating colored rectangles and dashed lines for 4 lanes).
+
+REPLACE with tree trunk drawing:
+
+  // Draw tree trunks
+  for (let i = 0; i < numRacers; i++) {
+    const cx = SIDE_MARGIN + i * LANE_WIDTH + LANE_WIDTH / 2
+
+    // Tree trunk (brown rectangle, full height)
+    ctx.fillStyle = '#5a3a1a'
+    ctx.fillRect(cx - TREE_TRUNK_WIDTH / 2, TOP_MARGIN, TREE_TRUNK_WIDTH, TRACK_HEIGHT)
+
+    // Tree trunk border (darker)
+    ctx.strokeStyle = '#3a2510'
+    ctx.lineWidth = 1
+    ctx.strokeRect(cx - TREE_TRUNK_WIDTH / 2, TOP_MARGIN, TREE_TRUNK_WIDTH, TRACK_HEIGHT)
+
+    // Subtle horizontal wood grain lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)'
+    ctx.lineWidth = 1
+    for (let gy = TOP_MARGIN + 30; gy < TOP_MARGIN + TRACK_HEIGHT; gy += 40 + (i * 7) % 20) {
+      ctx.beginPath()
+      ctx.moveTo(cx - TREE_TRUNK_WIDTH / 2 + 2, gy)
+      ctx.lineTo(cx + TREE_TRUNK_WIDTH / 2 - 2, gy)
+      ctx.stroke()
+    }
+
+    // For 4-racer mode: add small leaf clusters between trees
+    if (numRacers <= 4 && i < numRacers - 1) {
+      const midX = cx + LANE_WIDTH / 2
+      const leafPositions = [0.2, 0.5, 0.8]
+      leafPositions.forEach(pct => {
+        const ly = TOP_MARGIN + TRACK_HEIGHT * pct + ((i * 37) % 30) - 15
+        ctx.fillStyle = 'rgba(34, 120, 34, 0.3)'
+        ctx.beginPath()
+        ctx.ellipse(midX, ly, 12, 8, 0, 0, Math.PI * 2)
+        ctx.fill()
+      })
+    }
+  }
+
+============================================================
+STEP 5: START LINE (bottom)
+============================================================
+
+REMOVE the old start line (vertical gray line on the left).
+
+REPLACE with horizontal start line at the bottom:
+
+  // Start line (bottom)
+  ctx.strokeStyle = '#374151'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(SIDE_MARGIN, height - BOTTOM_MARGIN)
+  ctx.lineTo(width - SIDE_MARGIN, height - BOTTOM_MARGIN)
+  ctx.stroke()
+
+  // START label
+  ctx.fillStyle = '#374151'
+  ctx.font = 'bold 9px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText('START', width / 2, height - BOTTOM_MARGIN + 12)
+
+============================================================
+STEP 6: FINISH LINE (top — checkered pattern)
+============================================================
+
+REMOVE the old finish line (vertical gold line on the right + rotated FINISH text).
+
+REPLACE with checkered pattern at the top:
+
+  // Finish line - checkered pattern at top
+  const checkerSize = 8
+  const checkerY = TOP_MARGIN - checkerSize * 2
+  const checkerStartX = SIDE_MARGIN
+  const checkerEndX = width - SIDE_MARGIN
+  const numCheckers = Math.floor((checkerEndX - checkerStartX) / checkerSize)
+
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < numCheckers; col++) {
+      const isBlack = (row + col) % 2 === 0
+      ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5'
+      ctx.fillRect(
+        checkerStartX + col * checkerSize,
+        checkerY + row * checkerSize,
+        checkerSize,
+        checkerSize
+      )
+    }
+  }
+
+  // FINISH label above checkered
+  ctx.fillStyle = '#f59e0b'
+  ctx.font = 'bold 10px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText('FINISH', width / 2, checkerY - 4)
+
+============================================================
+STEP 7: PROGRESS MARKERS (horizontal lines)
+============================================================
+
+REMOVE the old progress markers (vertical lines at 25%, 50%, 75%).
+
+REPLACE with horizontal progress markers:
+
+  // Progress markers
+  for (let m = 0.25; m < 1; m += 0.25) {
+    const my = height - BOTTOM_MARGIN - TRACK_HEIGHT * m
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([3, 6])
+    ctx.beginPath()
+    ctx.moveTo(SIDE_MARGIN, my)
+    ctx.lineTo(width - SIDE_MARGIN, my)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Percentage label on left
+    ctx.fillStyle = '#4a5568'
+    ctx.font = '9px sans-serif'
+    ctx.textAlign = 'right'
+    ctx.fillText(Math.round(m * 100) + '%', SIDE_MARGIN - 4, my + 3)
+  }
+
+============================================================
+STEP 8: SLOTH SPRITE RENDERING (vertical position)
+============================================================
+
+REMOVE the old sprite rendering code (the frame.positions.forEach loop that draws circles, emoji, names, and speed).
+
+REPLACE with new vertical rendering:
+
+  // Sort for ranking
+  const sorted = [...frame.positions].sort((a, b) => b.distance - a.distance)
+
+  frame.positions.forEach((pos, i) => {
+    const cx = SIDE_MARGIN + i * LANE_WIDTH + LANE_WIDTH / 2
+    const cy = height - BOTTOM_MARGIN - (pos.distance / trackLength) * TRACK_HEIGHT
+    const color = RACER_COLORS[i] || '#fff'
+    const rank = sorted.findIndex(s => s.id === pos.id) + 1
+
+    // Glowing circle (sloth on tree)
+    ctx.shadowColor = color
+    ctx.shadowBlur = 10
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(cx, cy, SLOTH_SIZE / 2, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.shadowBlur = 0
+
+    // White border for visibility
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.arc(cx, cy, SLOTH_SIZE / 2, 0, Math.PI * 2)
+    ctx.stroke()
+
+    // Rank badge (small circle above sloth)
+    ctx.fillStyle = rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : '#78716c'
+    ctx.beginPath()
+    ctx.arc(cx, cy - SLOTH_SIZE / 2 - 8, 7, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#fff'
+    ctx.font = 'bold 9px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(String(rank), cx, cy - SLOTH_SIZE / 2 - 8)
+
+    // Name label at the bottom of each tree
+    const name = names.get(pos.id) || '#' + pos.id
+    ctx.fillStyle = '#e5e7eb'
+    ctx.font = numRacers <= 4 ? 'bold 11px sans-serif' : 'bold 9px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.fillText(name, cx, height - BOTTOM_MARGIN + 4)
+
+    // Speed below name
+    ctx.fillStyle = '#6b7280'
+    ctx.font = '8px sans-serif'
+    ctx.fillText(pos.speed.toFixed(1) + ' u/t', cx, height - BOTTOM_MARGIN + 18)
+  })
+
+============================================================
+STEP 9: RACER COLORS (support 8 racers)
+============================================================
+
+Find the RACER_COLORS array (currently 4 colors).
+REPLACE with 8 colors:
+
+  const RACER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
+
+Also update RACER_BG if it exists to have 8 entries:
+  const RACER_BG = [
+    'rgba(34,197,94,0.15)', 'rgba(59,130,246,0.15)',
+    'rgba(245,158,11,0.15)', 'rgba(168,85,247,0.15)',
+    'rgba(239,68,68,0.15)', 'rgba(6,182,212,0.15)',
+    'rgba(249,115,22,0.15)', 'rgba(236,72,153,0.15)'
+  ]
+
+============================================================
+STEP 10: EVENT OVERLAY POSITIONING
+============================================================
+
+Find the speech bubble and emote overlay divs (the ones with absolute positioning using top/left percentages based on lane).
+
+For SPEECH BUBBLES:
+Change the positioning from vertical lane-based (top percentage) to horizontal tree-based (left percentage).
+
+Old pattern:
+  style={{ top: `${14 + speechBubble.lane * 25}%` }}
+
+New pattern:
+  style={{
+    left: `${((SIDE_MARGIN + speechBubble.lane * LANE_WIDTH + LANE_WIDTH / 2) / canvasWidth) * 100}%`,
+    top: '20%'
+  }}
+
+Note: You may need to store the canvasWidth in a ref or state variable so it is accessible in the JSX. If LANE_WIDTH is not accessible outside the useEffect, compute it from the canvas ref:
+  const canvasW = canvasRef.current?.clientWidth || 800
+  const laneW = (canvasW - 40) / (raceData?.frames?.[0]?.positions?.length || 4)
+
+For FLOATING EMOTES:
+Same change — use left percentage based on lane position instead of top percentage.
+
+Old pattern:
+  style={{ left: `${emote.x}%`, top: `${12 + emote.lane * 22}%` }}
+
+New pattern:
+  style={{
+    left: `${((SIDE_MARGIN + emote.lane * laneW + laneW / 2) / canvasW) * 100}%`,
+    top: `${20 + Math.random() * 30}%`
+  }}
+
+============================================================
+STEP 11: LIVE STANDINGS PANEL
+============================================================
+
+The live standings panel (the side panel showing P1, P2, etc.) should still work.
+It reads from livePositions state which is set from frame data — no change needed.
+Just verify it still renders correctly next to the taller canvas.
+
+============================================================
+STEP 12: FINAL VERIFICATION
+============================================================
+
+1. Run: npx tsc --noEmit in frontend/ — must be 0 errors
+
+2. Visual checks:
+   - Canvas shows vertical trees with sloths climbing upward
+   - Start line is at the bottom
+   - Finish line (checkered) is at the top
+   - Progress markers (25%, 50%, 75%) are horizontal dashed lines
+   - Names appear below each tree
+   - Rank badges appear above each sloth
+   - 4-racer mode: thick trunks, leaf decorations
+   - 8-racer mode: thin trunks, smaller sprites, no leaves
+   - Events (yawn_wave, pillow_fight, etc.) display correctly
+   - Weather overlays still work
+   - Tactic buttons still work (pause/resume)
+   - Canvas is responsive (mobile 375px, desktop 1280px)
+
+3. Commit and push:
+   git add -A
+   git commit -m "feat: vertical tree climbing race layout
+
+   Replace horizontal left-to-right race with vertical bottom-to-top
+   tree climbing layout. Sloths now climb trees upward to the finish.
+
+   - CSS gradient forest background (dark bottom to light canopy)
+   - Canvas tree trunks with wood grain detail
+   - Checkered finish line at top
+   - Adaptive layout: thick trees for 4 racers, thin vines for 8
+   - Rank badges above sloths (gold P1, silver P2, bronze P3)
+   - Names at bottom of each tree
+   - Canvas height increased for vertical layout
+   - Support for 8 racer colors
+   - Event overlays repositioned for vertical layout
+
+   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+   git push
+
+============================================================
+RULES
+============================================================
+- Do NOT ask questions. Execute everything.
+- ONLY modify RaceBroadcast.tsx (canvas rendering).
+- Do NOT change simulation/engine.ts or any backend files.
+- Do NOT change the race data format or API responses.
+- The position mapping is: distance 0 = bottom, distance 2800 (trackLength) = top.
+- Y coordinate is INVERTED: y = height - BOTTOM_MARGIN - (distance/trackLength) * TRACK_HEIGHT
+- Keep all existing functionality: pause/resume, tactic actions, SFX, commentary.
+- npx tsc --noEmit must pass with 0 errors.
+- Commit and push when done.

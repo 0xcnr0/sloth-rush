@@ -1,0 +1,256 @@
+Sloth Rush — QA Bug Fix Prompt. 2 gercek oyun hatasi + QA agent test hatalari duzelt.
+PostgreSQL, async/await, $1,$2... params. Soru sorma, hepsini uygula.
+
+============================================================
+BOLUM A: GERCEK OYUN HATALARI (backend)
+============================================================
+
+A1. Profile endpoint is_burned tip hatasi
+Dosya: backend/src/routes/sloth.ts satir 1184
+
+BUL:
+  const sloths = await getAll("SELECT * FROM sloths WHERE wallet = $1 AND is_burned = false ORDER BY id", [wallet]);
+
+DEGISTIR:
+  const sloths = await getAll("SELECT * FROM sloths WHERE wallet = $1 AND is_burned = 0 ORDER BY id", [wallet]);
+
+Aciklama: PostgreSQL integer kolonu boolean ile karsilastiramaz. Diger sorgularin hepsi zaten is_burned = 0 kullaniyor.
+
+---
+
+A2. Upgrade sonrasi tekrar mint engelleme
+Dosya: backend/src/routes/sloth.ts satir 69-78
+
+BUL (tam blok):
+    // Check if wallet already has a free sloth (not burned)
+    const existing = await getOne(
+      "SELECT id FROM sloths WHERE wallet = $1 AND type = 'free_sloth' AND is_burned = 0",
+      [wallet]
+    );
+
+    if (existing) {
+      res.status(409).json({ error: "wallet already has a Free Sloth" });
+      return;
+    }
+
+DEGISTIR:
+    // Check if wallet already has ANY active (non-burned) creature
+    const existingActive = await getOne(
+      "SELECT id, type FROM sloths WHERE wallet = $1 AND is_burned = 0",
+      [wallet]
+    );
+
+    if (existingActive) {
+      if (existingActive.type === 'free_sloth') {
+        res.status(409).json({ error: "wallet already has a Free Sloth" });
+      } else {
+        res.status(409).json({ error: "wallet already has a Sloth. Free Sloth mint is not available after upgrade." });
+      }
+      return;
+    }
+
+Aciklama: Eski kod sadece free_sloth kontrol ediyordu. Upgrade sonrasi free_sloth burned olunca yeni mint mumkun oluyordu. Yeni kod herhangi bir aktif creature varsa mint engeller.
+
+============================================================
+BOLUM B: QA AGENT HATALARI (qa-agent.ts)
+============================================================
+
+B1. daily_races tablosunu cleanup'a ekle
+Dosya: qa-agent.ts — cleanup() fonksiyonu
+
+raceIds ile ilgili tablolarin silindigi bolumde (race_replays, tactic_actions, predictions, weather_log), daily_races tablosunu da ekle.
+
+BUL (cleanup icinde, "Race-keyed tables" bolumu):
+  // Race-keyed tables
+  if (raceIds.length > 0) {
+    for (const table of [
+      "race_replays",
+      "tactic_actions",
+      "predictions",
+      "weather_log",
+    ]) {
+
+DEGISTIR:
+  // Race-keyed tables
+  if (raceIds.length > 0) {
+    for (const table of [
+      "race_replays",
+      "tactic_actions",
+      "predictions",
+      "weather_log",
+      "daily_races",
+    ]) {
+
+Ayrica daily_races'i race_id ile degil, DELETE FROM daily_races WHERE race_id = ANY($1) ile sil.
+Fakat dikkat: daily_races tablosunun kolonu "race_id" — diger tablolarla ayni pattern, calisir.
+
+Ek olarak, cleanup fonksiyonunun BASINA (sloth ID'ler ve race ID'ler bulunmadan ONCE) bugunun daily_races kaydini da sil:
+
+  // Clean up today's daily race entry regardless
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    await pool.query("DELETE FROM daily_races WHERE race_date = $1", [today]);
+  } catch { /* ignore */ }
+
+Bu, stale referans sorununu tamamen cozer.
+
+---
+
+B2. Non-hex wallet adreslerini duzelt
+Dosya: qa-agent.ts
+
+2a. E01 testi (satir ~1301):
+BUL:
+      const walletC = "0xTEST000000000000000000000000000000000003";
+DEGISTIR:
+      const walletC = "0x3333000000000000000000000000000000000003";
+
+2b. D02 testi (satir ~1271):
+BUL:
+        const wallet = `0xRATETEST00000000000000000000000000000${String(i).padStart(3, "0")}`;
+DEGISTIR:
+        const wallet = `0xaaaa000000000000000000000000000000000${String(i).padStart(3, "0")}`;
+
+D02 cleanup satirini da guncelle:
+BUL:
+          "DELETE FROM sloths WHERE wallet LIKE '0xRATETEST%'"
+DEGISTIR:
+          "DELETE FROM sloths WHERE wallet LIKE '0xaaaa%'"
+
+2c. B03 testi (satir ~937):
+BUL:
+        wallet: "0xTEST000000000000000000000000000000000099",
+DEGISTIR:
+        wallet: "0x9999000000000000000000000000000000000099",
+
+---
+
+B3. OLD_WALLET sabitleri guncelle
+Dosya: qa-agent.ts satir 16-17
+
+BUL:
+const OLD_WALLET_A = "0xTEST000000000000000000000000000000000001";
+const OLD_WALLET_B = "0xTEST000000000000000000000000000000000002";
+DEGISTIR:
+const OLD_WALLET_A = "0x1111111111111111111111111111111111111111";
+const OLD_WALLET_B = "0x2222222222222222222222222222222222222222";
+
+---
+
+B4. Ek cleanup tablolari ve wallet temizligi
+Dosya: qa-agent.ts — cleanup() fonksiyonunun SONUNA ekle (sloths silindikten sonra):
+
+  // Clean up wallets used in economy and rate limit tests
+  const extraWallets = ["0x3333000000000000000000000000000000000003", "0x9999000000000000000000000000000000000099"];
+  for (const w of extraWallets) {
+    try {
+      await pool.query("DELETE FROM sloths WHERE wallet = $1", [w]);
+      await pool.query("DELETE FROM coin_balances WHERE wallet = $1", [w]);
+    } catch { /* ignore */ }
+  }
+  // Rate test sloths
+  try {
+    await pool.query("DELETE FROM sloths WHERE wallet LIKE '0xaaaa%'");
+  } catch { /* ignore */ }
+
+---
+
+B5. D01 rate limit testini sequential yap
+Dosya: qa-agent.ts — D01 testi
+
+Mevcut Promise.all ile concurrent gonderim rate limiter'i yaniltabiliyor.
+Sequential isteklerle degistir:
+
+BUL (D01 test body'sinin tamamini):
+    await runTest("D01: General rate limit (101 rapid requests)", "Rate Limits", async () => {
+      let got429 = false;
+      const promises: Promise<ApiResponse>[] = [];
+      for (let i = 0; i < 105; i++) {
+        promises.push(api("GET", "/health"));
+      }
+      const responses = await Promise.all(promises);
+      for (const r of responses) {
+        if (r.status === 429) {
+          got429 = true;
+          break;
+        }
+      }
+      assert(got429, "Should have received 429 from rate limiter");
+    })
+
+DEGISTIR:
+    await runTest("D01: General rate limit (101 rapid requests)", "Rate Limits", async () => {
+      let got429 = false;
+      for (let i = 0; i < 120; i++) {
+        const r = await api("GET", "/health");
+        if (r.status === 429) {
+          got429 = true;
+          break;
+        }
+      }
+      assert(got429, "Should have received 429 from rate limiter after 100+ requests");
+    })
+
+---
+
+B6. F05 test assertion guclendir
+Dosya: qa-agent.ts — F05 testi
+
+BUL:
+      // Verify total participants = 4
+      const raceRes = await tapi("GET", `/api/race/${raceId}`);
+      assertEqual(
+        raceRes.data.participants.length,
+        4,
+        "should have 4 participants"
+      );
+
+DEGISTIR:
+      // Verify total participants = 4
+      const raceRes = await tapi("GET", `/api/race/${raceId}`);
+      assert(
+        raceRes.data.participants && raceRes.data.participants.length === 4,
+        `should have 4 participants, got ${raceRes.data.participants?.length || 0}`
+      );
+
+============================================================
+BOLUM C: DOGRULAMA
+============================================================
+
+1. cd backend && npx tsc --noEmit — 0 hata olmali
+2. Backend baslat ve QA calistir (ayri terminallerde):
+   Terminal 1: cd ~/slug-rush/backend && DATABASE_URL="postgresql://postgres:waTVzzhBMsvhEyayMlrBdmnlNddcjLIJ@gondola.proxy.rlwy.net:36401/railway" npm run dev
+   Terminal 2: cd ~/slug-rush && DATABASE_URL="postgresql://postgres:waTVzzhBMsvhEyayMlrBdmnlNddcjLIJ@gondola.proxy.rlwy.net:36401/railway" npx tsx qa-agent.ts
+3. Hedef: 92/92 PASS
+4. Eger hala FAIL var ise:
+   - Hata mesajini oku
+   - Kodu incele ve duzelt
+   - Tekrar QA calistir
+   - 92/92 olana kadar devam et
+5. Tum testler gecince commit + push:
+   git add backend/src/routes/sloth.ts qa-agent.ts
+   git commit -m "fix: resolve 2 game bugs + 17 QA agent test fixes
+
+   Game bugs:
+   - Profile endpoint is_burned = false -> = 0 (PostgreSQL type mismatch)
+   - Prevent re-minting free sloth after upgrade
+
+   QA agent fixes:
+   - Add daily_races to cleanup (stale reference chain failures)
+   - Fix non-hex wallet addresses in E01, D02, B03 tests
+   - Sequential rate limit test (D01)
+   - Stronger F05 assertion
+   - Extra wallet cleanup for economy/rate tests
+
+   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+   git push
+
+============================================================
+KURALLAR
+============================================================
+- Soru sorma, hepsini uygula
+- Backend'de sadece sloth.ts degisir (2 satir)
+- qa-agent.ts'de cleanup + wallet + assertion degisiklikleri
+- npx tsc --noEmit 0 hata
+- Eger QA testleri hala fail ediyorsa, analiz et ve duzelt — 92/92 hedefi
+- Bitince commit + push
