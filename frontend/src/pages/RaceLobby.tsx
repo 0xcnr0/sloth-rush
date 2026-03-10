@@ -159,8 +159,8 @@ export default function RaceLobby() {
       const raceData = await api.getRace(raceId)
       setParticipants(raceData.participants || [])
 
-      // Exhibition races skip bidding — go straight to simulation
-      if (biddingResult.skipBidding || selectedFormat.maxRaise === 0) {
+      // Exhibition races skip bidding — go straight to simulation (but not demo_standard)
+      if ((biddingResult.skipBidding || selectedFormat.maxRaise === 0) && selectedFormat.id !== 'demo_standard') {
         setPhase('starting')
         const result = await api.simulateRace(raceId)
         setGridPositions(result.gridPositions)
