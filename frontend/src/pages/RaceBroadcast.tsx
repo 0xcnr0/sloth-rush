@@ -83,6 +83,7 @@ export default function RaceBroadcast() {
   const [emotes, setEmotes] = useState<{ id: number; emoji: string; lane: number; x: number }[]>([])
   const emoteIdRef = useRef(0)
   const [racePhase, setRacePhase] = useState<'trash_talk' | 'racing' | 'finished'>('trash_talk')
+  const [canvasFlash, setCanvasFlash] = useState<string | null>(null)
   const slothRacesRef = useRef<Map<number, string>>(new Map()) // id -> race type
   const currentTickRef = useRef(0)
   const pausedRef = useRef(false)
@@ -347,6 +348,12 @@ export default function RaceBroadcast() {
         ctx.arc(cx, cy, SLOTH_SIZE / 2, 0, Math.PI * 2)
         ctx.stroke()
 
+        // Sloth emoji on circle
+        ctx.font = `${Math.round(SLOTH_SIZE * 0.7)}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('\u{1F9A5}', cx, cy)
+
         // Rank badge (small circle above sloth)
         ctx.fillStyle = rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : '#78716c'
         ctx.beginPath()
@@ -449,6 +456,21 @@ export default function RaceBroadcast() {
           { id: killFeedIdRef.current, text: nearEvent.description, ...feedStyle },
           ...prev,
         ].slice(0, 5))
+
+        // Canvas flash effect
+        const flashColors: Record<string, string> = {
+          tactic_boost: 'rgba(34,197,94,0.15)',
+          tactic_pillow: 'rgba(239,68,68,0.15)',
+          yawn_wave: 'rgba(245,158,11,0.12)',
+          rain: 'rgba(59,130,246,0.12)',
+          luck_orb: 'rgba(168,85,247,0.15)',
+          pillow_fight: 'rgba(239,68,68,0.12)',
+        }
+        const flashColor = flashColors[nearEvent.type]
+        if (flashColor) {
+          setCanvasFlash(flashColor)
+          setTimeout(() => setCanvasFlash(null), 300)
+        }
       }
 
       // Commentary: position change detection
@@ -775,6 +797,21 @@ export default function RaceBroadcast() {
         {raceData?.weather === 'foggy' && (
           <div className="absolute inset-0 bg-gray-400/10 pointer-events-none" />
         )}
+
+        {/* Canvas flash effect on events */}
+        <AnimatePresence>
+          {canvasFlash && (
+            <motion.div
+              key="flash"
+              initial={{ opacity: 0.8 }}
+              animate={{ opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 pointer-events-none"
+              style={{ backgroundColor: canvasFlash }}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Event overlay */}
         <AnimatePresence>
@@ -1237,6 +1274,25 @@ export default function RaceBroadcast() {
                     className="px-6 py-2.5 border border-sloth-purple text-sloth-purple rounded-xl hover:bg-sloth-purple/10 transition-colors cursor-pointer"
                   >
                     Watch Replay
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const standings = raceData.finalOrder
+                        .map((fo: FinalOrder, i: number) => `${i + 1}. ${fo.name}${fo.payout > 0 ? ` (+${fo.payout} ZZZ)` : ''}`)
+                        .join('\n')
+                      const text = `\u{1F9A5} Sloth Rush Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\nPlay now: https://app.slothrush.xyz`
+                      if (navigator.share) {
+                        try {
+                          await navigator.share({ title: 'Sloth Rush Race Result', text })
+                        } catch { /* user cancelled */ }
+                      } else {
+                        await navigator.clipboard.writeText(text)
+                        toast.success('Result copied to clipboard!')
+                      }
+                    }}
+                    className="px-6 py-2.5 border border-sloth-gold text-sloth-gold rounded-xl hover:bg-sloth-gold/10 transition-colors cursor-pointer"
+                  >
+                    Share Result
                   </button>
                 </motion.div>
               </div>

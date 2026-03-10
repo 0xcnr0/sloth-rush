@@ -173,8 +173,21 @@ export default function RaceReplay() {
             {playing ? 'Pause' : currentFrame >= totalFrames - 1 ? 'Replay' : 'Play'}
           </button>
 
+          <button
+            onClick={() => { if (playing) pause(); setCurrentFrame(prev => Math.max(0, prev - 1)) }}
+            className="px-3 py-2 bg-sloth-dark text-gray-400 hover:text-white rounded-lg cursor-pointer text-sm font-semibold"
+          >
+            &lt;
+          </button>
+          <button
+            onClick={() => { if (playing) pause(); setCurrentFrame(prev => Math.min(totalFrames - 1, prev + 1)) }}
+            className="px-3 py-2 bg-sloth-dark text-gray-400 hover:text-white rounded-lg cursor-pointer text-sm font-semibold"
+          >
+            &gt;
+          </button>
+
           <div className="flex gap-1">
-            {[0.5, 1, 2].map(s => (
+            {[0.5, 1, 2, 4].map(s => (
               <button
                 key={s}
                 onClick={() => setSpeed(s)}

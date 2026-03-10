@@ -38,7 +38,7 @@ export const FEATURES = {
   grandPrix: !MVP_MODE,  // Hide in MVP
   tacticRace: !MVP_MODE, // Hide in MVP
   spectate: true,        // Always on — demo badge shown in MVP
-  replay: !MVP_MODE,     // Hide in MVP
+  replay: true,           // Always on
   profile: !MVP_MODE,    // Hide in MVP
   accessories: !MVP_MODE,// Hide in MVP
   cosmetics: !MVP_MODE,  // Hide in MVP
