@@ -1126,7 +1126,7 @@ export default function RaceBroadcast() {
                       {runnerUp.name} was only <span className="text-sloth-gold font-bold">{gap} units</span> from the finish line.
                       {isTactic && !boostCount[runnerUp.id] && ' A well-timed Boost could have changed everything!'}
                       {isTactic && boostCount[runnerUp.id] && ' Different Pillow Throw timing could have flipped the result!'}
-                      {!isTactic && ' A higher bid could have secured Pole Position!'}
+                      {!isTactic && ' A higher Grid Boost could have secured Pole Position!'}
                     </p>
                   </motion.div>
                 )}

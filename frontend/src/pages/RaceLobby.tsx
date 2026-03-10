@@ -12,7 +12,7 @@ type Phase = 'select' | 'lobby' | 'bidding' | 'reveal' | 'starting' | 'gp_break'
 
 const FORMATS = [
   { id: 'exhibition', name: 'Exhibition', fee: 0, maxRaise: 0, desc: 'Free practice race' },
-  { id: 'demo_standard', name: 'Demo Standard', fee: 0, maxRaise: 0, desc: 'Quick 20s demo race' },
+  { id: 'demo_standard', name: 'Demo Standard', fee: 0, maxRaise: 100, desc: 'Quick 20s demo race' },
   { id: 'standard', name: 'Standard Race', fee: 50, maxRaise: 100, desc: '50 ZZZ entry, win big' },
   { id: 'grand_prix', name: 'Grand Prix', fee: 150, maxRaise: 300, desc: 'High stakes racing' },
   { id: 'tactic', name: 'Tactic Challenge', fee: 75, maxRaise: 150, desc: 'Use Boost & Pillow during race!' },
@@ -699,7 +699,7 @@ export default function RaceLobby() {
             className="text-center"
           >
             <h1 className="text-2xl font-bold mb-2 text-sloth-gold">GRAND PRIX FINAL</h1>
-            <p className="text-gray-400 mb-4">Final bid! Race in Tactic Mode!</p>
+            <p className="text-gray-400 mb-4">Final boost! Race in Tactic Mode!</p>
 
             <motion.div
               key={countdown}
