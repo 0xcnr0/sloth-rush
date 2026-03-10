@@ -26,7 +26,7 @@ export default function App() {
         <Route path="/shop" element={FEATURES.shop ? <Shop /> : <Navigate to="/" replace />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/mini-games" element={<Navigate to="/treehouse" replace />} />
-        <Route path="/spectate" element={FEATURES.spectate ? <Spectate /> : <Navigate to="/" replace />} />
+        <Route path="/spectate" element={<Spectate />} />
         <Route path="/replay/:id" element={FEATURES.replay ? <RaceReplay /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={FEATURES.profile ? <Profile /> : <Navigate to="/" replace />} />
         <Route path="/guide" element={<Guide />} />

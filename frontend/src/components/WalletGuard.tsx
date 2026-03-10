@@ -1,5 +1,5 @@
 import { useAccount } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletConnect from './WalletConnect'
 
 interface WalletGuardProps {
   children: React.ReactNode
@@ -14,7 +14,7 @@ export default function WalletGuard({ children, message = 'Connect your wallet t
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="text-5xl mb-2">{'\u{1F9A5}'}</div>
         <p className="text-gray-400 text-center">{message}</p>
-        <ConnectButton />
+        <WalletConnect />
       </div>
     )
   }

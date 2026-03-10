@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAccount } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import Spinner from '../components/Spinner'
@@ -12,6 +12,7 @@ type Phase = 'select' | 'lobby' | 'bidding' | 'reveal' | 'starting' | 'gp_break'
 
 const FORMATS = [
   { id: 'exhibition', name: 'Exhibition', fee: 0, maxRaise: 0, desc: 'Free practice race' },
+  { id: 'demo_standard', name: 'Demo Standard', fee: 0, maxRaise: 0, desc: 'Quick 20s demo race' },
   { id: 'standard', name: 'Standard Race', fee: 50, maxRaise: 100, desc: '50 ZZZ entry, win big' },
   { id: 'grand_prix', name: 'Grand Prix', fee: 150, maxRaise: 300, desc: 'High stakes racing' },
   { id: 'tactic', name: 'Tactic Challenge', fee: 75, maxRaise: 150, desc: 'Use Boost & Pillow during race!' },
@@ -20,6 +21,7 @@ const FORMATS = [
 const visibleFormats = FORMATS.filter(f => {
   if (f.id === 'grand_prix' && !FEATURES.grandPrix) return false
   if (f.id === 'tactic' && !FEATURES.tacticRace) return false
+  if (f.id === 'demo_standard' && !FEATURES.demoRace) return false
   return true
 })
 
@@ -68,7 +70,7 @@ export default function RaceLobby() {
 
   // Filter creatures based on format: exhibition → all, others → sloths only, GP → tier gate
   useEffect(() => {
-    if (selectedFormat.id === 'exhibition') {
+    if (selectedFormat.id === 'exhibition' || selectedFormat.id === 'demo_standard') {
       setSloths(allCreatures)
     } else if (selectedFormat.id === 'grand_prix') {
       // GP: no free sloths, Gold GP (fee > 150) requires tier >= 2
@@ -134,7 +136,8 @@ export default function RaceLobby() {
         setCoinBalance(joined.newBalance)
         setPhase('lobby')
       } else {
-        const race = await api.createRace(address, selectedSloth.id, selectedFormat.id)
+        const apiFormat = selectedFormat.id === 'demo_standard' ? 'exhibition' : selectedFormat.id
+        const race = await api.createRace(address, selectedSloth.id, apiFormat)
         setRaceId(race.raceId)
 
         const joined = await api.joinRace(race.raceId, selectedSloth.id, address)
@@ -161,7 +164,8 @@ export default function RaceLobby() {
         setPhase('starting')
         const result = await api.simulateRace(raceId)
         setGridPositions(result.gridPositions)
-        navigate(`/race/${raceId}`, { state: { raceResult: result, format: selectedFormat.id, slothId: selectedSloth?.id } })
+        const isDemo = selectedFormat.id === 'demo_standard'
+        navigate(`/race/${raceId}`, { state: { raceResult: result, format: isDemo ? 'exhibition' : selectedFormat.id, slothId: selectedSloth?.id, demo: isDemo } })
       } else {
         setPhase('bidding')
         startCountdown()
@@ -214,8 +218,9 @@ export default function RaceLobby() {
         }, 4000)
       } else {
         // Regular race — navigate to broadcast
+        const isDemoNav = selectedFormat.id === 'demo_standard'
         setTimeout(() => {
-          navigate(`/race/${raceId}`, { state: { raceResult: result, format: selectedFormat.id, slothId: selectedSloth?.id } })
+          navigate(`/race/${raceId}`, { state: { raceResult: result, format: isDemoNav ? 'exhibition' : selectedFormat.id, slothId: selectedSloth?.id, demo: isDemoNav } })
         }, 4000)
       }
     } catch (err: any) {
@@ -228,7 +233,7 @@ export default function RaceLobby() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-gray-400">Connect your wallet to enter a race</p>
-        <ConnectButton />
+        <WalletConnect />
       </div>
     )
   }
@@ -405,7 +410,12 @@ export default function RaceLobby() {
                           : 'border-sloth-border bg-sloth-card hover:border-gray-500'
                       }`}
                     >
-                      <p className="text-white font-semibold">{fmt.name}</p>
+                      <p className="text-white font-semibold">
+                        {fmt.name}
+                        {fmt.id === 'demo_standard' && (
+                          <span className="ml-2 px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] font-bold rounded">DEMO</span>
+                        )}
+                      </p>
                       <p className="text-gray-500 text-sm mt-1">{fmt.desc}</p>
                       {fmt.fee > 0 && (
                         <p className="text-sloth-green text-sm font-bold mt-2">{fmt.fee} ZZZ Entry</p>

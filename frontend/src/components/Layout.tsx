@@ -1,15 +1,18 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletConnect from './WalletConnect'
+import MiniAppAutoConnect from './MiniAppAutoConnect'
 import { useAccount } from 'wagmi'
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import OnboardingTutorial from './OnboardingTutorial'
 import { FEATURES } from '../config/features'
+import { getSafeAreaInsets } from '../lib/farcaster'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home' },
   { path: '/treehouse', label: 'Treehouse' },
   { path: '/race', label: 'Race' },
+  { path: '/spectate', label: 'Spectate' },
   { path: '/shop', label: 'Shop' },
   { path: '/leaderboard', label: 'Leaderboard' },
 ].filter(item => {
@@ -35,8 +38,16 @@ export default function Layout() {
     setMobileMenuOpen(false)
   }, [location.pathname])
 
+  const safeArea = getSafeAreaInsets()
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={safeArea.top || safeArea.bottom ? {
+        paddingTop: safeArea.top,
+        paddingBottom: safeArea.bottom,
+      } : undefined}
+    >
       <nav className="border-b border-sloth-border bg-sloth-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -79,7 +90,7 @@ export default function Layout() {
                 <span className="text-sloth-purple/70 text-[10px] sm:text-xs hidden sm:inline">XP</span>
               </div>
             )}
-            <ConnectButton
+            <WalletConnect
               showBalance={false}
               chainStatus="icon"
               accountStatus={{ smallScreen: 'avatar', largeScreen: 'address' }}
@@ -154,6 +165,7 @@ export default function Layout() {
         </div>
       </footer>
 
+      <MiniAppAutoConnect />
       <OnboardingTutorial />
     </div>
   )

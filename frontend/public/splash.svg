@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect fill="#0a0e17" width="200" height="200"/>
+  <text x="100" y="90" text-anchor="middle" font-size="60">&#x1F9A5;</text>
+  <text x="100" y="140" text-anchor="middle" fill="#22c55e" font-family="Arial, sans-serif" font-size="16" font-weight="bold">SLOTH RUSH</text>
+  <text x="100" y="165" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="10">Loading...</text>
+</svg>

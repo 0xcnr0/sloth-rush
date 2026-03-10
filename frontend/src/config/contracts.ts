@@ -1,12 +1,12 @@
 // Contract addresses — update these after deployment to Base Sepolia
 export const CONTRACTS = {
-  freeSloth: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  sloth: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  slothRush: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  freeSloth: '0x7dF0e4711c2A08164ea9E40834930eb8820E61f4' as `0x${string}`,
+  sloth: '0xF0CBAB2C3Ae1A0b6B1FB5dd1CF7692CaaA807c0D' as `0x${string}`,
+  slothRush: '0xda1553aDffDEf8b5fc8C9E344dFf35CC26d60141' as `0x${string}`,
 } as const
 
-// Set to true after deploying to Base Sepolia
-export const CONTRACTS_DEPLOYED = false
+// Deployed to Base Sepolia on March 10, 2026
+export const CONTRACTS_DEPLOYED = true
 
 // Minimal ABIs — only functions we call from frontend
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAccount } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletConnect from '../components/WalletConnect'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
@@ -53,6 +53,7 @@ export default function RaceBroadcast() {
   const animFrameRef = useRef<number>(0)
 
   const isTactic = location.state?.format === 'tactic'
+  const isDemo = location.state?.demo === true
   const playerSlothId = location.state?.slothId as number | undefined
 
   const [raceData, setRaceData] = useState<any>(location.state?.raceResult || null)
@@ -204,7 +205,7 @@ export default function RaceBroadcast() {
     const LANE_WIDTH = (width - SIDE_MARGIN * 2) / numRacers
     const SLOTH_SIZE = numRacers <= 4 ? 28 : 22
     const TREE_TRUNK_WIDTH = numRacers <= 4 ? 20 : 12
-    const FRAME_DELAY = 280 // ~65s animation for a typical race (~230 frames * 280ms)
+    const FRAME_DELAY = isDemo ? 80 : 280 // demo: ~18s, normal: ~65s
 
     function drawFrame(fi: number) {
       if (!ctx) return
@@ -549,7 +550,7 @@ export default function RaceBroadcast() {
             setCommentary(getCommentary('finish', { name: winnerName }))
           }
           sfxFinish()
-          setTimeout(() => { setCommentary(null); setRaceFinished(true) }, 2500)
+          setTimeout(() => { setCommentary(null); setRaceFinished(true) }, isDemo ? 1000 : 2500)
           return
         }
       }
@@ -566,13 +567,18 @@ export default function RaceBroadcast() {
   // Trash talk phase: show for 5 seconds before race starts + entry SFX
   useEffect(() => {
     if (!raceData?.gridPositions || racePhase !== 'trash_talk') return
+    // Skip trash talk in demo mode
+    if (isDemo) {
+      setRacePhase('racing')
+      return
+    }
     // Play entry sound for each sloth with stagger
     raceData.gridPositions.forEach((_: any, i: number) => {
       setTimeout(() => sfxTrashTalkEntry(), i * 1000)
     })
     const timer = setTimeout(() => setRacePhase('racing'), 5500)
     return () => clearTimeout(timer)
-  }, [raceData, racePhase])
+  }, [raceData, racePhase, isDemo])
 
   if (loading) {
     return (
@@ -600,6 +606,7 @@ export default function RaceBroadcast() {
         <div>
           <h1 className="text-xl font-bold">
             <span className="text-sloth-green">LIVE</span> — Grand Pillow Throw Track
+            {isDemo && <span className="ml-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded">DEMO</span>}
             {isTactic && <span className="ml-2 text-sloth-purple text-sm font-normal">(TACTIC MODE)</span>}
           </h1>
           <div className="flex items-center gap-2">
@@ -943,7 +950,7 @@ export default function RaceBroadcast() {
             <div className="text-5xl mb-4">{'\u26A0\uFE0F'}</div>
             <h2 className="text-xl font-bold text-white mb-2">Wallet Disconnected</h2>
             <p className="text-gray-400 text-sm mb-6">Reconnect your wallet to continue the race and receive your rewards.</p>
-            <ConnectButton />
+            <WalletConnect />
           </div>
         </div>
       )}

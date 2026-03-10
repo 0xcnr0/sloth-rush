@@ -3,6 +3,9 @@
  *
  * Demo mode (slothrush.xyz, *.vercel.app): Only core features (mint + race)
  * Dev mode (app.slothrush.xyz, localhost): All features enabled
+ *
+ * Mini App detection is handled separately in lib/farcaster.ts (async).
+ * Use isInFarcasterMiniApp() from that module for Mini App context checks.
  */
 
 function isMvpMode(): boolean {
@@ -34,9 +37,10 @@ export const FEATURES = {
   quests: !MVP_MODE,     // Hide in MVP
   grandPrix: !MVP_MODE,  // Hide in MVP
   tacticRace: !MVP_MODE, // Hide in MVP
-  spectate: !MVP_MODE,   // Hide in MVP
+  spectate: true,        // Always on — demo badge shown in MVP
   replay: !MVP_MODE,     // Hide in MVP
   profile: !MVP_MODE,    // Hide in MVP
   accessories: !MVP_MODE,// Hide in MVP
   cosmetics: !MVP_MODE,  // Hide in MVP
+  demoRace: MVP_MODE,    // Demo race format in MVP mode
 } as const

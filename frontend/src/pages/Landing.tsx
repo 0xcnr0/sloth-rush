@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAccount } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletConnect from '../components/WalletConnect'
 import { motion } from 'framer-motion'
 
 export default function Landing() {
@@ -52,7 +52,7 @@ export default function Landing() {
           ) : (
             <div className="flex flex-col items-center gap-3">
               <p className="text-gray-500 text-sm">Connect your wallet to get started</p>
-              <ConnectButton />
+              <WalletConnect />
             </div>
           )}
         </div>

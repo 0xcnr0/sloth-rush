@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletConnect from '../components/WalletConnect'
 import { api } from '../lib/api'
 import { useMintFreeSloth } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
@@ -68,7 +68,7 @@ export default function Mint() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-gray-400">Connect your wallet to mint a Free Sloth</p>
-        <ConnectButton />
+        <WalletConnect />
       </div>
     )
   }

@@ -7,5 +7,14 @@
       "source": "/api/:path*",
       "destination": "https://backend-production-1875.up.railway.app/api/:path*"
     }
+  ],
+  "headers": [
+    {
+      "source": "/.well-known/farcaster.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
   ]
 }

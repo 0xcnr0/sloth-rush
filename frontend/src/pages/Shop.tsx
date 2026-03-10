@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import Spinner from '../components/Spinner'
@@ -105,7 +105,7 @@ export default function Shop() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-gray-400">Connect your wallet to buy ZZZ Coins</p>
-        <ConnectButton />
+        <WalletConnect />
       </div>
     )
   }

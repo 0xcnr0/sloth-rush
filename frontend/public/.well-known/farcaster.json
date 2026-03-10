@@ -1,0 +1,23 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "Sloth Rush",
+    "iconUrl": "https://slothrush.xyz/splash.svg",
+    "homeUrl": "https://slothrush.xyz",
+    "splashImageUrl": "https://slothrush.xyz/splash.svg",
+    "splashBackgroundColor": "#0a0e17",
+    "subtitle": "Race sloths, earn ZZZ Coins",
+    "description": "Free-to-play onchain sloth racing game on Base. Mint your sloth NFT, compete in provably fair races, and earn ZZZ Coins.",
+    "primaryCategory": "games",
+    "tags": ["racing", "nft", "base", "free-to-play", "gaming"],
+    "heroImageUrl": "https://slothrush.xyz/og-image.svg",
+    "tagline": "Wake up. Race hard. Nap later.",
+    "ogTitle": "Sloth Rush",
+    "ogDescription": "Free-to-play onchain sloth racing on Base. Provably fair, truly free to start.",
+    "ogImageUrl": "https://slothrush.xyz/og-image.svg",
+    "requiredChains": ["eip155:84532"],
+    "requiredCapabilities": [
+      "wallet.getEthereumProvider"
+    ]
+  }
+}

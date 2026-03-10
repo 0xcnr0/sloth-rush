@@ -1,18 +1,21 @@
 import hre from "hardhat";
 
 async function main() {
-  console.log("Deploying Sloth Rush contracts to", hre.network.name);
+  const connection = await hre.network.connect();
+  const { viem } = connection;
+
+  console.log("Deploying Sloth Rush contracts to", connection.networkName);
 
   // Deploy FreeSloth
-  const freeSloth = await hre.viem.deployContract("FreeSloth");
+  const freeSloth = await viem.deployContract("FreeSloth");
   console.log("FreeSloth deployed to:", freeSloth.address);
 
   // Deploy Sloth
-  const sloth = await hre.viem.deployContract("Sloth");
+  const sloth = await viem.deployContract("Sloth");
   console.log("Sloth deployed to:", sloth.address);
 
   // Deploy SlothRush (main game contract)
-  const slothRush = await hre.viem.deployContract("SlothRush", [
+  const slothRush = await viem.deployContract("SlothRush", [
     freeSloth.address,
     sloth.address,
   ]);

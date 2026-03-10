@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { useUpgrade } from '../hooks/useContracts'
@@ -68,6 +68,24 @@ export default function Treehouse() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
   const [questsOpen, setQuestsOpen] = useState(true)
   const [activeMiniGame, setActiveMiniGame] = useState<{ slothId: number; slothName: string } | null>(null)
+  const [demoLoading, setDemoLoading] = useState<number | null>(null)
+
+  async function handleQuickDemoRace(slothId: number) {
+    if (!address || demoLoading) return
+    setDemoLoading(slothId)
+    try {
+      const race = await api.createRace(address, slothId, 'exhibition')
+      await api.joinRace(race.raceId, slothId, address)
+      await api.startBidding(race.raceId)
+      const result = await api.simulateRace(race.raceId)
+      navigate(`/race/${race.raceId}`, {
+        state: { raceResult: result, format: 'exhibition', slothId, demo: true }
+      })
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+    setDemoLoading(null)
+  }
 
   async function loadTreehouse() {
     if (!address) return
@@ -255,7 +273,7 @@ export default function Treehouse() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-gray-400">Connect your wallet to view your treehouse</p>
-        <ConnectButton />
+        <WalletConnect />
       </div>
     )
   }
@@ -477,13 +495,22 @@ export default function Treehouse() {
             )}
 
             {/* Enter Race — Exhibition only */}
-            <div className="mt-3 pt-3 border-t border-sloth-border">
+            <div className="mt-3 pt-3 border-t border-sloth-border space-y-2">
               <button
                 onClick={() => navigate('/race')}
                 className="w-full py-3 bg-sloth-green text-sloth-dark text-lg font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer shadow-lg shadow-sloth-green/20"
               >
                 Enter Exhibition Race
               </button>
+              {FEATURES.demoRace && (
+                <button
+                  onClick={() => handleQuickDemoRace(freeSloth.id)}
+                  disabled={demoLoading === freeSloth.id}
+                  className="w-full py-2 bg-yellow-500/20 text-yellow-400 font-bold rounded-lg hover:bg-yellow-500/30 transition-colors cursor-pointer text-sm border border-yellow-500/30 disabled:opacity-50"
+                >
+                  {demoLoading === freeSloth.id ? 'Creating Demo Race...' : 'Quick Demo Race (20s)'}
+                </button>
+              )}
             </div>
 
             {/* Upgrade Section */}
@@ -861,13 +888,22 @@ export default function Treehouse() {
                 )}
 
                 {/* Enter Race — prominent */}
-                <div className="mt-3 pt-3 border-t border-sloth-border">
+                <div className="mt-3 pt-3 border-t border-sloth-border space-y-2">
                   <button
                     onClick={() => navigate('/race')}
                     className="w-full py-3 bg-sloth-green text-sloth-dark text-lg font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer shadow-lg shadow-sloth-green/20"
                   >
                     Enter Race
                   </button>
+                  {FEATURES.demoRace && (
+                    <button
+                      onClick={() => handleQuickDemoRace(sloth.id)}
+                      disabled={demoLoading === sloth.id}
+                      className="w-full py-2 bg-yellow-500/20 text-yellow-400 font-bold rounded-lg hover:bg-yellow-500/30 transition-colors cursor-pointer text-sm border border-yellow-500/30 disabled:opacity-50"
+                    >
+                      {demoLoading === sloth.id ? 'Creating Demo Race...' : 'Quick Demo Race (20s)'}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
