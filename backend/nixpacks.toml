@@ -1,0 +1,5 @@
+[phases.build]
+cmds = ["npm install", "npx tsc || true"]
+
+[start]
+cmd = "node dist/index.js"
