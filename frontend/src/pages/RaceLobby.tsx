@@ -181,9 +181,13 @@ export default function RaceLobby() {
     setBidSubmitted(true)
     if (countdownRef.current) clearInterval(countdownRef.current)
     try {
-      await api.submitBid(raceId, address, bidAmount)
-      // Wait a moment then simulate
-      await new Promise(r => setTimeout(r, 1500))
+      if (selectedFormat.id === 'demo_standard') {
+        // Demo races skip backend bid — go straight to simulate
+        await new Promise(r => setTimeout(r, 800))
+      } else {
+        await api.submitBid(raceId, address, bidAmount)
+        await new Promise(r => setTimeout(r, 1500))
+      }
       const result = await api.simulateRace(raceId)
       setGridPositions(result.gridPositions)
       setPhase('reveal')
