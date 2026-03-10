@@ -310,4 +310,25 @@ export const api = {
 
   getGPLeaderboard: (gpType: string) =>
     request<{ leaderboard: any[] }>(`/leaderboard/gp/${gpType}`),
+
+  // Referral
+  generateReferralCode: (wallet: string) =>
+    request<{ code: string; link: string }>('/social/referral/generate', {
+      method: 'POST',
+      body: JSON.stringify({ wallet }),
+    }),
+
+  getReferralCode: (wallet: string) =>
+    request<{ code: string | null; link?: string }>(`/social/referral/code/${wallet}`),
+
+  applyReferralCode: (wallet: string, code: string) =>
+    request<{ applied: boolean; referrerRewarded: boolean }>('/social/referral/apply', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, code }),
+    }),
+
+  getReferralStats: (wallet: string) =>
+    request<{ totalReferrals: number; totalRewarded: number; totalEarned: number; code: string | null }>(
+      `/social/referral/stats/${wallet}`
+    ),
 }

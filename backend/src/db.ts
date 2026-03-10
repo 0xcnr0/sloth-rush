@@ -389,6 +389,24 @@ export async function initDB() {
     );
   `);
 
+  // Referral system
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS referrals (
+      id SERIAL PRIMARY KEY,
+      referrer_wallet TEXT NOT NULL,
+      referee_wallet TEXT NOT NULL,
+      code TEXT NOT NULL,
+      rewarded INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(referee_wallet)
+    );
+    CREATE TABLE IF NOT EXISTS referral_codes (
+      wallet TEXT PRIMARY KEY,
+      code TEXT UNIQUE NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
   console.log("initDB: altering columns and seeding data...");
   // ALTER stat columns to REAL if they are still INTEGER
   try {

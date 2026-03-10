@@ -11,6 +11,7 @@ import Spectate from './pages/Spectate'
 import RaceReplay from './pages/RaceReplay'
 import Profile from './pages/Profile'
 import Guide from './pages/Guide'
+import Invite from './pages/Invite'
 import NotFound from './pages/NotFound'
 import { FEATURES } from './config/features'
 
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/replay/:id" element={FEATURES.replay ? <RaceReplay /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={FEATURES.profile ? <Profile /> : <Navigate to="/" replace />} />
         <Route path="/guide" element={<Guide />} />
+        <Route path="/invite/:code" element={<Invite />} />
         {/* Redirects for old routes */}
         <Route path="/stable" element={<Navigate to="/treehouse" replace />} />
         <Route path="/history" element={<Navigate to="/profile" replace />} />

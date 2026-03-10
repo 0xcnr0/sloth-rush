@@ -1280,7 +1280,8 @@ export default function RaceBroadcast() {
                       const standings = raceData.finalOrder
                         .map((fo: FinalOrder, i: number) => `${i + 1}. ${fo.name}${fo.payout > 0 ? ` (+${fo.payout} ZZZ)` : ''}`)
                         .join('\n')
-                      const text = `\u{1F9A5} Sloth Rush Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\nPlay now: https://app.slothrush.xyz`
+                      const frameUrl = `https://app.slothrush.xyz/api/social/frame/${id}`
+                      const text = `\u{1F9A5} Sloth Rush Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\n${frameUrl}`
                       if (navigator.share) {
                         try {
                           await navigator.share({ title: 'Sloth Rush Race Result', text })

@@ -124,8 +124,81 @@ export default function Profile() {
       {tab === 'transactions' && <TransactionSection transactions={transactions} />}
       {tab === 'inventory' && <InventorySection wallet={address!} />}
 
+      {/* Referral */}
+      <ReferralSection wallet={address!} />
+
       {/* Settings */}
       <SettingsSection />
+    </div>
+  )
+}
+
+function ReferralSection({ wallet }: { wallet: string }) {
+  const [code, setCode] = useState<string | null>(null)
+  const [stats, setStats] = useState<{ totalReferrals: number; totalEarned: number } | null>(null)
+  const [generating, setGenerating] = useState(false)
+
+  useEffect(() => {
+    api.getReferralStats(wallet)
+      .then(d => {
+        setCode(d.code)
+        setStats({ totalReferrals: d.totalReferrals, totalEarned: d.totalEarned })
+      })
+      .catch(() => {})
+  }, [wallet])
+
+  async function handleGenerate() {
+    setGenerating(true)
+    try {
+      const res = await api.generateReferralCode(wallet)
+      setCode(res.code)
+      toast.success('Referral code generated!')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to generate code')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const link = code ? `${window.location.origin}/invite/${code}` : null
+
+  return (
+    <div className="mt-8 bg-sloth-card border border-sloth-border rounded-xl p-6">
+      <h3 className="text-white font-bold text-lg mb-4">Referrals</h3>
+      {code ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 bg-white/5 rounded-lg px-3 py-2 font-mono text-sm text-white">{link}</div>
+            <button
+              onClick={async () => {
+                await navigator.clipboard.writeText(link!)
+                toast.success('Link copied!')
+              }}
+              className="px-4 py-2 bg-sloth-green/20 text-sloth-green rounded-lg text-sm font-medium hover:bg-sloth-green/30 transition-colors cursor-pointer"
+            >
+              Copy
+            </button>
+          </div>
+          {stats && (
+            <div className="flex gap-4 text-sm">
+              <span className="text-gray-400">Referrals: <span className="text-white font-bold">{stats.totalReferrals}</span></span>
+              <span className="text-gray-400">Earned: <span className="text-sloth-green font-bold">{stats.totalEarned} ZZZ</span></span>
+            </div>
+          )}
+          <p className="text-gray-500 text-xs">Share your link. Friends who join earn you 25 ZZZ each!</p>
+        </div>
+      ) : (
+        <div className="text-center">
+          <p className="text-gray-400 text-sm mb-3">Generate your referral link to invite friends and earn ZZZ</p>
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="px-6 py-2 bg-sloth-green text-black font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {generating ? 'Generating...' : 'Generate Referral Link'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
