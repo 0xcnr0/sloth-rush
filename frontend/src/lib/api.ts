@@ -292,6 +292,11 @@ export const api = {
   getActiveRaces: () =>
     request<{ races: any[] }>('/race/active'),
 
+  getPredictionStats: (wallet: string) =>
+    request<{ total: number; correct: number; percentage: number }>(
+      `/race/predictions/stats/${wallet}`
+    ),
+
   // Season
   getCurrentSeason: () =>
     request<{ season: any }>('/season/current'),

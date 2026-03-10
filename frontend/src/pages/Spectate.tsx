@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAccount } from 'wagmi'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/api'
 import Spinner from '../components/Spinner'
 import { MVP_MODE } from '../config/features'
 
-// Mock sloths for the demo prediction
+// Mock sloths for the demo prediction fallback
 const DEMO_SLOTHS = [
   { id: 1, name: 'Sleepy Joe', emoji: '\u{1F9A5}', color: '#22c55e' },
   { id: 2, name: 'Turbo Nap', emoji: '\u{1F9A5}', color: '#3b82f6' },
@@ -28,7 +29,6 @@ function DemoPrediction() {
     setPhase('countdown')
     setCountdown(3)
 
-    // Pick a random winner
     const w = Math.floor(Math.random() * 4)
     setWinner(w)
 
@@ -45,17 +45,12 @@ function DemoPrediction() {
   }
 
   function runRaceAnimation(winnerIdx: number) {
-    // Generate target distances — winner gets 100, others get 60-95
     const targets = DEMO_SLOTHS.map((_, i) =>
       i === winnerIdx ? 100 : 60 + Math.random() * 35
     )
-
     const speeds = DEMO_SLOTHS.map((_, i) =>
-      i === winnerIdx
-        ? 1.5 + Math.random() * 0.8
-        : 0.8 + Math.random() * 1.0
+      i === winnerIdx ? 1.5 + Math.random() * 0.8 : 0.8 + Math.random() * 1.0
     )
-
     const current = [0, 0, 0, 0]
 
     animRef.current = setInterval(() => {
@@ -70,7 +65,6 @@ function DemoPrediction() {
 
       if (allDone || current[winnerIdx] >= 100) {
         if (animRef.current) clearInterval(animRef.current)
-        // Ensure winner is at 100
         current[winnerIdx] = 100
         setProgress([...current])
         setTimeout(() => setPhase('result'), 500)
@@ -87,33 +81,23 @@ function DemoPrediction() {
   }
 
   useEffect(() => {
-    return () => {
-      if (animRef.current) clearInterval(animRef.current)
-    }
+    return () => { if (animRef.current) clearInterval(animRef.current) }
   }, [])
 
   const isCorrect = selected === winner
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* DEMO Banner */}
       <div className="mb-6 px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-center">
         <span className="text-yellow-400 font-bold text-sm">DEMO MODE</span>
-        <span className="text-gray-400 text-xs ml-2">Spectator prediction preview</span>
+        <span className="text-gray-400 text-xs ml-2">Try a mock prediction while waiting for a live race</span>
       </div>
 
       <AnimatePresence mode="wait">
-        {/* Phase: Pick */}
         {phase === 'pick' && (
-          <motion.div
-            key="pick"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-          >
+          <motion.div key="pick" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
             <h2 className="text-2xl font-bold text-center mb-2">Predict the Winner!</h2>
             <p className="text-gray-400 text-center mb-6 text-sm">Pick which sloth will win the race. Correct prediction = 15 ZZZ!</p>
-
             <div className="grid grid-cols-2 gap-4 mb-8">
               {DEMO_SLOTHS.map(sloth => (
                 <button
@@ -131,7 +115,6 @@ function DemoPrediction() {
                 </button>
               ))}
             </div>
-
             <button
               onClick={startRace}
               disabled={selected === null}
@@ -142,22 +125,10 @@ function DemoPrediction() {
           </motion.div>
         )}
 
-        {/* Phase: Countdown */}
         {phase === 'countdown' && (
-          <motion.div
-            key="countdown"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="text-center py-12"
-          >
+          <motion.div key="countdown" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="text-center py-12">
             <p className="text-gray-400 mb-4">Race Starting...</p>
-            <motion.div
-              key={countdown}
-              initial={{ scale: 2, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-8xl font-extrabold text-sloth-gold"
-            >
+            <motion.div key={countdown} initial={{ scale: 2, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-8xl font-extrabold text-sloth-gold">
               {countdown}
             </motion.div>
             <p className="text-gray-500 text-sm mt-4">
@@ -166,24 +137,15 @@ function DemoPrediction() {
           </motion.div>
         )}
 
-        {/* Phase: Racing */}
         {phase === 'racing' && (
-          <motion.div
-            key="racing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <motion.div key="racing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">
-                <span className="text-sloth-green">LIVE</span> — Race in Progress
-              </h2>
+              <h2 className="text-xl font-bold"><span className="text-sloth-green">LIVE</span> — Race in Progress</h2>
               <div className="flex items-center gap-1">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                 <span className="text-green-400 text-xs font-semibold">LIVE</span>
               </div>
             </div>
-
             <div className="space-y-3">
               {DEMO_SLOTHS.map((sloth, i) => (
                 <div key={sloth.id} className="bg-sloth-card border border-sloth-border rounded-xl p-3">
@@ -196,11 +158,7 @@ function DemoPrediction() {
                     <span className="text-gray-400 text-xs">{Math.round(progress[i])}%</span>
                   </div>
                   <div className="w-full h-3 bg-sloth-dark rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: sloth.color, width: `${progress[i]}%` }}
-                      transition={{ duration: 0.1 }}
-                    />
+                    <motion.div className="h-full rounded-full" style={{ backgroundColor: sloth.color, width: `${progress[i]}%` }} transition={{ duration: 0.1 }} />
                   </div>
                 </div>
               ))}
@@ -208,37 +166,17 @@ function DemoPrediction() {
           </motion.div>
         )}
 
-        {/* Phase: Result */}
         {phase === 'result' && (
-          <motion.div
-            key="result"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="text-center"
-          >
-            <motion.div
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200 }}
-              className="mb-6"
-            >
+          <motion.div key="result" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center">
+            <motion.div initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }} className="mb-6">
               <div className="text-6xl mb-3">{'\u{1F3C6}'}</div>
-              <h2 className="text-3xl font-extrabold text-sloth-gold mb-1">
-                {DEMO_SLOTHS[winner].name} WINS!
-              </h2>
+              <h2 className="text-3xl font-extrabold text-sloth-gold mb-1">{DEMO_SLOTHS[winner].name} WINS!</h2>
             </motion.div>
-
-            {/* Prediction result */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className={`p-6 rounded-xl border-2 mb-6 ${
-                isCorrect
-                  ? 'bg-sloth-green/10 border-sloth-green'
-                  : 'bg-red-500/10 border-red-500/50'
-              }`}
+              className={`p-6 rounded-xl border-2 mb-6 ${isCorrect ? 'bg-sloth-green/10 border-sloth-green' : 'bg-red-500/10 border-red-500/50'}`}
             >
               {isCorrect ? (
                 <>
@@ -256,8 +194,6 @@ function DemoPrediction() {
                 </>
               )}
             </motion.div>
-
-            {/* Final standings */}
             <div className="bg-sloth-card border border-sloth-border rounded-xl p-4 mb-6">
               <h3 className="text-gray-400 text-xs font-bold uppercase mb-3">Final Standings</h3>
               <div className="space-y-2">
@@ -265,15 +201,8 @@ function DemoPrediction() {
                   .map((s, i) => ({ ...s, progress: progress[i], idx: i }))
                   .sort((a, b) => b.progress - a.progress)
                   .map((s, rank) => (
-                    <div
-                      key={s.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg ${
-                        rank === 0 ? 'bg-sloth-gold/10 border border-sloth-gold' : 'bg-sloth-dark/50 border border-sloth-border'
-                      }`}
-                    >
-                      <span className={`text-xl font-extrabold w-8 ${
-                        rank === 0 ? 'text-sloth-gold' : rank === 1 ? 'text-gray-300' : 'text-gray-500'
-                      }`}>{rank + 1}.</span>
+                    <div key={s.id} className={`flex items-center gap-3 p-3 rounded-lg ${rank === 0 ? 'bg-sloth-gold/10 border border-sloth-gold' : 'bg-sloth-dark/50 border border-sloth-border'}`}>
+                      <span className={`text-xl font-extrabold w-8 ${rank === 0 ? 'text-sloth-gold' : rank === 1 ? 'text-gray-300' : 'text-gray-500'}`}>{rank + 1}.</span>
                       <span className="text-xl">{s.emoji}</span>
                       <span className="text-white font-semibold text-sm flex-1">{s.name}</span>
                       {selected === s.idx && (
@@ -283,17 +212,8 @@ function DemoPrediction() {
                   ))}
               </div>
             </div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-3"
-            >
-              <button
-                onClick={reset}
-                className="px-8 py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors cursor-pointer"
-              >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button onClick={reset} className="px-8 py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors cursor-pointer">
                 Try Again
               </button>
             </motion.div>
@@ -304,11 +224,13 @@ function DemoPrediction() {
   )
 }
 
-// Original Spectate page for non-MVP mode
+// Live spectate with real race data + prediction stats
 function LiveSpectate() {
   const navigate = useNavigate()
+  const { address } = useAccount()
   const [races, setRaces] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<{ total: number; correct: number; percentage: number } | null>(null)
 
   function loadRaces() {
     api.getActiveRaces()
@@ -323,12 +245,59 @@ function LiveSpectate() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    if (!address) return
+    api.getPredictionStats(address)
+      .then(d => setStats(d))
+      .catch(() => {})
+  }, [address])
+
+  const formatLabel = (f: string) => {
+    if (f === 'exhibition') return 'Exhibition'
+    if (f === 'standard') return 'Standard'
+    if (f === 'grand_prix') return 'Grand Prix'
+    if (f === 'tactic') return 'Tactic'
+    return f.charAt(0).toUpperCase() + f.slice(1)
+  }
+
+  const statusColor = (s: string) => {
+    if (s === 'racing' || s === 'simulated') return 'text-green-400'
+    if (s === 'bidding') return 'text-yellow-400'
+    if (s === 'lobby') return 'text-blue-400'
+    return 'text-gray-400'
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Spectate</h1>
-        <p className="text-gray-400 mt-1">Watch live races in progress</p>
+        <h1 className="text-3xl font-bold">Spectate & Predict</h1>
+        <p className="text-gray-400 mt-1">Watch live races and predict winners to earn ZZZ Coins</p>
       </div>
+
+      {/* Prediction Stats */}
+      {address && stats && stats.total > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-sloth-card border border-sloth-border rounded-xl p-4 mb-6"
+        >
+          <h3 className="text-gray-400 text-xs font-bold uppercase mb-3">Your Prediction Stats</h3>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-white">{stats.total}</p>
+              <p className="text-gray-500 text-xs">Total</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-sloth-green">{stats.correct}</p>
+              <p className="text-gray-500 text-xs">Correct</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-sloth-gold">{stats.percentage}%</p>
+              <p className="text-gray-500 text-xs">Win Rate</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {loading && (
         <div className="text-center py-12">
@@ -337,15 +306,30 @@ function LiveSpectate() {
       )}
 
       {!loading && races.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center py-20"
-        >
-          <div className="text-6xl mb-4">{'\u{1F3C1}'}</div>
-          <p className="text-gray-400 text-lg mb-2">No active races right now</p>
-          <p className="text-gray-500 text-sm">Races appear here when they are in progress. Check back soon!</p>
-        </motion.div>
+        <div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-12 mb-8"
+          >
+            <div className="text-6xl mb-4">{'\u{1F3C1}'}</div>
+            <p className="text-gray-400 text-lg mb-2">No active races right now</p>
+            <p className="text-gray-500 text-sm mb-4">Start one from the Race Lobby or try a demo prediction below!</p>
+            <button
+              onClick={() => navigate('/race')}
+              className="px-6 py-2.5 bg-sloth-green/20 text-sloth-green font-semibold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer text-sm"
+            >
+              Go to Race Lobby
+            </button>
+          </motion.div>
+
+          {/* Demo fallback when no active races */}
+          {MVP_MODE && (
+            <div className="border-t border-sloth-border pt-8">
+              <DemoPrediction />
+            </div>
+          )}
+        </div>
       )}
 
       {!loading && races.length > 0 && (
@@ -364,11 +348,11 @@ function LiveSpectate() {
                 </div>
                 <div>
                   <p className="text-white font-semibold">
-                    {race.format ? race.format.charAt(0).toUpperCase() + race.format.slice(1) : 'Standard'} Race
+                    {formatLabel(race.format || 'standard')} Race
                   </p>
                   <p className="text-gray-500 text-xs">
                     {race.participantCount || race.participants?.length || '?'} participants
-                    {race.status && <span> &middot; {race.status}</span>}
+                    {race.status && <span className={`ml-1 ${statusColor(race.status)}`}> &middot; {race.status}</span>}
                   </p>
                 </div>
               </div>
@@ -382,7 +366,7 @@ function LiveSpectate() {
                   onClick={() => navigate(`/race/${race.raceId || race.id}`)}
                   className="px-4 py-2 bg-sloth-green/20 text-sloth-green font-semibold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer text-sm"
                 >
-                  Watch
+                  Watch & Predict
                 </button>
               </div>
             </motion.div>
@@ -394,8 +378,8 @@ function LiveSpectate() {
         <h3 className="text-white font-semibold mb-2">How Spectating Works</h3>
         <div className="text-gray-400 text-sm space-y-1">
           <p>Active races refresh every 5 seconds.</p>
-          <p>Click "Watch" to view the live race broadcast.</p>
-          <p>You can watch any race without needing to participate.</p>
+          <p>Click "Watch & Predict" to predict a winner before tick 20.</p>
+          <p>Correct prediction earns you <span className="text-sloth-green font-bold">+15 ZZZ Coins</span>!</p>
         </div>
       </div>
     </div>
@@ -403,17 +387,7 @@ function LiveSpectate() {
 }
 
 export default function Spectate() {
-  if (MVP_MODE) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Spectator Prediction</h1>
-          <p className="text-gray-400 mt-1">Predict race winners and earn ZZZ Coins</p>
-        </div>
-        <DemoPrediction />
-      </div>
-    )
-  }
-
+  // In MVP mode and non-MVP mode, always show LiveSpectate with real data.
+  // Demo fallback is embedded inside LiveSpectate when no active races.
   return <LiveSpectate />
 }

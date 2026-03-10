@@ -64,6 +64,7 @@ export default function RaceBroadcast() {
   const [loading, setLoading] = useState(!raceData)
   const [prediction, setPrediction] = useState<number | null>(null)
   const [predictionSubmitted, setPredictionSubmitted] = useState(false)
+  const [predictionResult, setPredictionResult] = useState<'correct' | 'incorrect' | null>(null)
 
   // Tactic mode state
   const [energy, setEnergy] = useState(MAX_ENERGY)
@@ -109,6 +110,17 @@ export default function RaceBroadcast() {
       }).finally(() => setLoading(false))
     }
   }, [id, raceData])
+
+  // Check prediction result when race finishes
+  useEffect(() => {
+    if (!raceFinished || !predictionSubmitted || !prediction || !raceData?.finalOrder) return
+    const winnerId = raceData.finalOrder[0]?.id
+    if (winnerId === prediction) {
+      setPredictionResult('correct')
+    } else {
+      setPredictionResult('incorrect')
+    }
+  }, [raceFinished, predictionSubmitted, prediction, raceData?.finalOrder])
 
   // Poll GDA prices during tactic mode
   useEffect(() => {
@@ -1078,6 +1090,34 @@ export default function RaceBroadcast() {
                   <h2 className="text-4xl font-extrabold text-sloth-gold mb-1">{winner?.name} WINS!</h2>
                   <p className="text-gray-400">Total Pot: {raceData.totalPot} ZZZ</p>
                 </motion.div>
+
+                {/* Prediction Result Banner */}
+                {predictionResult && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+                    className={`p-5 rounded-xl border-2 mb-6 text-center ${
+                      predictionResult === 'correct'
+                        ? 'bg-sloth-green/10 border-sloth-green'
+                        : 'bg-red-500/10 border-red-500/50'
+                    }`}
+                  >
+                    {predictionResult === 'correct' ? (
+                      <>
+                        <div className="text-5xl mb-2">{'\u{1F389}'}</div>
+                        <p className="text-sloth-green font-bold text-xl">Prediction Correct!</p>
+                        <p className="text-sloth-green/80 text-lg font-semibold mt-1">+15 ZZZ earned!</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-5xl mb-2">{'\u{1F614}'}</div>
+                        <p className="text-red-400 font-bold text-xl">Wrong Prediction</p>
+                        <p className="text-gray-400 text-sm mt-1">Better luck next time!</p>
+                      </>
+                    )}
+                  </motion.div>
+                )}
 
                 {/* Standings table */}
                 <div className="bg-sloth-card border border-sloth-border rounded-xl p-4 mb-6">

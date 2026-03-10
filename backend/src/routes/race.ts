@@ -1044,6 +1044,24 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/race/predictions/stats/:wallet — Prediction stats for a wallet
+router.get("/predictions/stats/:wallet", async (req: Request, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    const row = await getOne(
+      "SELECT COUNT(*)::int as total, COALESCE(SUM(CASE WHEN correct = 1 THEN 1 ELSE 0 END), 0)::int as correct_count FROM predictions WHERE wallet = $1",
+      [String(wallet).toLowerCase()]
+    );
+    const total = row?.total || 0;
+    const correct = row?.correct_count || 0;
+    const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+    res.json({ total, correct, percentage });
+  } catch (err) {
+    console.error("GET /predictions/stats error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // POST /api/race/predict — Predict race winner
 router.post("/predict", async (req: Request, res: Response) => {
   try {
