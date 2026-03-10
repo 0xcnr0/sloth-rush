@@ -4,6 +4,7 @@ import { query, getOne, getAll, runTransaction } from "../db";
 import { simulateRace, calculatePot, SlothStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
 import { awardXP, XP_AMOUNTS } from "../xp";
 import { isValidWallet } from "../middleware/validateWallet";
+import { recordRaceResultOnchain } from "../lib/onchain";
 
 const router = Router();
 
@@ -740,6 +741,12 @@ router.post("/simulate", async (req: Request, res: Response) => {
       if (entry.isBot) continue;
       await triggerQuestProgress(entry.wallet, "race_complete");
       if (i <= 1) await triggerQuestProgress(entry.wallet, "top_2_finish");
+    }
+
+    // Record race result on-chain (best-effort, non-blocking)
+    const raceWinner = result.finalOrder[0];
+    if (raceWinner && !raceWinner.isBot && resultHash) {
+      recordRaceResultOnchain(raceId, resultHash, raceWinner.wallet).catch(() => {});
     }
 
     // Log weather for weekly quest (weather_variety)

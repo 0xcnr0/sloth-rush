@@ -144,6 +144,19 @@ export default function Mint() {
               <p className="text-gray-500 text-sm">Free Sloth #{sloth.id}</p>
             </div>
 
+            {onchainMint.hash && (
+              <div className="mb-4">
+                <a
+                  href={`https://sepolia.basescan.org/tx/${onchainMint.hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sloth-green/70 text-xs hover:text-sloth-green transition-colors underline"
+                >
+                  View on BaseScan
+                </a>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 onClick={() => navigate('/treehouse')}

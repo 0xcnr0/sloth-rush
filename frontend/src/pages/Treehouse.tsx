@@ -1007,7 +1007,19 @@ export default function Treehouse() {
                   <p className="text-gray-400 text-sm mb-2 capitalize">
                     Race: {newSloth.race?.replace('_', ' ')}
                   </p>
-                  <p className="text-sloth-green font-semibold mb-6">+500 ZZZ Coins</p>
+                  <p className="text-sloth-green font-semibold mb-4">+500 ZZZ Coins</p>
+                  {onchainUpgrade.hash && (
+                    <div className="mb-4">
+                      <a
+                        href={`https://sepolia.basescan.org/tx/${onchainUpgrade.hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sloth-green/70 text-xs hover:text-sloth-green transition-colors underline"
+                      >
+                        View on BaseScan
+                      </a>
+                    </div>
+                  )}
                   <button
                     onClick={closeReveal}
                     className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
