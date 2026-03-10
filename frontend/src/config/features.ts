@@ -31,15 +31,15 @@ export const FEATURES = {
   guide: true,           // Always on
 
   shop: !MVP_MODE,       // Hide in MVP
-  training: !MVP_MODE,   // Hide in MVP
+  training: true,         // Always on
   evolution: !MVP_MODE,  // Hide in MVP
   miniGames: !MVP_MODE,  // Hide in MVP
-  quests: !MVP_MODE,     // Hide in MVP
+  quests: true,           // Always on
   grandPrix: !MVP_MODE,  // Hide in MVP
   tacticRace: !MVP_MODE, // Hide in MVP
   spectate: true,        // Always on — demo badge shown in MVP
   replay: true,           // Always on
-  profile: !MVP_MODE,    // Hide in MVP
+  profile: true,          // Always on
   accessories: !MVP_MODE,// Hide in MVP
   cosmetics: !MVP_MODE,  // Hide in MVP
   demoRace: MVP_MODE,    // Demo race format in MVP mode

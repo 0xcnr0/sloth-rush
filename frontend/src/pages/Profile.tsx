@@ -86,7 +86,7 @@ export default function Profile() {
           { label: 'Total Wins', value: String(profile.totalWins), color: 'text-sloth-green' },
           { label: 'Total Earnings', value: `${profile.totalEarnings} ZZZ`, color: 'text-sloth-green' },
           { label: 'Login Days', value: String(profile.loginDays), color: 'text-blue-400' },
-          { label: 'Creatures', value: `${profile.slothCount + profile.slothCount}`, color: 'text-white' },
+          { label: 'Creatures', value: `${profile.freeSlothCount + profile.slothCount}`, color: 'text-white' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -215,6 +215,7 @@ function TransactionSection({ transactions }: { transactions: { type: string; am
     upgrade: 'Upgrade',
     cosmetic_purchase: 'Cosmetic',
     accessory_purchase: 'Accessory',
+    prediction_reward: 'Prediction Reward',
   }
 
   if (transactions.length === 0) return (
