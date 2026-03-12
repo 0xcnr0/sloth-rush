@@ -846,7 +846,11 @@ router.post("/mini-game", async (req: Request, res: Response) => {
 // GET /api/sloth/evolution-progress/:slothId — Get evolution progress
 router.get("/evolution-progress/:slothId", async (req: Request, res: Response) => {
   try {
-    const { slothId } = req.params;
+    const slothId = parseInt(req.params.slothId as string);
+    if (isNaN(slothId) || slothId <= 0) {
+      res.status(400).json({ error: "Invalid slothId" });
+      return;
+    }
 
     const sloth = await getOne(
       "SELECT * FROM sloths WHERE id = $1 AND is_burned = 0",
@@ -857,7 +861,7 @@ router.get("/evolution-progress/:slothId", async (req: Request, res: Response) =
       return;
     }
 
-    const tier = sloth.tier || 0;
+    const tier = sloth.tier ?? 0;
     const wallet = sloth.wallet;
 
     // Get race stats
@@ -876,11 +880,19 @@ router.get("/evolution-progress/:slothId", async (req: Request, res: Response) =
     const xp = await getXP(wallet);
 
     const balance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
-    const zzzBalance = balance?.balance || 0;
+    const zzzBalance = balance?.balance ?? 0;
 
-    // Get highest stat
-    const stats = [sloth.spd, sloth.acc, sloth.sta, sloth.agi, sloth.ref, sloth.lck];
+    // Get highest stat (null-safe)
+    const stats = [
+      Number(sloth.spd) || 0,
+      Number(sloth.acc) || 0,
+      Number(sloth.sta) || 0,
+      Number(sloth.agi) || 0,
+      Number(sloth.ref) || 0,
+      Number(sloth.lck) || 0,
+    ];
     const maxStat = Math.max(...stats);
+    const totalStats = stats.reduce((a, b) => a + b, 0);
 
     // Requirements per tier
     const tierReqs: Record<number, any> = {
@@ -901,18 +913,24 @@ router.get("/evolution-progress/:slothId", async (req: Request, res: Response) =
         maxStat >= reqs.stat;
     }
 
+    // Response uses field names matching frontend expectations
     res.json({
-      slothId: parseInt(slothId as string),
+      slothId,
+      tier,
       currentTier: tier,
       evolutionPath: sloth.evolution_path || null,
       passive: sloth.passive || null,
+      requirements: reqs,
       nextTierRequirements: reqs,
       progress: {
         xp,
         races: totalRaces,
         wins: totalWins,
+        zzz: zzzBalance,
         zzzBalance,
+        stat: maxStat,
         maxStat,
+        totalStats,
       },
       eligible,
     });
@@ -1247,22 +1265,33 @@ router.get("/profile/transactions/:wallet", async (req: Request, res: Response) 
 // GET /api/sloth/cosmetics/:slothId — Get equipped cosmetics for a sloth
 router.get("/cosmetics/:slothId", async (req: Request, res: Response) => {
   try {
-    const { slothId } = req.params;
+    const slothId = parseInt(req.params.slothId as string);
+    if (isNaN(slothId) || slothId <= 0) {
+      res.status(400).json({ error: "Invalid slothId" });
+      return;
+    }
 
     const cosmetics = await getAll(
       `SELECT c.*, uc.equipped_sloth_id
        FROM user_cosmetics uc
-       JOIN cosmetics c ON uc.cosmetic_id = c.id
+       LEFT JOIN cosmetics c ON uc.cosmetic_id = c.id
        WHERE uc.equipped_sloth_id = $1`,
       [slothId]
     );
 
+    // Filter out rows where cosmetic was deleted (LEFT JOIN returned null)
+    const validCosmetics = cosmetics.filter((c: any) => c.id != null);
+
+    let accessory = null;
     const equipment = await getOne(
-      `SELECT a.* FROM sloth_equipment se JOIN accessories a ON se.accessory_id = a.id WHERE se.sloth_id = $1`,
+      `SELECT a.* FROM sloth_equipment se LEFT JOIN accessories a ON se.accessory_id = a.id WHERE se.sloth_id = $1`,
       [slothId]
     );
+    if (equipment && equipment.id != null) {
+      accessory = equipment;
+    }
 
-    res.json({ cosmetics, accessory: equipment || null });
+    res.json({ cosmetics: validCosmetics, accessory });
   } catch (err) {
     console.error("GET /cosmetics/:slothId error:", err);
     res.status(500).json({ error: "Internal server error" });
