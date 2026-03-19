@@ -331,4 +331,48 @@ export const api = {
     request<{ totalReferrals: number; totalRewarded: number; totalEarned: number; code: string | null }>(
       `/social/referral/stats/${wallet}`
     ),
+
+  // Feedback endpoints (Sprint 6)
+  submitFeedback: (wallet: string, category: string, text: string, rating: number) =>
+    request<{ submitted: boolean; feedback: any; message: string }>('/feedback/submit', {
+      method: 'POST',
+      body: JSON.stringify({ wallet, category, text, rating }),
+    }),
+
+  getMyFeedback: (wallet: string) =>
+    request<{ feedbacks: any[] }>(`/feedback/my/${wallet}`),
+
+  getFeedbackStats: () =>
+    request<{ total: number; avgRating: number; categories: any[]; statusBreakdown: any[] }>('/feedback/stats'),
+
+  getFeedbackEligibility: (wallet: string) =>
+    request<{ eligible: boolean; racesCompleted: number; racesRequired: number; feedbackToday: number; feedbackLimit: number; canSubmit: boolean }>(
+      `/feedback/eligibility/${wallet}`
+    ),
+
+  getCommunityFeedback: (page: number = 1, sort: string = 'date', category?: string, status?: string) =>
+    request<{ feedbacks: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
+      `/feedback/community?page=${page}&sort=${sort}${category ? `&category=${category}` : ''}${status ? `&status=${status}` : ''}`
+    ),
+
+  upvoteFeedback: (feedbackId: number, wallet: string) =>
+    request<{ upvoted: boolean; feedbackId: number; upvotes: number }>(`/feedback/${feedbackId}/upvote`, {
+      method: 'POST',
+      body: JSON.stringify({ wallet }),
+    }),
+
+  getTrendingFeedback: () =>
+    request<{ trending: any[] }>('/feedback/trending'),
+
+  getLatestReport: () =>
+    request<{ report: any }>('/feedback/report/latest'),
+
+  getFeedbackReport: (weekId: number) =>
+    request<{ report: any }>(`/feedback/report/${weekId}`),
+
+  triggerAnalysis: () =>
+    request<{ analyzed: number; total: number }>('/feedback/analyze', { method: 'POST' }),
+
+  generateReport: () =>
+    request<{ generated: boolean; report: any }>('/feedback/report/generate', { method: 'POST' }),
 }

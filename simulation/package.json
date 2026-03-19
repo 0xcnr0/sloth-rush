@@ -1,6 +1,15 @@
 {
-  "name": "simulation",
+  "name": "@sloth-rush/verifier",
   "version": "1.0.0",
-  "private": true,
-  "main": "engine.ts"
+  "description": "Standalone race verifier for Sloth Rush — provably fair racing",
+  "main": "engine.ts",
+  "scripts": {
+    "verify": "npx tsx verify.ts"
+  },
+  "keywords": ["sloth-rush", "verifier", "provably-fair", "deterministic", "racing"],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "tsx": "^4.21.0"
+  }
 }

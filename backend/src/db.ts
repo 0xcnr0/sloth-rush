@@ -389,6 +389,43 @@ export async function initDB() {
     );
   `);
 
+  // Feedback system (Sprint 6)
+  console.log("initDB: creating feedback tables...");
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS feedback (
+      id SERIAL PRIMARY KEY,
+      wallet TEXT NOT NULL,
+      category TEXT NOT NULL CHECK(category IN ('bug','feature','balance','general')),
+      text TEXT NOT NULL,
+      rating INTEGER CHECK(rating BETWEEN 1 AND 5),
+      ai_category TEXT,
+      ai_sentiment TEXT,
+      ai_priority TEXT,
+      upvotes INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','reviewed','implemented','rejected')),
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS feedback_reports (
+      id SERIAL PRIMARY KEY,
+      week_start DATE NOT NULL,
+      week_end DATE NOT NULL,
+      total_feedback INTEGER,
+      avg_rating NUMERIC,
+      top_requests JSONB,
+      critical_bugs JSONB,
+      sentiment_breakdown JSONB,
+      full_report TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS feedback_upvotes (
+      feedback_id INTEGER REFERENCES feedback(id),
+      wallet TEXT NOT NULL,
+      UNIQUE(feedback_id, wallet)
+    );
+  `);
+
   // Referral system
   await pool.query(`
     CREATE TABLE IF NOT EXISTS referrals (
@@ -576,5 +613,10 @@ export async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_predictions_race ON predictions(race_id);
     CREATE INDEX IF NOT EXISTS idx_tactic_actions_race ON tactic_actions(race_id);
     CREATE INDEX IF NOT EXISTS idx_daily_races_date ON daily_races(race_date);
+    CREATE INDEX IF NOT EXISTS idx_feedback_wallet ON feedback(wallet);
+    CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
+    CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at);
+    CREATE INDEX IF NOT EXISTS idx_feedback_upvotes_feedback ON feedback_upvotes(feedback_id);
+    CREATE INDEX IF NOT EXISTS idx_feedback_reports_week ON feedback_reports(week_start);
   `);
 }

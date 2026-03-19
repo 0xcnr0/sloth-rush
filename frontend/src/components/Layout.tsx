@@ -15,8 +15,12 @@ const NAV_ITEMS = [
   { path: '/spectate', label: 'Spectate' },
   { path: '/shop', label: 'Shop' },
   { path: '/leaderboard', label: 'Leaderboard' },
+  { path: '/feedback', label: 'Feedback' },
+  { path: '/community', label: 'Community' },
 ].filter(item => {
   if (item.path === '/shop' && !FEATURES.shop) return false
+  if (item.path === '/feedback' && !FEATURES.feedback) return false
+  if (item.path === '/community' && !FEATURES.community) return false
   return true
 })
 

@@ -9,6 +9,7 @@ import questRoutes from "./routes/quest";
 import leaderboardRoutes from "./routes/leaderboard";
 import seasonRoutes from "./routes/season";
 import socialRoutes from "./routes/social";
+import feedbackRoutes from "./routes/feedback";
 import rateLimit from 'express-rate-limit';
 
 dotenv.config();
@@ -68,6 +69,7 @@ async function main() {
   app.use("/api/leaderboard", leaderboardRoutes);
   app.use("/api/season", seasonRoutes);
   app.use("/api/social", socialRoutes);
+  app.use("/api/feedback", feedbackRoutes);
 
   // Debug endpoints (non-production only)
   if (!isProduction) {

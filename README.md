@@ -30,6 +30,7 @@ sloth-rush/
 ├── frontend/        # React SPA (Vercel)
 ├── backend/         # Express API + PostgreSQL (Railway)
 ├── contracts/       # Solidity smart contracts (Base L2)
+├── simulation/      # Standalone race verifier (open source)
 └── docs/            # Light paper, prompts
 ```
 
@@ -71,6 +72,29 @@ DATABASE_URL=postgresql://localhost:5432/sloth_rush
 NODE_ENV=development
 PORT=3001
 ```
+
+## Provably Fair Racing
+
+Every race in Sloth Rush is **deterministic and independently verifiable**. The simulation engine uses a seeded PRNG (Mulberry32) — given the same seed and participant stats, anyone can reproduce the exact race result.
+
+### Verify a Race
+
+```bash
+cd simulation
+npm install
+npx tsx verify.ts \
+  --seed "race-seed-from-api" \
+  --participants '[{"name":"Sloth1","spd":15,"acc":12,"sta":10,"agi":8,"ref":7,"lck":6},{"name":"Sloth2","spd":10,"acc":14,"sta":12,"agi":10,"ref":9,"lck":5}]'
+```
+
+The verifier outputs the **finish order** and a **SHA-256 result hash**. Compare this hash against the on-chain record in the SlothRush contract on Base L2 to confirm the race was fair.
+
+```bash
+# Quick hash check
+npx tsx verify.ts --seed "abc123" --participants '[...]' --hash-only
+```
+
+See [`simulation/README.md`](simulation/README.md) for full documentation on the engine internals: PRNG, stats, weather, events, and trust model.
 
 ## QA
 

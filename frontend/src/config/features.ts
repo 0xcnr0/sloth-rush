@@ -43,4 +43,6 @@ export const FEATURES = {
   accessories: !MVP_MODE,// Hide in MVP
   cosmetics: !MVP_MODE,  // Hide in MVP
   demoRace: MVP_MODE,    // Demo race format in MVP mode
+  feedback: true,        // Always on — Sprint 6
+  community: true,       // Always on — Sprint 6
 } as const
