@@ -6,6 +6,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://backend-production-1875.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
