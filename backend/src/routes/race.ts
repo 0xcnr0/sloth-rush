@@ -457,6 +457,25 @@ router.post("/bid", async (req: Request, res: Response) => {
       throw err;
     }
 
+    // First Bid Bonus: 10 ZZZ for first-ever bid > 0 (per wallet)
+    if (bidAmount > 0) {
+      const totalBidsEver = await getOne(
+        "SELECT COUNT(*) as count FROM transactions WHERE wallet = $1 AND type = 'race_bid'",
+        [wallet]
+      );
+      if (parseInt(totalBidsEver?.count || 0) === 1) {
+        await query(
+          `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 10)
+           ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 10, updated_at = NOW()`,
+          [wallet]
+        );
+        await query(
+          "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'first_bid_bonus', 10, 'First Bid Bonus!')",
+          [wallet]
+        );
+      }
+    }
+
     // Generate stat-aware bot bids — stronger bots bid more aggressively
     const botParticipants = await getAll(
       "SELECT rp.*, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck FROM race_participants rp JOIN sloths s ON rp.sloth_id = s.id WHERE rp.race_id = $1 AND rp.is_bot = 1",
@@ -599,22 +618,27 @@ router.post("/simulate", async (req: Request, res: Response) => {
 
     if (isExhibition) {
       const seed32 = parseInt(seed.slice(0, 8), 16);
+      const CONSOLATION_PRIZE = 2;
       payouts = [];
       for (let i = 0; i < result.finalOrder.length; i++) {
         const entry = result.finalOrder[i];
-        if (i === 0 && !entry.isBot) {
+        if (entry.isBot) {
+          payouts.push({ id: entry.id, payout: 0 });
+        } else if (i === 0) {
           const creatureType = await getOne("SELECT type FROM sloths WHERE id = $1", [entry.id]);
           if (creatureType?.type === "free_sloth") {
-            payouts.push({ id: entry.id, payout: 3 + ((seed32 + i) % 3) });
+            payouts.push({ id: entry.id, payout: 3 + ((seed32 + i) % 3) + CONSOLATION_PRIZE });
           } else {
-            payouts.push({ id: entry.id, payout: 8 + ((seed32 + i) % 5) });
+            payouts.push({ id: entry.id, payout: 8 + ((seed32 + i) % 5) + CONSOLATION_PRIZE });
           }
         } else {
-          payouts.push({ id: entry.id, payout: 0 });
+          payouts.push({ id: entry.id, payout: CONSOLATION_PRIZE });
         }
       }
     } else {
-      totalEntryFees = participants.filter((p: any) => p.is_bot === 0).length * race.entry_fee;
+      const realPlayerFees = participants.filter((p: any) => p.is_bot === 0).length * race.entry_fee;
+      const botVirtualFees = participants.filter((p: any) => p.is_bot === 1).length * race.entry_fee * 0.75;
+      totalEntryFees = realPlayerFees + botVirtualFees;
       totalBids = participants.reduce((sum: number, p: any) => sum + (p.is_bot === 0 ? p.bid_amount : 0), 0);
       payouts = calculatePot(totalEntryFees, totalBids, result.finalOrder);
     }
@@ -718,6 +742,27 @@ router.post("/simulate", async (req: Request, res: Response) => {
         if (entry.isBot) continue;
         await awardXP(entry.wallet, XP_AMOUNTS.RACE_COMPLETE);
         if (i === 0) await awardXP(entry.wallet, XP_AMOUNTS.RACE_WIN);
+      }
+
+      // First Race Bonus: 15 ZZZ for first-ever race completion (per wallet)
+      for (let i = 0; i < result.finalOrder.length; i++) {
+        const entry = result.finalOrder[i];
+        if (entry.isBot) continue;
+        const totalRaces = (await client.query(
+          "SELECT COUNT(*) as count FROM race_participants rp JOIN races r ON rp.race_id = r.id WHERE rp.wallet = $1 AND rp.is_bot = 0 AND r.status = 'finished'",
+          [entry.wallet]
+        )).rows[0]?.count || 0;
+        if (parseInt(totalRaces) === 1) {
+          await client.query(
+            `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 15)
+             ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 15, updated_at = NOW()`,
+            [entry.wallet]
+          );
+          await client.query(
+            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'first_race_bonus', 15, 'First Race Bonus!')",
+            [entry.wallet]
+          );
+        }
       }
 
       // Award Race Points (RP) for leaderboard

@@ -69,6 +69,7 @@ export default function Treehouse() {
   const [questsOpen, setQuestsOpen] = useState(true)
   const [activeMiniGame, setActiveMiniGame] = useState<{ slothId: number; slothName: string } | null>(null)
   const [demoLoading, setDemoLoading] = useState<number | null>(null)
+  const [evoProgress, setEvoProgress] = useState<Record<number, any>>({})
 
   async function handleQuickDemoRace(slothId: number) {
     if (!address || demoLoading) return
@@ -141,6 +142,17 @@ export default function Treehouse() {
       .then(d => setOwnedAccessories((d.accessories || []).filter((a: any) => a.owned)))
       .catch((err) => { console.error('Failed to load accessories:', err) })
   }, [address])
+
+  // Load evolution progress for all sloths
+  useEffect(() => {
+    if (!sloths.length) return
+    const slothType = sloths.filter(s => s.type === 'sloth')
+    slothType.forEach(s => {
+      api.getEvolutionProgress(s.id).then(data => {
+        setEvoProgress(prev => ({ ...prev, [s.id]: data }))
+      }).catch(() => {})
+    })
+  }, [sloths])
 
   const freeSloth = sloths.find(s => s.type === 'free_sloth')
   const slothList = sloths.filter(s => s.type === 'sloth')
@@ -497,20 +509,18 @@ export default function Treehouse() {
             {/* Enter Race — Exhibition only */}
             <div className="mt-3 pt-3 border-t border-sloth-border space-y-2">
               <button
-                onClick={() => navigate('/race')}
-                className="w-full py-3 bg-sloth-green text-sloth-dark text-lg font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer shadow-lg shadow-sloth-green/20"
+                onClick={() => handleQuickDemoRace(freeSloth.id)}
+                disabled={demoLoading === freeSloth.id}
+                className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-sloth-dark text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
               >
-                Enter Exhibition Race
+                {demoLoading === freeSloth.id ? 'Starting Race...' : '\u26A1 Quick Race'}
               </button>
-              {FEATURES.demoRace && (
-                <button
-                  onClick={() => handleQuickDemoRace(freeSloth.id)}
-                  disabled={demoLoading === freeSloth.id}
-                  className="w-full py-2 bg-yellow-500/20 text-yellow-400 font-bold rounded-lg hover:bg-yellow-500/30 transition-colors cursor-pointer text-sm border border-yellow-500/30 disabled:opacity-50"
-                >
-                  {demoLoading === freeSloth.id ? 'Creating Demo Race...' : 'Quick Demo Race (20s)'}
-                </button>
-              )}
+              <button
+                onClick={() => navigate('/race')}
+                className="w-full py-2.5 bg-sloth-green/20 text-sloth-green font-bold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer border border-sloth-green/30"
+              >
+                Browse Races
+              </button>
             </div>
 
             {/* Upgrade Section */}
@@ -890,21 +900,70 @@ export default function Treehouse() {
                 {/* Enter Race — prominent */}
                 <div className="mt-3 pt-3 border-t border-sloth-border space-y-2">
                   <button
-                    onClick={() => navigate('/race')}
-                    className="w-full py-3 bg-sloth-green text-sloth-dark text-lg font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer shadow-lg shadow-sloth-green/20"
+                    onClick={() => handleQuickDemoRace(sloth.id)}
+                    disabled={demoLoading === sloth.id}
+                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-sloth-dark text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
                   >
-                    Enter Race
+                    {demoLoading === sloth.id ? 'Starting Race...' : '\u26A1 Quick Race'}
                   </button>
-                  {FEATURES.demoRace && (
-                    <button
-                      onClick={() => handleQuickDemoRace(sloth.id)}
-                      disabled={demoLoading === sloth.id}
-                      className="w-full py-2 bg-yellow-500/20 text-yellow-400 font-bold rounded-lg hover:bg-yellow-500/30 transition-colors cursor-pointer text-sm border border-yellow-500/30 disabled:opacity-50"
-                    >
-                      {demoLoading === sloth.id ? 'Creating Demo Race...' : 'Quick Demo Race (20s)'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => navigate('/race')}
+                    className="w-full py-2.5 bg-sloth-green/20 text-sloth-green font-bold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer border border-sloth-green/30"
+                  >
+                    Browse Races
+                  </button>
                 </div>
+
+                {/* Evolution Progress */}
+                {evoProgress[sloth.id] && evoProgress[sloth.id].requirements && (
+                  <div className="mt-3 pt-3 border-t border-sloth-border">
+                    {(() => {
+                      const evo = evoProgress[sloth.id]
+                      const reqs = evo.requirements
+                      const prog = evo.progress
+                      const items = [
+                        { label: 'XP', current: prog.xp, target: reqs.xp },
+                        { label: 'Races', current: prog.races, target: reqs.races },
+                        { label: 'Wins', current: prog.wins, target: reqs.wins },
+                        { label: 'ZZZ', current: prog.zzz, target: reqs.zzz },
+                        { label: 'Max Stat', current: prog.stat || prog.maxStat, target: reqs.stat },
+                      ]
+                      const pcts = items.map(i => Math.min(100, Math.round((i.current / i.target) * 100)))
+                      const avgPct = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
+                      return (
+                        <>
+                          <div className="text-center mb-2">
+                            <span className={`text-lg font-black ${evo.eligible ? 'text-sloth-green' : 'text-sloth-gold'}`}>
+                              {evo.eligible ? 'Ready to Evolve!' : `${avgPct}% to Tier ${(evo.tier || 0) + 1}`}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {items.map((item, idx) => (
+                              <div key={item.label} className="flex items-center gap-2 text-xs">
+                                <span className="text-gray-400 w-14 text-right">{item.label}</span>
+                                <div className="flex-1 bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${pcts[idx] >= 100 ? 'bg-sloth-green' : 'bg-sloth-purple'}`}
+                                    style={{ width: `${pcts[idx]}%` }}
+                                  />
+                                </div>
+                                <span className="text-gray-500 w-20 text-right">{item.current}/{item.target}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {evo.eligible && (
+                            <button
+                              onClick={() => { setEvolveSlothId(sloth.id); setEvolveSlothName(sloth.name) }}
+                              className="w-full mt-2 py-2 bg-sloth-green text-sloth-dark font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer"
+                            >
+                              Evolve Now
+                            </button>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
             ))}
           </div>

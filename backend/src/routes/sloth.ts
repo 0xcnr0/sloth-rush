@@ -87,9 +87,20 @@ router.post("/mint", async (req: Request, res: Response) => {
       [wallet, name]
     );
 
+    // Welcome Bonus: 10 ZZZ for new players
+    await query(
+      `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 10)
+       ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 10, updated_at = NOW()`,
+      [wallet]
+    );
+    await query(
+      "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'welcome_bonus', 10, 'Welcome Bonus — first mint!')",
+      [wallet]
+    );
+
     const sloth = await getOne("SELECT * FROM sloths WHERE id = $1", [result.id]);
 
-    res.status(201).json({ sloth });
+    res.status(201).json({ sloth, welcomeBonus: 10 });
   } catch (err) {
     console.error("POST /mint error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -389,7 +400,7 @@ function getStatCap(type: string, rarity: string, tier: number = 0, evolutionPat
   return cap;
 }
 
-// POST /api/sloth/train — Start a training session (6h, 10 ZZZ cost)
+// POST /api/sloth/train — Start a training session (2h, 5 ZZZ cost)
 router.post("/train", async (req: Request, res: Response) => {
   try {
     const { wallet, slothId, stat } = req.body;
@@ -443,8 +454,8 @@ router.post("/train", async (req: Request, res: Response) => {
       return;
     }
 
-    // Check weekly training limit (free_sloth: 1/week, sloth: 2/week)
-    const weeklyLimit = sloth.type === 'free_sloth' ? 1 : 2;
+    // Check weekly training limit (free_sloth: 3/week, sloth: 5/week)
+    const weeklyLimit = sloth.type === 'free_sloth' ? 3 : 5;
     const weekTrainings = await getOne(
       "SELECT COUNT(*) as count FROM trainings WHERE sloth_id = $1 AND started_at >= date_trunc('week', CURRENT_TIMESTAMP)",
       [parsedSlothId]
@@ -454,24 +465,24 @@ router.post("/train", async (req: Request, res: Response) => {
       return;
     }
 
-    // Check balance (10 ZZZ cost)
+    // Check balance (5 ZZZ cost)
     const balance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
-    if ((balance?.balance || 0) < 10) {
-      res.status(400).json({ error: "Need 10 ZZZ for training" });
+    if ((balance?.balance || 0) < 5) {
+      res.status(400).json({ error: "Need 5 ZZZ for training" });
       return;
     }
 
-    // Deduct cost and start training (6 hours)
+    // Deduct cost and start training (2 hours)
     await query(
-      "UPDATE coin_balances SET balance = balance - 10, updated_at = NOW() WHERE wallet = $1",
+      "UPDATE coin_balances SET balance = balance - 5, updated_at = NOW() WHERE wallet = $1",
       [wallet]
     );
     await query(
-      "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'training_cost', -10, $2)",
+      "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'training_cost', -5, $2)",
       [wallet, `Training ${stat.toUpperCase()} for sloth #${parsedSlothId}`]
     );
 
-    const completedAt = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
+    const completedAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
     await query(
       "INSERT INTO trainings (sloth_id, wallet, stat, completed_at) VALUES ($1, $2, $3, $4)",
       [parsedSlothId, wallet, stat, completedAt]
@@ -520,7 +531,7 @@ router.post("/claim-training", async (req: Request, res: Response) => {
 
     const stat = training.stat;
     const cap = getStatCap(sloth.type, sloth.rarity, sloth.tier || 0, sloth.evolution_path, stat);
-    const gain = Math.min(0.3, Math.max(0, cap - (sloth[stat] || 0)));
+    const gain = Math.min(0.5, Math.max(0, cap - (sloth[stat] || 0)));
 
     if (gain > 0) {
       assertValidStat(stat);

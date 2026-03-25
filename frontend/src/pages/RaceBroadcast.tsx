@@ -1247,27 +1247,30 @@ export default function RaceBroadcast() {
                     onClick={async () => {
                       if (!address || !playerSlothId) { navigate('/race'); return }
                       try {
-                        const fmt = location.state?.format || 'standard'
+                        const fmt = location.state?.format || 'exhibition'
                         const data = await api.createRace(address, playerSlothId, fmt)
-                        navigate(`/race/${data.raceId}`, { state: { format: fmt, slothId: playerSlothId } })
+                        await api.joinRace(data.raceId, playerSlothId, address)
+                        await api.startBidding(data.raceId)
+                        const raceResult = await api.simulateRace(data.raceId)
+                        navigate(`/race/${data.raceId}`, { state: { raceResult, format: fmt, slothId: playerSlothId, demo: true } })
                         window.location.reload()
-                      } catch (err) { console.error('Rematch failed:', err); navigate('/race') }
+                      } catch (err) { console.error('Race Again failed:', err); navigate('/race') }
                     }}
-                    className="px-8 py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors cursor-pointer"
+                    className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-sloth-dark font-black rounded-xl text-lg hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30"
                   >
-                    Rematch!
+                    Race Again
+                  </button>
+                  <button
+                    onClick={() => navigate('/quests')}
+                    className="px-6 py-2.5 border border-sloth-purple text-sloth-purple rounded-xl hover:bg-sloth-purple/10 transition-colors cursor-pointer"
+                  >
+                    View Quests
                   </button>
                   <button
                     onClick={() => navigate('/treehouse')}
                     className="px-6 py-2.5 border border-sloth-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     Back to Treehouse
-                  </button>
-                  <button
-                    onClick={() => navigate('/shop')}
-                    className="px-6 py-2.5 border border-sloth-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    Buy ZZZ Coins
                   </button>
                   <button
                     onClick={() => navigate(`/replay/${id}`)}
