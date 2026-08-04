@@ -1,0 +1,30 @@
+[SUBJECT]
+a cheerful classic wind-up toy robot character, chunky rounded proportions,
+a square blocky head, a rectangular boxy torso,
+two thick rectangular block-shaped arms each ending in a small round hand,
+two thick rectangular block-shaped legs each ending in a small round foot,
+a large circular wind-up key mounted flat on its back,
+big round friendly cartoon eyes with a warm smile
+
+[STYLE]
+flat 2D vector illustration, mobile game character art, Stumble Guys and
+Fall Guys cartoon style, cel-shaded toon rendering, thick uniform black
+outline stroke around every shape, solid flat matte color fills only,
+simple soft rounded highlight shapes, bright cheerful saturated colors,
+Saturday-morning-cartoon simplicity, clean vector shapes, digital
+illustration, flat color blocking with a single soft highlight per shape
+
+[MATERIAL]
+pristine mirror-polished chrome surface, smooth unblemished factory-fresh
+finish, brand new collectible toy straight off the shelf, bright clean
+reflective silver-white highlight bands
+
+[LIGHT]
+single soft cartoon highlight upper-left on each body part, flat ambient
+toon lighting
+
+[CAMERA]
+three-quarter front view, full body, centered, no crop
+
+[BACKGROUND]
+flat solid warm cream color #FFFDF7, empty, no environment

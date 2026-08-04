@@ -1,17 +1,64 @@
-# SLOTH RUSH — Proje Bağlamı ve Geliştirme Rehberi
+# WIND-UP RUSH — Proje Bağlamı ve Geliştirme Rehberi
 
 Bu dosya Claude Code için yazılmıştır. Her oturumda önce bunu oku.
 Bu proje uzun bir tasarım sürecinden geçti — buradaki kararlar rastgele değil, gerekçelidir.
+
+> **Sürüm notu:** Bu oyun iki kez yeniden markalandı. Sloth Rush (tembel hayvan) → Scrap Rush (mekanik hurda) → **WIND-UP RUSH** (kurmalı oyuncak). Üçüncüsü kilitlidir. Eski temalara ait hiçbir isim, terim veya mekanik geçerli değildir. Kodda `sloth`, `zzz`, `sealed bid`, `pot` gibi bir kalıntı görürsen o bir bug'dır, temizlenmesi gerekir.
 
 ---
 
 ## Proje Özeti
 
-**Sloth Rush** — Base L2 blockchain üzerinde çalışan tembel hayvan yarış oyunu.
+**Wind-Up Rush** — Base L2 blockchain üzerinde çalışan kurmalı oyuncak yarış oyunu.
 - Hedef: Base Batches Season 3 başvurusu ve demo
 - Geliştirici profili: Developer değil, AI toollarına (Replit, Lovable, ChatGPT) aşina biri. Vibecoding yaklaşımı.
-- Süre: ~13 gün prototip için
-- Slogan: "Wake up. Race hard. Nap later."
+- Slogan: **"Wind up. Race hard. Rewind later."**
+- Domain: `winduprush.xyz` (henüz alınmadı)
+- Kuzey yıldızı: *Anahtarla kurulan, sevgiyle boyanmış klasik oyuncaklar — bir vitrin rafının üstünde son sürat yarışıyor.*
+
+Duygusal yay isminde: **temel kurmalı → vitrin kalite.** Oyuncu kutusu bile açılmamış basit bir oyuncakla başlar, koleksiyoncuların "Mint" dediği pırıl pırıl bir vitrin parçasına dönüştürür.
+
+---
+
+## 0. Mimari Kural: Tema Koddan Ayrıdır
+
+**Bu kural diğer her şeyden önce gelir.** Bu projenin üçüncü temasındayız; ilk iki geçiş 60+ adımlık find-replace operasyonlarına dönüştü çünkü tema kodun her katmanına gömülüydü. Dördüncüsü olmayacak.
+
+### Kural: kodda fonksiyonel isim, config'de tema ismi
+
+Kod, mekaniğin **ne yaptığını** anlatan isimler kullanır. Temanın ne olduğunu bilmez.
+
+| Katman | Yasak (temaya bağlı) | Zorunlu (tema-nötr) |
+|---|---|---|
+| DB tablosu | `sloths` | `racers` |
+| DB kolonu | `sloth_id` | `racer_id` |
+| Type değeri | `'free_sloth'` / `'sloth'` | `'free'` / `'pro'` |
+| API route | `/api/sloth` | `/api/racer` |
+| TS interface | `SlothStats` | `RacerStats` |
+| CSS değişken | `--color-sloth-green` | `--color-brand-primary` |
+| Kontrat | `FreeSloth.sol` | `FreeRacer.sol` |
+| Kontrat | `Sloth.sol` | `Racer.sol` |
+| Kontrat | `SlothRush.sol` | `RaceCore.sol` |
+| Arketip | `caffeine_junkie` | `speedster` / `tank` / `trickster` / `burst` |
+| Evrim yolu | `caffeine` / `hibernate` | `speed` / `endurance` / `luck` |
+| Passive | `caffeine_rush` | `late_surge` |
+| Event | `yawn_wave` / `pillow_fight` | `mass_slow` / `collision` |
+| Taktik | `pillow` | `projectile` |
+
+Rarity **kodları** da tema-nötr kalır: `common` · `uncommon` · `rare` · `epic` · `legendary`. Görünen etiketler `theme.ts`'ten gelir.
+
+### theme.ts — tek tema kaynağı
+
+Görünen her metin `frontend/src/config/theme.ts` üzerinden okunur (backend aynı dosyayı paylaşır). Marka adı, para birimi, konum isimleri, arketip etiketleri, rarity etiketleri, passive/event/item isimleri, shop paketleri — hepsi orada.
+
+**Kazanç:** Dördüncü tema değişimi = bu dosyayı düzenlemek + sanat klasörünü değiştirmek. Kod hiç açılmaz.
+
+### Doğrulama grep'i (CI'da lint kuralı olmalı)
+
+- Tema: kodda hiç `sloth` / `zzz` / `scrap` kalmamalı — sadece `theme.ts` içinde
+- Bahis dili: `bid` · `bet` · `pot` · `wager` · `stake` · `odds` · `raise` · `payout` · `predict` · `whale` **hiçbiri** kalmamalı
+
+Tek bir `bid` kelimesi tüm çabayı boşa çıkarır.
 
 ---
 
@@ -19,133 +66,218 @@ Bu proje uzun bir tasarım sürecinden geçti — buradaki kararlar rastgele de�
 
 Aşağıdaki kararlar uzun tartışmalar sonucu alındı. Alternatif önermeden önce bu listeyi kontrol et.
 
+### Marka ve İsimlendirme
+
+| Konu | Karar |
+|---|---|
+| İsim | **WIND-UP RUSH** |
+| Para birimi | **SPRING** (eski: ZZZ Coin — rakamlar birebir aynı, sadece isim değişti) |
+| Free tier | **Wind-Up** — kutu yok, temel boya, tek renk |
+| Pro tier | **Showcase** — kutulu, boyalı, tam donanımlı vitrin kalite |
+| Ana sayfa | **Toybox** (eski: Ahır / Treehouse) |
+| Pist | **Diorama Speedway** (eski: Grand Kabuk) |
+| Rarity | **Fair → Good → Excellent → Near Mint → Mint** |
+
+Rarity dili gerçek oyuncak koleksiyonculuğu terminolojisidir — uydurma fantezi kelimeleri değil. Bu bilinçli bir karar.
+
 ### NFT Modeli
-- **Free Sloth**: Gasless mint (Base Paymaster), wallet başına 1 adet, sybil korumalı
-- **Sloth**: Free Sloth yakılır (burn) + $3 USDC → yeni Sloth mint edilir
-- Arz sınırı YOK — her upgrade bir Sloth üretir
+- **Wind-Up**: Gasless mint (Base Paymaster), wallet başına 1 adet, sybil korumalı
+- **Showcase**: Wind-Up yakılır (burn) + $3 USDC → yeni Showcase mint edilir
+- Arz sınırı YOK — her upgrade bir Showcase üretir
 - Rarity upgrade anında Chainlink VRF ile belirlenir (oyuncu bilemez)
 - Üreme sistemi YOK — bu karar kesin, önerme
 - 10k koleksiyon sınırı YOK — bu da kesin
 
 ### Ekonomi Modeli
-- **ZZZ Coin**: Oyun içi, offchain (server DB). Blockchain token DEĞİL — V1'de
+- **SPRING**: Oyun içi, offchain (server DB). Blockchain token DEĞİL — V1'de
 - **USDC**: Sadece iki noktada kullanılır: upgrade ($3) ve shop coin satın alımı
 - Token lansmanı Faz 4'e ertelendi — erken token çıkarmıyoruz
-- Token adı ileride "ZZZ Token" olacak
 
 ### Mimari — Hibrit Model (Kesin Karar)
 ```
 ONCHAIN (Base L2):
-- Free Sloth mint
-- Sloth mint + burn
+- Wind-Up mint
+- Showcase mint + burn
 - Rarity belirleme (VRF)
-- Yarış seed üretimi (VRF)  
+- Yarış seed üretimi (VRF)
 - Yarış sonuç hash'i
 - Kazanan adresi kaydı
 - USDC transfer (upgrade + shop)
 
 OFFCHAIN (Server):
-- ZZZ Coin bakiyeleri
-- Pot dağıtımı hesabı
+- SPRING bakiyeleri
+- Prize pool dağıtımı hesabı
 - Günlük görev takibi
 - Aksesuar drop mantığı
 ```
 
 ### Yarış Mekaniği
-- 4 Sloth per yarış (bot doldurur, ama botlar ödül kazanamaz)
-- **Sealed Bid**: 10 saniye gizli raise → aynı anda açılır → en yüksek = Pole Position
-- Pot yapısı: Platform %15 keser, kalan %85 dağıtılır (1.:%50, 2.:%30, 3.:%15, 4.:%5)
-- Raise limitleri: Standard'da max 100 ZZZ, Grand Prix'de max 300 ZZZ
+
+- 4 yarışçı per yarış (bot doldurur, ama botlar ödül kazanamaz)
+- **Pist formatı: dikey ekranda üst üste 4 yatay şerit** — foto-finiş görünümü. Hem mobil ergonomi hem tema-otantiklik (bir model tren dioraması gibi). Yarışçılar soldan sağa ilerler.
+- **Wind-Up Fazı** (yarış öncesi): Tamamen **beceri bazlı**, para harcanmaz. Basılı tut → yay gerilir, bırak → kilitlenirsin. Çok kurmak daha iyi grid verir ama stamina'yı hızlandırır; fazla kurmak yayı koparır. Eşik STA'dan türer. Dördü aynı anda ve gizli kurar, sonra Grid Reveal. **Tam mekanik: [docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md)**
+- Prize pool: Platform %15 keser, kalan %85 dağıtılır (1.:%50, 2.:%30, 3.:%15, 4.:%5)
+
+> **Wind-Up Fazı, Tune-Up / Sealed Bid mekaniğinin yerine geçmiştir.** Eski mekanik 10 saniyelik gizli para harcamasıydı ve grid pozisyonunu para belirliyordu. Artık grid'i beceri belirliyor. `docs/REBRAND_AND_VISUAL_PLAN.md` §3.3 hâlâ Tune-Up'ı anlatıyor — **o bölüm eskidir, bu karar onu geçersiz kılar.**
 
 ### Taktik Mod (V1 MVP — Sadeleştirilmiş)
-- Sadece 2 aksiyon: **Boost** (100 ZZZ) + **Shell At** (250 ZZZ)
+- Sadece 2 aksiyon: **Turbo Wind** (100 SPRING) + **Marble Toss** (250 SPRING)
 - **Sabit fiyat** — GDA (Gradual Dutch Auction) V2'ye ertelendi
-- Kalkan ve Şans Tobu V2'de eklenir
+- Wind Guard (kalkan) ve şans item'ı V2'de eklenir
+
+### İzleyici — Salt İzleme
+- İzleyici sadece izler, **hiçbir etkileşimi yoktur**
+- Tahmin/bahis sistemi tamamen kaldırıldı (V1'e yanlışlıkla girmişti, kilitli karara geri dönüldü)
+- İzleme deneyimi bir **yayın** deneyimidir: canlı görüntü, canlı sıralama, yorum akışı, olay kaydı, yarış sonu klip paylaşımı
+
+### Dil — Sıfır Bahis Terimi
+Ücretli yarış vardır, bahis çağrışımı yoktur. `payout`→**reward**, `pot`→**prizePool**, `bid`→*(mekanik kaldırıldı)*, `whale`→**container**. Bu bir pazarlama tercihi değil, uygulama mağazası ve düzenleyici riski kararıdır.
 
 ### Rarity (İstatistik etkisi YOK — sadece görsel)
-- Common %55 / Uncommon %25 / Rare %12 / Epic %6.5 / Legendary %1.5
+- Fair %55 / Good %25 / Excellent %12 / Near Mint %6.5 / Mint %1.5
 - Rarity istatistik farkı yaratmaz, sadece görsel ve broadcast ayrıcalığı
 
 ---
 
-## V1 Ekonomi Tablosu (Netleştirilmiş)
+## Arketipler
+
+Dört arketip, dört farklı **birincil geometrik okuma**. Silüet testi geçilmesi zorunlu bir kapıdır: dördü 48×48 piksel düz siyah dolgu olarak yan yana konur, ayırt edilemiyorsa tasarım reddedilir.
+
+| Arketip | Kod | Rol | Siluet | Aksan rengi |
+|---|---|---|---|---|
+| **Jetster** | `speedster` | Hız | Sivri roket/damla, üç kanatçık | `#E63946` |
+| **Tinbot** | `tank` | Tank | Kutu/dikdörtgen, kare kafa | `#2A6FDB` |
+| **Waddler** | `trickster` | Kurnaz | Yuvarlak + geniş düz gaga | `#FFC93C` |
+| **Chomper** | `burst` | Patlama | Dikenli sırt, testere-dişli üst hat | `#4CAF6D` |
+
+Bot isimleri: Jetster-01 · Tinbot-02 · Waddler-03 · Chomper-04 · Tinbot-05 · Waddler-06 · Jetster-07 · Chomper-08
+
+Botlar görsel olarak da ayrışır: **desatüre gövde + "BOT" etiketi + aksan rengi yok.**
+
+---
+
+## İstatistikler ve İlerleme
+
+6 stat: **SPD** (Hız), **ACC** (İvme), **STA** (Dayanıklılık), **AGI** (Çeviklik), **REF** (Refleks), **LCK** (Şans)
+
+### Evrim — form değişimi (rarity'den bağımsız eksen)
+
+| Kademe | Toplam stat | Form |
+|---|---|---|
+| **T0** | 0-199 | Çıplak gövde, kesik hatlı panel, açıkta dişli, küçük anahtar. Kutu açılmamış. |
+| **T1** | 200-349 | Paneller kapandı, boyalı, tamamlanmış. Anahtar çalışıyor. |
+| **T2** | 350-499 | Ek plaka/kol parçaları, anahtar büyüdü, detaylar belirdi. |
+| **T3** | 500+ | Siluet dönüştü, belirgin daha büyük, hafif aura, dönen anahtarın hareket izi. |
+
+T0 → T3 arası siluet alanı yaklaşık **%60 büyür.** Bir T3 Tinbot hâlâ ilk bakışta Tinbot okunmalı.
+
+> **Evrim = ne kadar büyüdün. Rarity = ne kadar bakımlısın.** İkisi ayrı eksendir, oyuncu karıştırmamalı.
+
+### Training
+- Haftada 2 kez / yarışçı
+- 4 saat %60 başarı / 12 saat %80 / 24 saat %95
+- Başarılı → +1 hedef istatistik (onchain metadata güncellenir)
+- Training süresinde yarışçı yarışa giremez
+
+---
+
+## V1 Ekonomi Tablosu
+
+**Rakamlar rebrand'de değişmedi** — ZZZ değerleri birebir SPRING'e çevrildi. Sprint 8'de yapılan denge düzeltmeleri (bot prize pool katkısı, teselli ödülü, ödül patlaması) korunur.
 
 ```
 Yarış Giriş Ücretleri:
 - Exhibition:    Ücretsiz
-- Standard Race: 50 ZZZ Coin  (max raise: 100)
-- Grand Prix:    150 ZZZ Coin (max raise: 300)
-- Taktik Meydan: 75 ZZZ Coin  (max raise: 150)
+- Standard Race: 50 SPRING
+- Grand Prix:    150 SPRING
+- Taktik Meydan: 75 SPRING
 
-Günlük Ücretsiz Yarış: 1 Standard Race / wallet (Sloth sayısından bağımsız)
+Günlük Ücretsiz Yarış: 1 Standard Race / wallet (yarışçı sayısından bağımsız)
 
 Upgrade Paketi:
 - Upgrade ücreti: $3 USDC (onchain)
-- Başlangıç coin: 500 ZZZ Coin
+- Başlangıç bakiyesi: 500 SPRING
 - → ~10 Standard Race yapabilir
 
-Shop Coin Paketleri:
-- Starter: $1.00  → 120 ZZZ Coin
-- Popular: $5.00  → 650 ZZZ Coin (+%8 bonus)
-- Pro:    $10.00  → 1.400 ZZZ Coin (+%17 bonus)
-- Whale:  $25.00  → 4.000 ZZZ Coin (+%25 bonus)
+Shop Paketleri:
+- Starter Pack:      $1.00  → 120 SPRING
+- Gift Box:          $5.00  → 650 SPRING (+%8 bonus)
+- Toy Chest:         $10.00 → 1.400 SPRING (+%17 bonus)
+- Collector's Crate: $25.00 → 4.000 SPRING (+%25 bonus)
 
-Güçlendiriciler (ZZZ Coin):
-- Enerji Jeli (+8 SPD):      30 ZZZ
-- Turbo Sümük (+12 ACC):     25 ZZZ
-- Kaya Kılığı (+8 STA):      35 ZZZ
-- Şans Tozu (+8 LCK):        40 ZZZ
-- Refleks Serumu (+8 REF):   35 ZZZ
-- Tam Paket (+4 hepsi):      90 ZZZ
-- Kalkan (1 shell engel):    50 ZZZ
+Güçlendiriciler (SPRING):
+- Oil Can (+8 SPD):            30
+- Extra Spring (+12 ACC):      25
+- Rubber Coating (+8 STA):     35
+- Lucky Marble Bag (+8 LCK):   40
+- Fine-Tuned Gears (+8 REF):   35
+- Full Rewind (+4 hepsi):      90
+- Tin Shield (1 projectile):   50
+
+Aksesuarlar:
+- Rubber Tires     → +SPD
+- Tin Padding      → +STA
+- Lucky Marble     → +LCK
+- Ball-Joint Kit   → +AGI
+- Glass Eyes       → +REF
+- Overwound Spring → Max SPD, düşük STA
 
 Aksesuar Kutuları:
-- Standart Kutu: 200 ZZZ
-- Nadir Kutu:    600 ZZZ
-- Efsane Kutu:   1.500 ZZZ
+- Standart Kutu: 200 SPRING
+- Nadir Kutu:    600 SPRING
+- Efsane Kutu:   1.500 SPRING
 ```
 
----
+### ⚠ Açık ekonomi kalemi
 
-## Sloth İstatistikleri
+İki SPRING kalemi kapandı ve **günlük gelir modeli yeniden hesaplanmadı:**
 
-6 stat: SPD (Hız), ACC (İvme), STA (Dayanıklılık), AGI (Çeviklik), REF (Refleks), LCK (Şans)
+1. **Tahmin ödülleri kaldırıldı** (tahmin başına 15 SPRING × sınırsız yarış). Bu aynı zamanda gerçek bir farming exploit'ini kapattı — ama bir gelir kalemiydi.
+2. **Wind-Up Fazı beceri bazlı oldu.** Eski Tune-Up bir SPRING gideriydi *ve* prize pool'u besliyordu. Artık prize pool'u sadece giriş ücretleri besliyor.
 
-Görsel evrim eşikleri (toplam stat puanına göre):
-- 0-199: Başlangıç
-- 200-349: Eşik 1 (kabukta çatlaklar)
-- 350-499: Eşik 2 (parlayan kabuk)
-- 500+: Eşik 3 / Max evrim (aura, tam dönüşüm)
-
-Training:
-- Haftada 2 kez / Sloth
-- 4 saat %60 başarı / 12 saat %80 / 24 saat %95
-- Başarılı → +1 hedef istatistik (onchain metadata güncellenir)
-- Training süresinde Sloth yarışa giremez
+Denge yeniden hesabı Sprint 9'un "Numbers policy" kalemine ait. **Bu tablodaki rakamlar o hesap yapılana kadar geçicidir.**
 
 ---
 
-## Demo Day Öncelik Sırası
+## Sanat Yönü
 
-### ŞART (bunlar olmadan demo olmaz):
-1. Free Sloth gasless mint
-2. Sloth upgrade ($3 USDC mock + burn + mint)
-3. Rarity reveal animasyonu (VRF veya mock)
-4. Ahır sayfası (Sloth görüntüleme)
-5. Standard Race yarış akışı (tek pist: Grand Kabuk)
-6. Sealed bid UI (10 sn geri sayım + reveal animasyonu)
-7. Pol pozisyonu belirleme ve grid gösterimi
-8. Broadcast görünüm (yarış animasyonu)
-9. ZZZ Coin bakiye sistemi
-10. Pot dağıtımı (kazananlar coin alır)
+Tam doküman: [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md). Özet:
 
-### BONUS (varsa güçlü, yoksa sorun değil):
-- Taktik Mod (Boost + Shell)
-- Training sistemi
-- Güçlendirici satın alma
-- Aksesuar sistemi
-- Mini oyunlar (Sloth Sprint, Shell Dodge)
-- Günlük görevler
+### Üretim hattı kararı: 2D asıl, 3D pazarlama
+
+Oyun içi 16 form **2D üretilir** ve Rive'ın 8 katmanlı şemasına kesilir. Rarity ayrı sanat değil, Rive'da malzeme katmanı. **3D sadece pazarlama ve mint/rarity reveal görselleri için** — PBR kromun gerçekten sattığı yer orası.
+
+Bu, 3D denendikten sonra alınmış bir karar, peşin hüküm değil:
+
+| Bulgu | Sonuç |
+|---|---|
+| Meshy auto-rig iki kez `Pose estimation failed` verdi | Tıknaz oyuncak oranları (dev kafa, boyun yok, güdük uzuvlar) insansı poz tahmincisinin dışında |
+| Kilitli animasyon kararı zaten Rive (2D katman) | Rig'e ihtiyaç yoktu — 3D'nin çözdüğü sorun bizde yoktu |
+| 3D'ye geçişte yüz ifadesi bozuluyor (güleç → asık) | Karakterin kişiliği transferde kayboluyor |
+| Yarış görünümü 48-64px | PBR yansımanın okunacağı ölçek değil |
+
+**Üretim modeli: `nano-banana-pro`** (Meshy'nin text-to-image API'si üzerinden, 9 kredi/görsel). `fal.ai` / `flux-pro v1.1` **emekli** — gerçek negative prompt desteği yok, "anten yok" gibi kısıtlara uymuyor, 5 tur denendi. nano-banana-pro aynı kısıtları tek seferde tutturdu. Taslak turlarında `nano-banana` (3 kredi) yeterli.
+
+
+
+- **Render tekniği: kalın koyu outline (`#241A38`) + parlak doygun toon.** Stumble Guys / Turbo FAST / Fall Guys ekolü. Üç teknik denendi, işe yarayan bu.
+- **Malzeme: gerçek PBR.** Toon form korunur, ama yüzey gerçek metal/roughness taşır — rarity'nin ikna ediciliği buna bağlı. Krom, yansıyacak bir ortam olmadan krom gibi görünmez: **yarış sahnesinde environment map / IBL zorunludur.**
+- **Ton: vitrin parlaklığı, kırık oyuncak değil.** Yıpranma yok, sadece durum farkı var. En düşük rarity bile "kırık" değil, "vitrin kalite değil."
+- **Çevre paleti sıcak ve açık:** `wall #C9DFF5` · `floor #E8C99B` · `shelf #9AA6B2` · `ink #241A38` · `paper #FFFDF7` · `dust #7A7488`
+- **Renk bütçesi:** Bir karede en fazla iki aksan rengi baskın olabilir. Çevre nötr kalır, aksanlar sadece yarışçılarda yaşar.
+- **Rarity = yüzey değişimi:** Fair (donuk tin, çizik) → Good (düz mat boya) → Excellent (parlak cila) → Near Mint (krom kaplama) → Mint (altın varak). Ayrı sanat değil, malzeme katmanı — 16 asset + 5 katman.
+
+### Kurma anahtarı = oyun mekaniği, dekor değil
+
+Her yarışçının **kurma anahtarı** okunabilir bir göstergedir:
+- Dolu stamina → anahtar hızlı dönüyor
+- Stamina düştükçe → yavaşlıyor, dönüş izi kısalıyor
+- Tükendiğinde → duruyor
+- T3 evrimde → sürekli hızlı, hareket izi görünür
+
+**Yerleşim:** Anahtar, yarış kamerasının gördüğü tarafta olmalı — pist soldan sağa aktığı için bu sabit ve bilinen bir taraftır. Gerçek kurmalı oyuncaklarda anahtar neredeyse her zaman gövdenin yanındadır (yay namlusu yatay geçer); kelebek/çift kanat formu da oradan gelir. Kamera tarafına bakan bir kelebek anahtar dönerken ekran düzleminde pervane gibi okunur.
+
+**Üretim kısıtı:** Anahtar **ayrı bir mesh/katman** olmalı, gövdeye kaynatılmış değil — dönüşü koddan sürülüyor. Otomatik rig araçları insansı iskelet üretir ve anahtar için kemik vermez. ART_DIRECTION §12'deki 8 katmanlı şemada `key` zaten 1. katman.
 
 ---
 
@@ -154,7 +286,7 @@ Training:
 ```
 Frontend:   React + TypeScript
 Styling:    Tailwind CSS
-Animasyon:  PixiJS (yarış) + Framer Motion (UI)
+Animasyon:  Rive (oyun içi) + Framer Motion (UI) + fal.ai video (sadece pazarlama)
 Cüzdan:     Wagmi + RainbowKit
 Onboarding: Privy (e-posta ile kayıt)
 Network:    Base Sepolia (testnet) → Base Mainnet
@@ -162,37 +294,45 @@ NFT:        ERC-721 + OpenZeppelin
 Randomness: Chainlink VRF v2.5
 USDC:       Base'deki native USDC kontrat
 Gasless:    Base Paymaster (ERC-4337)
-DB:         PostgreSQL (ZZZ Coin bakiyeleri)
+DB:         PostgreSQL (SPRING bakiyeleri)
 Backend:    Node.js + Express
 Deploy:     Hardhat (kontratlar)
+Sanat:      Meshy (3D) + fal.ai (2D) — scripts/meshy.ts, scripts/generate.ts
 ```
+
+**Rive neden:** Lottie 17fps'de kalırken Rive ~60fps; 100kb'lık Lottie ~10kb; ve asıl sebep **state machine** — animasyon oyun durumuna tepki verir, sadece döngü oynatmaz. `speed` input'u animasyon hızını sürekli sürer. Maliyet: web runtime ~200KB gzipped (WASM), yarış sayfasında lazy load edilir.
+
+**Sanat script'leri para/kredi harcar.** İkisi de `--budget` bayrağını zorunlu tutar, varsayılanı yoktur ve `--dry-run` her zaman ücretsizdir. Anahtarlar `scripts/.env` içindedir (gitignored, chmod 600) — başka hiçbir yerde tutulmaz.
 
 ---
 
 ## Klasör Yapısı (Hedef)
 
 ```
-sloth-rush/
-├── contracts/           # Solidity kontratları
-│   ├── FreeSloth.sol     # Free Sloth ERC-721
-│   ├── Sloth.sol        # Sloth ERC-721 (dinamik metadata)
-│   └── SlothRush.sol     # Ana oyun kontratı (hash kayıt, kazanan)
-├── frontend/            # React uygulaması
+wind-up-rush/
+├── contracts/
+│   ├── FreeRacer.sol    # Wind-Up ERC-721
+│   ├── Racer.sol        # Showcase ERC-721 (dinamik metadata)
+│   └── RaceCore.sol     # Ana oyun kontratı (hash kayıt, kazanan)
+├── frontend/
 │   ├── src/
+│   │   ├── config/theme.ts   # TEK tema kaynağı
 │   │   ├── components/
-│   │   │   ├── Race/    # Yarış animasyonu (PixiJS)
-│   │   │   ├── SealedBid/  # 10sn geri sayım + reveal
-│   │   │   ├── Treehouse/  # Ahır sayfası
-│   │   │   └── Shop/    # Coin + aksesuar
-│   │   ├── hooks/       # Wagmi hooks
+│   │   │   ├── Race/         # Yarış animasyonu (Rive)
+│   │   │   ├── WindUp/       # Yarış öncesi beceri fazı
+│   │   │   ├── Toybox/       # Ana sayfa / koleksiyon
+│   │   │   └── Shop/
+│   │   ├── hooks/
 │   │   └── pages/
-├── backend/             # Node.js API
+├── backend/
 │   ├── routes/
-│   │   ├── coin.ts      # ZZZ Coin bakiye
-│   │   ├── race.ts      # Yarış mantığı
-│   │   └── shop.ts      # Satın alma
+│   │   ├── currency.ts  # SPRING bakiye
+│   │   ├── race.ts
+│   │   └── shop.ts
 │   └── simulation/      # Yarış simülasyon motoru (açık kaynak)
-└── CLAUDE.md            # Bu dosya
+├── scripts/             # Sanat üretim araçları (bütçe zorunlu)
+├── docs/
+└── CLAUDE.md
 ```
 
 ---
@@ -203,9 +343,33 @@ sloth-rush/
 2. Yarış sonucu manipüle edilemez → VRF seed + deterministik kod + onchain hash
 3. Kim kazandı şeffaf → kazanan adresi Base'e yazılır
 4. NFT güvenli → ERC-721 standardı
-5. Coin bakiyesi → platforma güven (V4'te tam onchain token ile çözülür)
+5. SPRING bakiyesi → platforma güven (V4'te tam onchain token ile çözülür)
 
 Simülasyon kodu açık kaynak olacak → anyone-can-verify
+
+---
+
+## Demo Day Öncelik Sırası
+
+### ŞART:
+1. Wind-Up gasless mint
+2. Showcase upgrade ($3 USDC mock + burn + mint)
+3. Rarity reveal animasyonu (VRF veya mock)
+4. Toybox sayfası (koleksiyon görüntüleme)
+5. Standard Race yarış akışı (tek pist: Diorama Speedway)
+6. Wind-Up fazı UI (beceri bazlı grid belirleme)
+7. Grid gösterimi
+8. Broadcast görünüm (4 yatay şerit, yarış animasyonu)
+9. SPRING bakiye sistemi
+10. Prize pool dağıtımı
+
+### BONUS:
+- Taktik Mod (Turbo Wind + Marble Toss)
+- Training sistemi
+- Güçlendirici satın alma
+- Aksesuar sistemi
+- Mini oyunlar
+- Günlük görevler
 
 ---
 
@@ -213,18 +377,32 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 
 - **Kart/paket sistemi YOK** — ertelendi, tartışmaya açma
 - **Üreme sistemi YOK** — tamamen çıkarıldı
-- **Seyirci bahsi V2'de** — V1'de yok
+- **Seyirci bahsi/tahmini YOK** — V1'de de V2'de de yok, kaldırıldı
 - **Lonca sistemi V2'de** — V1'de yok
 - **GDA fiyat motoru V2'de** — V1 sabit fiyat
-- Bot Sloth'ler UI'da "BOT" etiketiyle gösterilir, ödül kazanamaz
-- Daily free race wallet başına 1 — Sloth sayısından bağımsız
-- Sybil koruması: 1 Free Sloth per wallet + rate limit
+- **Double-or-Nothing rövanş iptal** — yerine sade "Rematch" (aynı ücret, çarpan yok)
+- Botlar UI'da "BOT" etiketiyle gösterilir, ödül kazanamaz
+- Daily free race wallet başına 1 — yarışçı sayısından bağımsız
+- Sybil koruması: 1 Wind-Up per wallet + rate limit
 
 ---
 
 ## Şu An Neredeyiz
 
-GDD v3.1 tamamlandı. Prototip geliştirmeye başlıyoruz.
-İlk hedef: testnet'te çalışan sealed bid + yarış akışı.
+Tema kilitli, dokümantasyon güncel. **Kod henüz pivota uğramadı** — Faz 1 (tema decoupling + bahis dili temizliği) planlandı ama uygulanmadı. Kodda hâlâ eski tema yüzeyi duruyor: **64 dosyada 2387 eşleşme.**
 
-Sıradaki adım: Proje klasörünü kur, dependencies yükle, Free Sloth kontratını yaz.
+### Sıradaki iş kalemleri
+
+1. **Faz 1 — tema decoupling** (3-4 gün): tahmin sistemini kaldır, DB migration (`sloths`→`racers`, `bid_amount` kaldır, `payout`→`reward`), route/tip/CSS yeniden isimlendirme, `theme.ts` oluştur, kontratları yeniden isimlendir ve redeploy, doğrulama grep'i, 92 testi uyarla
+2. **Wind-Up fazını uygula** — mekanik tasarlandı ([docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md)), sayılar denenmedi. **Faz 1'den sonra gelmeli:** `wind_tension` kolonu Faz 1 migration'ının içinde doğuyor, paralel yürütülürse aynı migration'a iki taraftan dokunulur.
+3. **Ekonomi yeniden dengeleme** (Sprint 9) — yukarıdaki açık kalem
+4. **Sanat: golden sample** — Tinbot T1 Excellent. Stil kilitlendi ([docs/art/tinbot-t1-excellent-golden-sample.png](docs/art/tinbot-t1-excellent-golden-sample.png)): kalın kontur, düz baskılı renk, litho panel, perçin, sol-üst highlight, palet, güleç yüz, yan kanatta kelebek anahtar. T-pose varyantı: [tinbot-t1-excellent-tpose-ref.png](docs/art/tinbot-t1-excellent-tpose-ref.png). **Sıradaki adım kesim:** 8 Rive katmanına ayrılıp rig edilmeli ve oyunda çalıştığı kanıtlanmalı — bu olmadan diğer 15 forma geçilmez. **Atlanamaz.**
+5. **Faz 0 artıkları** — `winduprush.xyz` al, `.mcp.json` yolları kırık (`/Users/canerpinarbasi/sloth-rush` gösteriyor, proje `_arsiv/sloth-rush` altında), projeyi `_arsiv`'den ana dizine taşı
+6. **Pitch dokümanları** — LIGHT_PAPER ve DEVFOLIO_ANSWERS "Built-in Prediction Market"i ana farklılaştırıcı olarak sunuyor, o sistem kaldırıldı. Yerine "Base App native, mobil-öncelikli mini app" konacak.
+
+### İlgili dokümanlar
+
+- [docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md) — yarış öncesi faz mekaniği, bot davranışı, hile değerlendirmesi
+- [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md) — palet, siluetler, evrim, rarity malzemeleri, Rive katman şeması, QC listesi
+- [docs/REBRAND_AND_VISUAL_PLAN.md](docs/REBRAND_AND_VISUAL_PLAN.md) — migration planı, faz planı, riskler *(§3.3 Tune-Up bölümü eskidir — Wind-Up fazı onu geçersiz kıldı)*
+- [docs/HANDOFF_MESHY_3D.md](docs/HANDOFF_MESHY_3D.md) — 3D sanat pipeline durumu

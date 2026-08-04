@@ -1,0 +1,24 @@
+[SUBJECT]
+a chunky wind-up toy robot character sticker, thick block square head,
+thick rectangular block torso, two short thick rectangular block arms,
+two short thick rectangular block legs, small round feet,
+one large round wind-up key sticking out flat from the center of its back,
+big round friendly eyes, simple curved smile
+
+[STYLE]
+flat design vector sticker, flat design app icon style, Duolingo mascot
+character style, 2D flat illustration, pure flat shapes with zero dimensional
+shading, zero specular highlight, zero drop shadow, zero gradient, solid
+flat matte color fills bordered by a thick uniform black outline stroke,
+this is a flat vector graphic NOT a 3D render NOT a photograph NOT a product
+render, simple bold cartoon shapes, bright saturated primary colors
+
+[MATERIAL]
+flat silver-white color fill representing a chrome finish, one small white
+highlight shape in the corner of each panel, no realistic metal texture
+
+[BACKGROUND]
+flat solid warm cream color, empty, no floor, no shadow, no gradient
+
+[CAMERA]
+straight-on front view, full body, centered

@@ -42,3 +42,5 @@ contracts/cache/
 
 # Misc
 *.local
+scripts/.env
+scripts/generated/

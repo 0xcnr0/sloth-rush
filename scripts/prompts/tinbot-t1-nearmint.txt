@@ -1,0 +1,28 @@
+[SUBJECT]
+a classic wind-up toy racer, chunky rounded tin body,
+boxy rectangular robot toy with stubby block arms and a square head,
+fully painted, closed panels, working key,
+a prominent wind-up key on its back
+
+[STYLE]
+Stumble Guys / Turbo FAST / Fall Guys toon rendering, thick dark clean outline,
+flat saturated primary colors, soft single highlight blob (not hard directional
+light), big expressive glossy eyes, rounded silhouette, no sharp angles,
+no photorealism, no muddy/gritty textures
+
+[MATERIAL]
+chrome-plated mirror finish (Near Mint), sharp clean reflective highlight bands
+
+[LIGHT]
+single soft key light upper-left, one glossy highlight ellipse per major body
+part, no colored shadow, no rim light
+
+[CAMERA]
+three-quarter front view, full body, centered, no crop
+
+[BACKGROUND]
+flat neutral warm cream #FFFDF7, no environment, no ground shadow
+
+[NEGATIVE]
+dark, moody, gritty, industrial, mechanical scrap, rust, dirt, gore, weapons,
+text, watermark, logo, busy background, multiple characters, photorealistic
