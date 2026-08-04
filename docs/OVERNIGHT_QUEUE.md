@@ -31,12 +31,30 @@ pahalıdır.
 
 Sıralama zorunlu — 2 numara 1 numaranın açtığı DB kolonuna bağlı.
 
-### 1. Faz 1 — tema decoupling + bahis dili temizliği
+### 1. Faz 1 — doğrulamayı tamamla
 **Spec:** [HANDOFF_PHASE1.md](HANDOFF_PHASE1.md)
-**Beklenen süre:** saatler. Gecenin ana işi bu.
 
-Bitmiş sayılma kriteri o dokümanda: iki `tsc --noEmit`, `npm run qa`, ve iki grep
-taraması. **Dördü de temiz dönmeden 2 numaraya geçme.**
+**Kod migration'ı büyük ölçüde bitmiş durumda** (commit `7e0af73`, paralel bir
+oturum yaptı). 2026-08-05'te ölçüldü:
+
+| Kapı | Durum |
+|---|---|
+| `tsc --noEmit -p frontend` | ✅ temiz |
+| `tsc --noEmit -p backend` | ✅ kendi kodumuzda 0 hata (15 hata `node_modules/ox` içinde, önceden var) |
+| Tema grep'i | ✅ temiz |
+| Bahis dili grep'i | ✅ temiz |
+| `npm run qa` | ❓ **hiç çalıştırılmadı** |
+| Kontrat deploy | ⛔ bilerek ertelendi — kullanıcı başındayken |
+| DB migration'ı gerçekten koştu mu | ❓ doğrulanmadı |
+
+Yani senin işin sıfırdan migration değil, **kalan kapıları kapatmak**:
+
+1. `npm run qa` çalıştır, kırılanları onar (7 test bloğu var, isimler değişti)
+2. `backend/src/migrations/legacyNames.ts` gerçekten koşuyor mu doğrula — **önce yedek al**
+3. Dört doğrulama komutunu yeniden koştur ve çıktılarını rapora koy
+
+Bunlar bitince 2 numaraya geç. Beklenenden erken biterse bu iyi haber, gecenin
+ana işi artık Wind-Up fazı.
 
 ### 2. Wind-Up fazı — sunucu tarafı
 **Spec:** [WIND_UP_PHASE.md](WIND_UP_PHASE.md)

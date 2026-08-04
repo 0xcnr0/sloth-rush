@@ -87,20 +87,28 @@ npx tsc --noEmit -p backend
 # 2. testler
 npm run qa
 
-# 3. tema grep'i — theme.ts DIŞINDA sıfır sonuç vermeli
-grep -rioE '\b(sloth|zzz|scrap)' --include='*.ts' --include='*.tsx' \
-  --include='*.sol' --include='*.css' frontend backend contracts simulation \
-  | grep -v 'config/theme.ts'
+# 3. tema grep'i — sıfır sonuç vermeli
+grep -rinE '\b(sloth|zzz|scrap)\b' --include='*.ts' --include='*.tsx' \
+  --include='*.sol' --include='*.css' frontend/src backend/src \
+  contracts/contracts simulation --exclude-dir=node_modules \
+  | grep -vE 'config/theme\.ts|migrations/legacyNames\.ts'
 
-# 4. bahis dili grep'i — HİÇBİR sonuç vermeli
-grep -rioE '\b(bid|bet|pot|wager|stake|odds|raise|payout|predict|whale)' \
+# 4. bahis dili grep'i — sıfır sonuç vermeli
+grep -rinE '\b(bid|bidding|bids|bet|bets|pot|pots|wager|stake|odds|raise|payout|payouts|predict|prediction|predictions|whale)\b' \
   --include='*.ts' --include='*.tsx' --include='*.sol' \
-  frontend backend contracts simulation
+  frontend/src backend/src contracts/contracts simulation \
+  --exclude-dir=node_modules | grep -v 'migrations/legacyNames\.ts'
 ```
 
 3 ve 4 boş dönmeden iş bitmemiştir. **Tek bir `bid` kelimesi tüm çabayı boşa çıkarır** — bu yüzden CI'a kalıcı lint kuralı olarak da eklenmeli.
 
-Dikkat: `raise` İngilizce'de masum bir kelime olarak da geçebilir (`raise an error`). Grep sonucunu körlemesine değiştirme, her eşleşmeye bak.
+**Grep'in üç detayı önemli, değiştirme:**
+
+- **Her iki tarafta `\b`.** Sadece `\bbet` yazarsan "between" ve "better" da eşleşir — bu haliyle 168 sahte sonuç veriyordu, gerçek sayı 3'tü. Kelime sonu sınırı olmadan bu tarama işe yaramaz.
+- **`--exclude-dir=node_modules`.** Aksi halde TypeScript'in kendi `lib.dom.d.ts`'indeki `raise` sayılıyor.
+- **`legacyNames.ts` hariç.** Eski isimleri emekliye ayıran migration, eski isimleri anmak ZORUNDA (`status = 'bidding'`, `DROP TABLE predictions`). Oradaki eşleşmeler doğru, silinmemeli.
+
+Ayrıca `raise` masum bağlamlarda da geçer (`raise an error`). Grep sonucunu körlemesine değiştirme, her eşleşmeye bak.
 
 ## Riskler
 
