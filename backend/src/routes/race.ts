@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { query, getOne, getAll, runTransaction } from "../db";
-import { simulateRace, calculatePot, SlothStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
+import { simulateRace, calculatePrizePool, RacerStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
 import { awardXP, XP_AMOUNTS } from "../xp";
 import { isValidWallet } from "../middleware/validateWallet";
 import { recordRaceResultOnchain } from "../lib/onchain";
@@ -72,15 +72,15 @@ export async function triggerQuestProgress(wallet: string, requirementType: stri
 
       // Award rewards on completion
       if (isComplete) {
-        if (quest.sloth_reward > 0) {
+        if (quest.coin_reward > 0) {
           await query(
             `INSERT INTO coin_balances (wallet, balance) VALUES ($1, $2)
              ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + $3, updated_at = NOW()`,
-            [wallet, quest.sloth_reward, quest.sloth_reward]
+            [wallet, quest.coin_reward, quest.coin_reward]
           );
           await query(
             "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'quest_reward', $2, $3)",
-            [wallet, quest.sloth_reward, `Quest: ${quest.title}`]
+            [wallet, quest.coin_reward, `Quest: ${quest.title}`]
           );
         }
         if (quest.xp_reward > 0) {
@@ -93,7 +93,7 @@ export async function triggerQuestProgress(wallet: string, requirementType: stri
 
 // Stat caps by rarity (and type)
 const STAT_CAPS: Record<string, number> = {
-  free_sloth: 15,
+  free: 15,
   common: 22,
   uncommon: 25,
   rare: 28,
@@ -109,16 +109,18 @@ const POSITION_STAT: Record<number, string> = {
   4: 'ref',
 };
 
-// Bot sloth templates with diverse stat distributions (total ~60 each)
+// Bot templates with diverse stat distributions (total ~60 each).
+// Names are archetype + slot number so nothing here is theme-bound; the
+// frontend renders the archetype's display label from the theme config.
 const BOT_TEMPLATES = [
-  { name: "Espresso Bot",    race: "caffeine_junkie",   spd: 14, acc: 8,  sta: 10, agi: 10, ref: 10, lck: 8  },
-  { name: "Pillow Guard",  race: "pillow_knight",  spd: 8,  acc: 14, sta: 12, agi: 8,  ref: 10, lck: 8  },
-  { name: "Dream Master",   race: "dream_weaver",     spd: 10, acc: 10, sta: 14, agi: 8,  ref: 10, lck: 8  },
-  { name: "Thunder Bolt",   race: "thunder_nap",  spd: 10, acc: 10, sta: 8,  agi: 14, ref: 10, lck: 8  },
-  { name: "Iron Snooze",  race: "pillow_knight",  spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 14, lck: 10 },
-  { name: "Lucky Dreamer",  race: "dream_weaver",     spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 8,  lck: 16 },
-  { name: "Balanced Napper", race: "caffeine_junkie",    spd: 12, acc: 12, sta: 10, agi: 10, ref: 8,  lck: 8  },
-  { name: "Tough Sleeper", race: "thunder_nap",  spd: 10, acc: 10, sta: 12, agi: 10, ref: 10, lck: 8  },
+  { name: "Speedster-01",  race: "speedster", spd: 14, acc: 8,  sta: 10, agi: 10, ref: 10, lck: 8  },
+  { name: "Tank-02",       race: "tank",      spd: 8,  acc: 14, sta: 12, agi: 8,  ref: 10, lck: 8  },
+  { name: "Trickster-03",  race: "trickster", spd: 10, acc: 10, sta: 14, agi: 8,  ref: 10, lck: 8  },
+  { name: "Burst-04",      race: "burst",     spd: 10, acc: 10, sta: 8,  agi: 14, ref: 10, lck: 8  },
+  { name: "Tank-05",       race: "tank",      spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 14, lck: 10 },
+  { name: "Trickster-06",  race: "trickster", spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 8,  lck: 16 },
+  { name: "Speedster-07",  race: "speedster", spd: 12, acc: 12, sta: 10, agi: 10, ref: 8,  lck: 8  },
+  { name: "Burst-08",      race: "burst",     spd: 10, acc: 10, sta: 12, agi: 10, ref: 10, lck: 8  },
 ];
 
 function generateRaceId(): string {
@@ -134,26 +136,26 @@ router.post("/create", async (req: Request, res: Response) => {
   try {
     const { format = "standard" } = req.body;
 
-    const fees: Record<string, { entry: number; maxRaise: number }> = {
-      exhibition: { entry: 0, maxRaise: 0 },
-      standard: { entry: 50, maxRaise: 100 },
-      grand_prix: { entry: 150, maxRaise: 300 },
-      tactic: { entry: 75, maxRaise: 150 },
+    const fees: Record<string, { entry: number; maxTune: number }> = {
+      exhibition: { entry: 0, maxTune: 0 },
+      standard: { entry: 50, maxTune: 100 },
+      grand_prix: { entry: 150, maxTune: 300 },
+      tactic: { entry: 75, maxTune: 150 },
     };
 
     const raceConfig = fees[format] || fees.standard;
     const raceId = generateRaceId();
 
     await query(
-      "INSERT INTO races (id, format, entry_fee, max_raise) VALUES ($1, $2, $3, $4)",
-      [raceId, format, raceConfig.entry, raceConfig.maxRaise]
+      "INSERT INTO races (id, format, entry_fee, max_tune) VALUES ($1, $2, $3, $4)",
+      [raceId, format, raceConfig.entry, raceConfig.maxTune]
     );
 
     res.status(201).json({
       raceId,
       format,
       entryFee: raceConfig.entry,
-      maxRaise: raceConfig.maxRaise,
+      maxTune: raceConfig.maxTune,
       status: "lobby",
     });
   } catch (err) {
@@ -162,13 +164,13 @@ router.post("/create", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/race/join — Join a race with a sloth
+// POST /api/race/join — Join a race with a racer
 router.post("/join", async (req: Request, res: Response) => {
   try {
-    const { raceId, slothId, wallet } = req.body;
+    const { raceId, racerId, wallet } = req.body;
 
-    if (!raceId || !slothId || !wallet) {
-      res.status(400).json({ error: "raceId, slothId, and wallet required" });
+    if (!raceId || !racerId || !wallet) {
+      res.status(400).json({ error: "raceId, racerId, and wallet required" });
       return;
     }
 
@@ -177,9 +179,9 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
-    const parsedSlothId = parseInt(slothId);
-    if (isNaN(parsedSlothId) || parsedSlothId <= 0) {
-      res.status(400).json({ error: "Invalid slothId" });
+    const parsedRacerId = parseInt(racerId);
+    if (isNaN(parsedRacerId) || parsedRacerId <= 0) {
+      res.status(400).json({ error: "Invalid racerId" });
       return;
     }
 
@@ -193,39 +195,39 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify creature ownership (sloth or free_sloth)
-    const sloth = await getOne(
-      "SELECT * FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0 AND type IN ('sloth', 'free_sloth')",
-      [parsedSlothId, wallet]
+    // Verify creature ownership (racer or free)
+    const racer = await getOne(
+      "SELECT * FROM racers WHERE id = $1 AND wallet = $2 AND is_burned = 0 AND type IN ('pro', 'free')",
+      [parsedRacerId, wallet]
     );
 
-    if (!sloth) {
+    if (!racer) {
       res.status(404).json({ error: "creature not found or not owned by wallet" });
       return;
     }
 
-    // Free sloths can only join exhibition races
-    if (sloth.type === "free_sloth" && race.format !== "exhibition") {
-      res.status(400).json({ error: "Free Sloths can only join Exhibition races. Upgrade to a Sloth for other formats!" });
+    // Free racers can only join exhibition races
+    if (racer.type === "free" && race.format !== "exhibition") {
+      res.status(400).json({ error: "Free Racers can only join Exhibition races. Upgrade to a Racer for other formats!" });
       return;
     }
 
-    // GP tier gate: free sloths blocked, Gold GP requires tier >= 2
+    // GP tier gate: free racers blocked, Gold GP requires tier >= 2
     if (race.format === "gp_qualify") {
-      if (sloth.type === "free_sloth") {
-        res.status(400).json({ error: "GP requires at least a Sloth" });
+      if (racer.type === "free") {
+        res.status(400).json({ error: "GP requires at least a Racer" });
         return;
       }
-      if (race.entry_fee > 150 && (sloth.tier || 0) < 2) {
-        res.status(400).json({ error: "Gold GP requires Elite sloth (Tier 2+)" });
+      if (race.entry_fee > 150 && (racer.tier || 0) < 2) {
+        res.status(400).json({ error: "Gold GP requires Elite racer (Tier 2+)" });
         return;
       }
     }
 
-    // Training lock: sloth in active (unclaimed) training cannot race
+    // Training lock: racer in active (unclaimed) training cannot race
     const activeTraining = await getOne(
-      "SELECT id FROM trainings WHERE sloth_id = $1 AND claimed = 0",
-      [parsedSlothId]
+      "SELECT id FROM trainings WHERE racer_id = $1 AND claimed = 0",
+      [parsedRacerId]
     );
     if (activeTraining) {
       res.status(400).json({ error: "This creature is in training and cannot race!" });
@@ -304,13 +306,13 @@ router.post("/join", async (req: Request, res: Response) => {
 
         // Add participant
         await client.query(
-          "INSERT INTO race_participants (race_id, sloth_id, wallet, is_bot) VALUES ($1, $2, $3, 0)",
-          [raceId, parsedSlothId, wallet]
+          "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot) VALUES ($1, $2, $3, 0)",
+          [raceId, parsedRacerId, wallet]
         );
       });
     } catch (err: any) {
       if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient ZZZ Coin balance" });
+        res.status(400).json({ error: "insufficient balance" });
         return;
       }
       throw err;
@@ -321,7 +323,7 @@ router.post("/join", async (req: Request, res: Response) => {
     res.json({
       joined: true,
       raceId,
-      slothId: parsedSlothId,
+      racerId: parsedRacerId,
       entryFeeCharged: effectiveFee,
       dailyFreeRace: isUsingFreeRace,
       newBalance: newBalance?.balance || 0,
@@ -332,8 +334,10 @@ router.post("/join", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/race/start-bidding — Move race to bidding phase, fill with bots
-router.post("/start-bidding", async (req: Request, res: Response) => {
+// POST /api/race/start-tuning — Close the lobby, fill with bots, move to the
+// pre-race tuning phase. The Wind-Up phase that fills `wind_tension` is a
+// separate work item; for now this is just the gate from lobby into racing.
+router.post("/start-tuning", async (req: Request, res: Response) => {
   try {
     const { raceId } = req.body;
 
@@ -356,145 +360,25 @@ router.post("/start-bidding", async (req: Request, res: Response) => {
       const shuffled = [...BOT_TEMPLATES].sort(() => Math.random() - 0.5);
       for (let i = 0; i < botsNeeded; i++) {
         const template = shuffled[i % shuffled.length];
-        // Create a bot sloth with diverse stats
-        const botSloth = await getOne(
-          `INSERT INTO sloths (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)
-           VALUES ($1, 'sloth', $2, 'common', $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        // Create a bot racer with diverse stats
+        const botRacer = await getOne(
+          `INSERT INTO racers (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)
+           VALUES ($1, 'pro', $2, 'common', $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
           [`bot_${i}`, template.name, template.race, template.spd, template.acc, template.sta, template.agi, template.ref, template.lck]
         );
 
         await query(
-          "INSERT INTO race_participants (race_id, sloth_id, wallet, is_bot) VALUES ($1, $2, $3, 1)",
-          [raceId, botSloth.id, `bot_${i}`]
+          "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot) VALUES ($1, $2, $3, 1)",
+          [raceId, botRacer.id, `bot_${i}`]
         );
       }
     }
 
-    // Exhibition races skip bidding — go straight to racing
-    if (race.format === "exhibition") {
-      await query("UPDATE races SET status = 'racing' WHERE id = $1", [raceId]);
-      res.json({ raceId, status: "racing", botsAdded: botsNeeded, skipBidding: true });
-      return;
-    }
+    await query("UPDATE races SET status = 'tuning' WHERE id = $1", [raceId]);
 
-    await query("UPDATE races SET status = 'bidding' WHERE id = $1", [raceId]);
-
-    res.json({ raceId, status: "bidding", botsAdded: botsNeeded });
+    res.json({ raceId, status: "tuning", botsAdded: botsNeeded });
   } catch (err) {
-    console.error("POST /start-bidding error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// POST /api/race/bid — Submit a sealed bid
-router.post("/bid", async (req: Request, res: Response) => {
-  try {
-    const { raceId, wallet, amount } = req.body;
-
-    if (!raceId || !wallet || amount === undefined) {
-      res.status(400).json({ error: "raceId, wallet, and amount required" });
-      return;
-    }
-
-    if (!isValidWallet(wallet as string)) {
-      res.status(400).json({ error: "Invalid wallet address format" });
-      return;
-    }
-
-    const parsedAmount = parseInt(amount);
-    if (isNaN(parsedAmount) || parsedAmount < 0) {
-      res.status(400).json({ error: "Invalid bid amount" });
-      return;
-    }
-
-    const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
-    if (!race || race.status !== "bidding") {
-      res.status(400).json({ error: "race not in bidding phase" });
-      return;
-    }
-
-    // Exhibition races don't allow bidding
-    if (race.format === "exhibition") {
-      res.status(400).json({ error: "Exhibition races do not have bidding" });
-      return;
-    }
-
-    const bidAmount = Math.min(Math.max(0, Math.floor(parsedAmount)), race.max_raise);
-
-    // Deduct and record bid with balance check inside transaction
-    try {
-      await runTransaction(async (client) => {
-        if (bidAmount > 0) {
-          const balanceRow = (await client.query(
-            "SELECT balance FROM coin_balances WHERE wallet = $1 FOR UPDATE",
-            [wallet]
-          )).rows[0];
-          const currentBalance = balanceRow?.balance || 0;
-          if (currentBalance < bidAmount) {
-            throw new Error("INSUFFICIENT_BALANCE");
-          }
-          await client.query(
-            "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
-            [bidAmount, wallet]
-          );
-
-          await client.query(
-            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'race_bid', $2, $3)",
-            [wallet, -bidAmount, `Bid for ${raceId}`]
-          );
-        }
-
-        await client.query(
-          "UPDATE race_participants SET bid_amount = $1 WHERE race_id = $2 AND wallet = $3",
-          [bidAmount, raceId, wallet]
-        );
-      });
-    } catch (err: any) {
-      if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient balance for bid" });
-        return;
-      }
-      throw err;
-    }
-
-    // First Bid Bonus: 10 ZZZ for first-ever bid > 0 (per wallet)
-    if (bidAmount > 0) {
-      const totalBidsEver = await getOne(
-        "SELECT COUNT(*) as count FROM transactions WHERE wallet = $1 AND type = 'race_bid'",
-        [wallet]
-      );
-      if (parseInt(totalBidsEver?.count || 0) === 1) {
-        await query(
-          `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 10)
-           ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 10, updated_at = NOW()`,
-          [wallet]
-        );
-        await query(
-          "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'first_bid_bonus', 10, 'First Bid Bonus!')",
-          [wallet]
-        );
-      }
-    }
-
-    // Generate stat-aware bot bids — stronger bots bid more aggressively
-    const botParticipants = await getAll(
-      "SELECT rp.*, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck FROM race_participants rp JOIN sloths s ON rp.sloth_id = s.id WHERE rp.race_id = $1 AND rp.is_bot = 1",
-      [raceId]
-    );
-
-    for (const bot of botParticipants) {
-      const totalStats = (bot.spd || 10) + (bot.acc || 10) + (bot.sta || 10) + (bot.agi || 10) + (bot.ref || 10) + (bot.lck || 10);
-      const confidence = Math.min(1, totalStats / 100);
-      const botBid = Math.floor(Math.random() * race.max_raise * (0.3 + confidence * 0.5));
-      await query(
-        "UPDATE race_participants SET bid_amount = $1 WHERE id = $2",
-        [botBid, bot.id]
-      );
-    }
-
-    res.json({ raceId, wallet, bidAmount });
-  } catch (err) {
-    console.error("POST /bid error:", err);
+    console.error("POST /start-tuning error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -513,9 +397,9 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const participants = await getAll(
       `SELECT rp.*, s.name, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
        FROM race_participants rp
-       JOIN sloths s ON rp.sloth_id = s.id
+       JOIN racers s ON rp.racer_id = s.id
        WHERE rp.race_id = $1
-       ORDER BY rp.bid_amount DESC`,
+       ORDER BY rp.wind_tension DESC, rp.id ASC`,
       [raceId]
     );
 
@@ -523,8 +407,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const accessoryBonuses: Record<number, Record<string, number>> = {};
     for (const p of participants) {
       const equipment = await getOne(
-        "SELECT a.stat_bonus FROM sloth_equipment se JOIN accessories a ON se.accessory_id = a.id WHERE se.sloth_id = $1",
-        [p.sloth_id]
+        "SELECT a.stat_bonus FROM racer_equipment se JOIN accessories a ON se.accessory_id = a.id WHERE se.racer_id = $1",
+        [p.racer_id]
       );
       if (equipment && equipment.stat_bonus) {
         let bonus: Record<string, number> = {};
@@ -536,20 +420,22 @@ router.post("/simulate", async (req: Request, res: Response) => {
           console.error("Invalid stat_bonus JSON for equipment:", equipment.id, e);
           bonus = {};
         }
-        accessoryBonuses[p.sloth_id] = bonus;
+        accessoryBonuses[p.racer_id] = bonus;
       }
     }
 
-    // Assign grid positions based on bid (highest bid = pole position)
+    // Assign grid positions from spring tension (highest tension = pole).
+    // Until the Wind-Up phase lands every tension is 0, so the tiebreak on
+    // join order decides the grid — deterministic, and free of any spend.
     for (let index = 0; index < participants.length; index++) {
       const p = participants[index];
       await query("UPDATE race_participants SET grid_position = $1 WHERE id = $2", [index + 1, p.id]);
     }
 
-    const gridded: SlothStats[] = participants.map((p: any, index: number) => {
-      const bonus = accessoryBonuses[p.sloth_id] || {};
+    const gridded: RacerStats[] = participants.map((p: any, index: number) => {
+      const bonus = accessoryBonuses[p.racer_id] || {};
       return {
-        id: p.sloth_id,
+        id: p.racer_id,
         name: p.name,
         wallet: p.wallet,
         isBot: p.is_bot === 1,
@@ -571,8 +457,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
     );
     const tacticActions: TacticAction[] = tacticRows.map((r: any) => ({
       tick: r.tick,
-      type: r.action_type as "boost" | "pillow",
-      slothId: r.sloth_id,
+      type: r.action_type as "boost" | "projectile",
+      racerId: r.racer_id,
     }));
 
     // Generate bot tactic actions for tactic/gp_final modes
@@ -580,16 +466,16 @@ router.post("/simulate", async (req: Request, res: Response) => {
       const botEntries = participants.filter((p: any) => p.is_bot === 1);
       for (const bot of botEntries) {
         if (Math.random() < 0.6) {
-          const actionType = Math.random() > 0.5 ? "boost" : "pillow";
+          const actionType = Math.random() > 0.5 ? "boost" : "projectile";
           const actionTick = Math.floor(50 + Math.random() * 200);
           const existingAction = await getOne(
-            "SELECT 1 FROM tactic_actions WHERE race_id = $1 AND sloth_id = $2 AND action_type = $3",
-            [raceId, bot.sloth_id, actionType]
+            "SELECT 1 FROM tactic_actions WHERE race_id = $1 AND racer_id = $2 AND action_type = $3",
+            [raceId, bot.racer_id, actionType]
           );
           if (!existingAction) {
             await query(
-              "INSERT INTO tactic_actions (race_id, sloth_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
-              [raceId, bot.sloth_id, bot.wallet, actionType, actionTick]
+              "INSERT INTO tactic_actions (race_id, racer_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
+              [raceId, bot.racer_id, bot.wallet, actionType, actionTick]
             );
           }
         }
@@ -601,7 +487,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
       );
       tacticActions.length = 0;
       for (const r of allActions) {
-        tacticActions.push({ tick: r.tick, type: r.action_type as "boost" | "pillow", slothId: r.sloth_id });
+        tacticActions.push({ tick: r.tick, type: r.action_type as "boost" | "projectile", racerId: r.racer_id });
       }
     }
 
@@ -610,37 +496,36 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const isChaosMode = race.format === "gp_final";
     const result = simulateRace(gridded, seed, tacticActions, isChaosMode);
 
-    // Calculate pot distribution
+    // Calculate prize pool distribution
     const isExhibition = race.format === "exhibition";
-    let payouts: { id: number; payout: number }[];
+    let rewards: { id: number; reward: number }[];
     let totalEntryFees = 0;
-    let totalBids = 0;
 
     if (isExhibition) {
       const seed32 = parseInt(seed.slice(0, 8), 16);
       const CONSOLATION_PRIZE = 2;
-      payouts = [];
+      rewards = [];
       for (let i = 0; i < result.finalOrder.length; i++) {
         const entry = result.finalOrder[i];
         if (entry.isBot) {
-          payouts.push({ id: entry.id, payout: 0 });
+          rewards.push({ id: entry.id, reward: 0 });
         } else if (i === 0) {
-          const creatureType = await getOne("SELECT type FROM sloths WHERE id = $1", [entry.id]);
-          if (creatureType?.type === "free_sloth") {
-            payouts.push({ id: entry.id, payout: 3 + ((seed32 + i) % 3) + CONSOLATION_PRIZE });
+          const creatureType = await getOne("SELECT type FROM racers WHERE id = $1", [entry.id]);
+          if (creatureType?.type === "free") {
+            rewards.push({ id: entry.id, reward: 3 + ((seed32 + i) % 3) + CONSOLATION_PRIZE });
           } else {
-            payouts.push({ id: entry.id, payout: 8 + ((seed32 + i) % 5) + CONSOLATION_PRIZE });
+            rewards.push({ id: entry.id, reward: 8 + ((seed32 + i) % 5) + CONSOLATION_PRIZE });
           }
         } else {
-          payouts.push({ id: entry.id, payout: CONSOLATION_PRIZE });
+          rewards.push({ id: entry.id, reward: CONSOLATION_PRIZE });
         }
       }
     } else {
+      // Entry fees are the only source now — the old pre-race spend is gone.
       const realPlayerFees = participants.filter((p: any) => p.is_bot === 0).length * race.entry_fee;
       const botVirtualFees = participants.filter((p: any) => p.is_bot === 1).length * race.entry_fee * 0.75;
       totalEntryFees = realPlayerFees + botVirtualFees;
-      totalBids = participants.reduce((sum: number, p: any) => sum + (p.is_bot === 0 ? p.bid_amount : 0), 0);
-      payouts = calculatePot(totalEntryFees, totalBids, result.finalOrder);
+      rewards = calculatePrizePool(totalEntryFees, result.finalOrder);
     }
 
     // Save results
@@ -654,25 +539,25 @@ router.post("/simulate", async (req: Request, res: Response) => {
       );
 
       for (const order of result.finalOrder) {
-        const payout = payouts.find((p) => p.id === order.id);
+        const reward = rewards.find((p) => p.id === order.id);
         const position = result.finalOrder.indexOf(order) + 1;
 
         await client.query(
-          "UPDATE race_participants SET finish_position = $1, payout = $2 WHERE race_id = $3 AND sloth_id = $4",
-          [position, payout?.payout || 0, raceId, order.id]
+          "UPDATE race_participants SET finish_position = $1, reward = $2 WHERE race_id = $3 AND racer_id = $4",
+          [position, reward?.reward || 0, raceId, order.id]
         );
 
-        // Credit payouts to real players
-        if (!order.isBot && payout && payout.payout > 0) {
+        // Credit rewards to real players
+        if (!order.isBot && reward && reward.reward > 0) {
           await client.query(
             `INSERT INTO coin_balances (wallet, balance) VALUES ($1, $2)
              ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + $3, updated_at = NOW()`,
-            [order.wallet, payout.payout, payout.payout]
+            [order.wallet, reward.reward, reward.reward]
           );
 
           await client.query(
-            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'race_payout', $2, $3)",
-            [order.wallet, payout.payout, `${position}${position === 1 ? "st" : position === 2 ? "nd" : position === 3 ? "rd" : "th"} place in ${raceId}`]
+            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'race_reward', $2, $3)",
+            [order.wallet, reward.reward, `${position}${position === 1 ? "st" : position === 2 ? "nd" : position === 3 ? "rd" : "th"} place in ${raceId}`]
           );
         }
       }
@@ -681,13 +566,13 @@ router.post("/simulate", async (req: Request, res: Response) => {
       for (let i = 0; i < result.finalOrder.length; i++) {
         const entry = result.finalOrder[i];
         if (entry.isBot) continue;
-        const slothId = entry.id;
+        const racerId = entry.id;
         const isWin = i === 0;
 
         // Ensure streak row exists
         await client.query(
-          "INSERT INTO streaks (sloth_id) VALUES ($1) ON CONFLICT DO NOTHING",
-          [slothId]
+          "INSERT INTO streaks (racer_id) VALUES ($1) ON CONFLICT DO NOTHING",
+          [racerId]
         );
 
         if (isWin) {
@@ -698,8 +583,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
               current_losses = 0,
               total_races = total_races + 1,
               total_wins = total_wins + 1
-            WHERE sloth_id = $1`,
-            [slothId]
+            WHERE racer_id = $1`,
+            [racerId]
           );
         } else {
           await client.query(
@@ -708,31 +593,9 @@ router.post("/simulate", async (req: Request, res: Response) => {
               max_losses = GREATEST(max_losses, current_losses + 1),
               current_wins = 0,
               total_races = total_races + 1
-            WHERE sloth_id = $1`,
-            [slothId]
+            WHERE racer_id = $1`,
+            [racerId]
           );
-        }
-      }
-
-      // Reward correct predictions (15 ZZZ each)
-      const winnerId = result.finalOrder[0]?.id;
-      if (winnerId) {
-        const correctPredictions = (await client.query(
-          "SELECT * FROM predictions WHERE race_id = $1 AND predicted_sloth_id = $2 AND rewarded = 0",
-          [raceId, winnerId]
-        )).rows;
-
-        for (const pred of correctPredictions) {
-          await client.query(
-            `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 15)
-             ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 15, updated_at = NOW()`,
-            [pred.wallet]
-          );
-          await client.query(
-            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'prediction_reward', 15, $2)",
-            [pred.wallet, `Correct prediction for ${raceId}`]
-          );
-          await client.query("UPDATE predictions SET correct = 1, rewarded = 1 WHERE id = $1", [pred.id]);
         }
       }
 
@@ -744,7 +607,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
         if (i === 0) await awardXP(entry.wallet, XP_AMOUNTS.RACE_WIN);
       }
 
-      // First Race Bonus: 15 ZZZ for first-ever race completion (per wallet)
+      // First Race Bonus: 15 coins for first-ever race completion (per wallet)
       for (let i = 0; i < result.finalOrder.length; i++) {
         const entry = result.finalOrder[i];
         if (entry.isBot) continue;
@@ -773,7 +636,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
         const rp = rpValues[i] || 0;
         if (rp > 0) {
           await client.query(
-            "INSERT INTO race_points (wallet, sloth_id, rp) VALUES ($1, $2, $3)",
+            "INSERT INTO race_points (wallet, racer_id, rp) VALUES ($1, $2, $3)",
             [entry.wallet, entry.id, rp]
           );
         }
@@ -825,34 +688,34 @@ router.post("/simulate", async (req: Request, res: Response) => {
 
       // Check daily cap
       await query(
-        "INSERT INTO daily_stat_gains (sloth_id, gain_date, total_gain) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
+        "INSERT INTO daily_stat_gains (racer_id, gain_date, total_gain) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
         [entry.id, today]
       );
       const dailyGain = await getOne(
-        "SELECT total_gain FROM daily_stat_gains WHERE sloth_id = $1 AND gain_date = $2",
+        "SELECT total_gain FROM daily_stat_gains WHERE racer_id = $1 AND gain_date = $2",
         [entry.id, today]
       );
       if ((dailyGain?.total_gain || 0) >= 0.3) continue;
 
       // Check stat cap (with evolution support)
       assertValidStat(statToGrow);
-      const sloth = await getOne("SELECT type, rarity, tier, evolution_path, " + statToGrow + " as current_val FROM sloths WHERE id = $1", [entry.id]);
-      if (!sloth) continue;
-      let cap = sloth.type === 'free_sloth' ? STAT_CAPS.free_sloth : (STAT_CAPS[sloth.rarity] || STAT_CAPS.common);
-      if ((sloth.tier || 0) >= 3 && sloth.evolution_path) {
-        const pathStats: Record<string, string[]> = { caffeine: ['spd', 'acc'], hibernate: ['sta', 'ref'], dreamwalk: ['lck', 'agi'] };
-        if (pathStats[sloth.evolution_path]?.includes(statToGrow)) cap += 5;
-        if ((sloth.tier || 0) >= 4) cap += 3;
+      const racer = await getOne("SELECT type, rarity, tier, evolution_path, " + statToGrow + " as current_val FROM racers WHERE id = $1", [entry.id]);
+      if (!racer) continue;
+      let cap = racer.type === 'free' ? STAT_CAPS.free : (STAT_CAPS[racer.rarity] || STAT_CAPS.common);
+      if ((racer.tier || 0) >= 3 && racer.evolution_path) {
+        const pathStats: Record<string, string[]> = { speed: ['spd', 'acc'], endurance: ['sta', 'ref'], luck: ['lck', 'agi'] };
+        if (pathStats[racer.evolution_path]?.includes(statToGrow)) cap += 5;
+        if ((racer.tier || 0) >= 4) cap += 3;
       }
-      if (sloth.current_val >= cap) continue;
+      if (racer.current_val >= cap) continue;
 
-      const gain = Math.min(0.05, cap - sloth.current_val);
+      const gain = Math.min(0.05, cap - racer.current_val);
       await query(
-        `UPDATE sloths SET ${statToGrow} = ${statToGrow} + $1 WHERE id = $2`,
+        `UPDATE racers SET ${statToGrow} = ${statToGrow} + $1 WHERE id = $2`,
         [gain, entry.id]
       );
       await query(
-        "UPDATE daily_stat_gains SET total_gain = total_gain + $1 WHERE sloth_id = $2 AND gain_date = $3",
+        "UPDATE daily_stat_gains SET total_gain = total_gain + $1 WHERE racer_id = $2 AND gain_date = $3",
         [gain, entry.id, today]
       );
     }
@@ -886,15 +749,15 @@ router.post("/simulate", async (req: Request, res: Response) => {
       raceId,
       seed,
       resultHash,
-      gridPositions: gridded.map((g) => ({ id: g.id, name: g.name, position: g.gridPosition, bid: participants.find((p: any) => p.sloth_id === g.id)?.bid_amount || 0 })),
+      gridPositions: gridded.map((g) => ({ id: g.id, name: g.name, position: g.gridPosition })),
       frames: animFrames,
       events: result.events,
       finalOrder: result.finalOrder.map((o: any, i: number) => ({
         ...o,
         position: i + 1,
-        payout: payouts.find((p) => p.id === o.id)?.payout || 0,
+        reward: rewards.find((p) => p.id === o.id)?.reward || 0,
       })),
-      totalPot: totalEntryFees + totalBids,
+      totalPrizePool: totalEntryFees,
       trackLength: result.trackLength,
       weather: result.weather,
     });
@@ -904,13 +767,13 @@ router.post("/simulate", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/race/action — Submit a tactic action (Boost or Pillow)
+// POST /api/race/action — Submit a tactic action (Boost or Projectile)
 router.post("/action", async (req: Request, res: Response) => {
   try {
-    const { raceId, wallet, slothId, actionType, tick } = req.body;
+    const { raceId, wallet, racerId, actionType, tick } = req.body;
 
-    if (!raceId || !wallet || !slothId || !actionType || tick === undefined) {
-      res.status(400).json({ error: "raceId, wallet, slothId, actionType, and tick required" });
+    if (!raceId || !wallet || !racerId || !actionType || tick === undefined) {
+      res.status(400).json({ error: "raceId, wallet, racerId, actionType, and tick required" });
       return;
     }
 
@@ -925,15 +788,15 @@ router.post("/action", async (req: Request, res: Response) => {
       return;
     }
 
-    if (!["boost", "pillow"].includes(actionType)) {
-      res.status(400).json({ error: "actionType must be 'boost' or 'pillow'" });
+    if (!["boost", "projectile"].includes(actionType)) {
+      res.status(400).json({ error: "actionType must be 'boost' or 'projectile'" });
       return;
     }
 
-    // Verify sloth ownership
-    const slothOwner = await getOne("SELECT id FROM sloths WHERE id = $1 AND wallet = $2", [slothId, wallet]);
-    if (slothOwner === null) {
-      res.status(403).json({ error: "Not your sloth" });
+    // Verify racer ownership
+    const racerOwner = await getOne("SELECT id FROM racers WHERE id = $1 AND wallet = $2", [racerId, wallet]);
+    if (racerOwner === null) {
+      res.status(403).json({ error: "Not your racer" });
       return;
     }
 
@@ -986,8 +849,8 @@ router.post("/action", async (req: Request, res: Response) => {
         );
 
         await client.query(
-          "INSERT INTO tactic_actions (race_id, sloth_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
-          [raceId, slothId, wallet, actionType, parsedTick]
+          "INSERT INTO tactic_actions (race_id, racer_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
+          [raceId, racerId, wallet, actionType, parsedTick]
         );
       });
     } catch (err: any) {
@@ -1020,7 +883,7 @@ router.post("/gp/create", async (req: Request, res: Response) => {
     const qualifyId = `${raceId}_q`;
 
     await query(
-      "INSERT INTO races (id, format, entry_fee, max_raise, status) VALUES ($1, 'gp_qualify', 150, 300, 'lobby')",
+      "INSERT INTO races (id, format, entry_fee, max_tune, status) VALUES ($1, 'gp_qualify', 150, 300, 'lobby')",
       [qualifyId]
     );
 
@@ -1032,7 +895,7 @@ router.post("/gp/create", async (req: Request, res: Response) => {
       finalRaceId: finalId,
       stage: "qualifying",
       entryFee: 150,
-      maxRaise: 300,
+      maxTune: 300,
     });
   } catch (err) {
     console.error("POST /gp/create error:", err);
@@ -1055,7 +918,7 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
     const finishers = await getAll(
       `SELECT rp.*, s.name, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck
        FROM race_participants rp
-       JOIN sloths s ON rp.sloth_id = s.id
+       JOIN racers s ON rp.racer_id = s.id
        WHERE rp.race_id = $1
        ORDER BY rp.finish_position ASC
        LIMIT 4`,
@@ -1065,20 +928,20 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
     // Create final race (tactic mode with GDA)
     const finalId = qualifyRaceId.replace("_q", "_f");
     await query(
-      "INSERT INTO races (id, format, entry_fee, max_raise, status) VALUES ($1, 'gp_final', 0, 300, 'bidding')",
+      "INSERT INTO races (id, format, entry_fee, max_tune, status) VALUES ($1, 'gp_final', 0, 300, 'tuning')",
       [finalId]
     );
 
     // Move top 4 to final
     for (const f of finishers) {
       await query(
-        "INSERT INTO race_participants (race_id, sloth_id, wallet, is_bot) VALUES ($1, $2, $3, $4)",
-        [finalId, f.sloth_id, f.wallet, f.is_bot]
+        "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot) VALUES ($1, $2, $3, $4)",
+        [finalId, f.racer_id, f.wallet, f.is_bot]
       );
     }
 
     const qualifiers = finishers.map((f: any, i: number) => ({
-      id: f.sloth_id,
+      id: f.racer_id,
       name: f.name,
       wallet: f.wallet,
       position: i + 1,
@@ -1092,84 +955,6 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("POST /gp/advance error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// GET /api/race/predictions/stats/:wallet — Prediction stats for a wallet
-router.get("/predictions/stats/:wallet", async (req: Request, res: Response) => {
-  try {
-    const { wallet } = req.params;
-    const row = await getOne(
-      "SELECT COUNT(*)::int as total, COALESCE(SUM(CASE WHEN correct = 1 THEN 1 ELSE 0 END), 0)::int as correct_count FROM predictions WHERE wallet = $1",
-      [String(wallet).toLowerCase()]
-    );
-    const total = row?.total || 0;
-    const correct = row?.correct_count || 0;
-    const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-    res.json({ total, correct, percentage });
-  } catch (err) {
-    console.error("GET /predictions/stats error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// POST /api/race/predict — Predict race winner
-router.post("/predict", async (req: Request, res: Response) => {
-  try {
-    const { raceId, wallet, slothId } = req.body;
-
-    if (!raceId || !wallet || !slothId) {
-      res.status(400).json({ error: "raceId, wallet, and slothId required" });
-      return;
-    }
-
-    if (!isValidWallet(wallet as string)) {
-      res.status(400).json({ error: "Invalid wallet address format" });
-      return;
-    }
-
-    const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
-    if (!race || race.status === "finished") {
-      res.status(400).json({ error: "race not found or already finished" });
-      return;
-    }
-
-    // Check if already predicted
-    const existing = await getOne(
-      "SELECT id FROM predictions WHERE race_id = $1 AND wallet = $2",
-      [raceId, wallet]
-    );
-    if (existing) {
-      res.status(409).json({ error: "already predicted for this race" });
-      return;
-    }
-
-    await query(
-      "INSERT INTO predictions (race_id, wallet, predicted_sloth_id) VALUES ($1, $2, $3)",
-      [raceId, wallet, slothId]
-    );
-
-    res.json({ predicted: true, raceId, slothId });
-  } catch (err) {
-    console.error("POST /predict error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// GET /api/race/:id/predictions — Get predictions for a race
-router.get("/:id/predictions", async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const predictions = await getAll(
-      "SELECT p.*, s.name as sloth_name FROM predictions p JOIN sloths s ON p.predicted_sloth_id = s.id WHERE p.race_id = $1",
-      [id]
-    );
-
-    res.json({ predictions });
-  } catch (err) {
-    console.error("GET /:id/predictions error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -1195,9 +980,9 @@ router.get("/:id/prices", async (req: Request, res: Response) => {
 
     res.json({
       boostPrice: getGDAPrice(gdaState, "boost", tick, isChaos),
-      pillowPrice: getGDAPrice(gdaState, "pillow", tick, isChaos),
+      projectilePrice: getGDAPrice(gdaState, "projectile", tick, isChaos),
       boostPurchases: gdaState.boostPurchases,
-      pillowPurchases: gdaState.pillowPurchases,
+      projectilePurchases: gdaState.projectilePurchases,
     });
   } catch (err) {
     console.error("GET /:id/prices error:", err);
@@ -1232,7 +1017,7 @@ router.get("/daily", async (req: Request, res: Response) => {
     // Create daily race (exhibition format, auto-created)
     const raceId = `daily_${today}_${crypto.randomBytes(4).toString("hex")}`;
     await query(
-      "INSERT INTO races (id, format, entry_fee, max_raise, status) VALUES ($1, 'exhibition', 0, 0, 'lobby')",
+      "INSERT INTO races (id, format, entry_fee, max_tune, status) VALUES ($1, 'exhibition', 0, 0, 'lobby')",
       [raceId]
     );
     await query(
@@ -1259,10 +1044,10 @@ router.get("/history/:wallet", async (req: Request, res: Response) => {
 
     const races = await getAll(
       `SELECT r.id as "raceId", r.format, r.created_at as "createdAt",
-              rp.finish_position as position, rp.payout, s.name as "slothName"
+              rp.finish_position as position, rp.reward, s.name as "racerName"
        FROM race_participants rp
        JOIN races r ON rp.race_id = r.id
-       JOIN sloths s ON rp.sloth_id = s.id
+       JOIN racers s ON rp.racer_id = s.id
        WHERE rp.wallet = $1 AND r.status = 'finished'
        ORDER BY r.finished_at DESC
        LIMIT 20`,
@@ -1272,7 +1057,7 @@ router.get("/history/:wallet", async (req: Request, res: Response) => {
     const totalRaces = races.length;
     const totalWins = races.filter((r: any) => r.position === 1).length;
     const winRate = totalRaces > 0 ? Math.round((totalWins / totalRaces) * 100) : 0;
-    const totalEarnings = races.reduce((sum: number, r: any) => sum + (r.payout || 0), 0);
+    const totalEarnings = races.reduce((sum: number, r: any) => sum + (r.reward || 0), 0);
 
     res.json({
       races,
@@ -1314,7 +1099,7 @@ router.get("/active", async (_req: Request, res: Response) => {
       `SELECT r.*, COUNT(rp.id) as participant_count
        FROM races r
        LEFT JOIN race_participants rp ON r.id = rp.race_id
-       WHERE r.status IN ('lobby', 'bidding')
+       WHERE r.status IN ('lobby', 'tuning')
        GROUP BY r.id
        ORDER BY r.created_at DESC
        LIMIT 20`
@@ -1339,9 +1124,9 @@ router.get("/:id", async (req: Request, res: Response) => {
     }
 
     const participants = await getAll(
-      `SELECT rp.*, s.name, s.rarity, s.race as sloth_race, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck
+      `SELECT rp.*, s.name, s.rarity, s.race as racer_race, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck
        FROM race_participants rp
-       JOIN sloths s ON rp.sloth_id = s.id
+       JOIN racers s ON rp.racer_id = s.id
        WHERE rp.race_id = $1
        ORDER BY COALESCE(rp.grid_position, rp.id)`,
       [id]

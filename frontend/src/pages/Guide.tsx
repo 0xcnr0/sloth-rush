@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { THEME, CUR } from '../config/theme'
 
+// All copy is derived from THEME so a rebrand never reaches this file.
 const SECTIONS = [
   {
     id: 'getting-started',
     title: 'Getting Started',
     icon: '\u{1F680}',
     content: [
-      { q: 'What is Sloth Rush?', a: 'Sloth Rush is a sloth racing game. Mint your sloth, evolve and upgrade, train it, and compete in races to earn ZZZ Coins.' },
-      { q: 'How do I start?', a: 'Connect your wallet, mint a free sloth (gasless!), then enter Exhibition races. When ready, upgrade for $3 USDC to unlock all race formats.' },
-      { q: 'Is it free to play?', a: 'Yes! Free Sloths can race in Exhibition mode and earn ZZZ Coins. Upgrading ($3 or free path) unlocks all features.' },
+      { q: `What is ${THEME.brand.name}?`, a: `${THEME.brand.name} is a racing game on Base. Mint a racer, upgrade and evolve it, train it, and compete to earn ${CUR}.` },
+      { q: 'How do I start?', a: `Connect your wallet, mint a free ${THEME.tiers.free} (gasless!), then enter Exhibition races. When ready, upgrade for $3 USDC to unlock all race formats.` },
+      { q: 'Is it free to play?', a: `Yes. A ${THEME.tiers.free} can race in Exhibition mode and earn ${CUR}. Upgrading to a ${THEME.tiers.pro} ($3 or the free path) unlocks all features.` },
     ]
   },
   {
@@ -18,10 +20,11 @@ const SECTIONS = [
     title: 'Racing',
     icon: '\u{1F3C1}',
     content: [
-      { q: 'How do races work?', a: 'Each race has 4 participants. Before the race, there\'s a Grid Boost phase where you spend ZZZ Coins to boost your starting position. The highest boost gets pole position. Then the race simulates based on your sloth\'s stats.' },
-      { q: 'What are race formats?', a: 'Exhibition (free, practice), Standard (50 ZZZ entry), Tactic (75 ZZZ, use Boost & Pillow), and Grand Prix (150 ZZZ, multi-round championship).' },
-      { q: 'How are prizes distributed?', a: 'Platform takes 15%, remaining pot: 1st gets 50%, 2nd 30%, 3rd 15%, 4th 5%. Exhibition races have flat rewards.' },
-      { q: 'What is Grid Boost?', a: 'Before each race, you have 10 seconds to spend ZZZ Coins to boost your grid position. All boosts are revealed simultaneously. Highest boost = pole position (starting advantage). Boost wisely!' },
+      { q: 'How do races work?', a: `Four racers line up at the ${THEME.locations.track}. Grid positions are set before the start, then the race runs deterministically from your racer's stats and a verifiable seed.` },
+      { q: 'Does the grid cost anything?', a: 'No. Grid position is never bought. Nothing in a race is purchasable except the optional Tactic-mode actions during Tactic and Grand Prix Final formats.' },
+      { q: 'What are race formats?', a: `Exhibition (free practice), Standard (50 ${CUR} entry), Tactic (75 ${CUR}, use ${THEME.tactics.boost} and ${THEME.tactics.projectile}), and Grand Prix (150 ${CUR}, multi-round championship).` },
+      { q: 'How are prizes distributed?', a: 'The platform takes 15%; the remaining prize pool splits 50% / 30% / 15% / 5% across the four finishing places. Exhibition races pay flat rewards.' },
+      { q: 'Can spectators affect a race?', a: 'No. Spectating is watch-only — no interaction and no influence on the result.' },
     ]
   },
   {
@@ -29,9 +32,9 @@ const SECTIONS = [
     title: 'Stats & Training',
     icon: '\u{1F4AA}',
     content: [
-      { q: 'What are the 6 stats?', a: 'SPD (Speed) - max speed. ACC (Acceleration) - how fast you speed up. STA (Stamina) - fatigue resistance. AGI (Agility) - yawn wave resistance. REF (Reflex) - crash recovery. LCK (Luck) - lucky event chance.' },
-      { q: 'How do I train my sloth?', a: 'Timed Training: Pick a stat, wait 6 hours, get +0.3. Mini Games: Play fun challenges for instant +0.1~0.5. Organic Growth: Race and your dominant stat grows +0.05 per race automatically.' },
-      { q: 'Does rarity affect stats?', a: 'Rarity determines your stat cap (max level). Common: 22, Uncommon: 25, Rare: 28, Epic: 31, Legendary: 35. It does NOT give stat bonuses in races.' },
+      { q: 'What are the 6 stats?', a: `SPD (Speed) — max speed. ACC (Acceleration) — how fast you get there. STA (Stamina) — fatigue resistance. AGI (Agility) — ${THEME.events.mass_slow} resistance. REF (Reflex) — recovery after a ${THEME.events.collision}. LCK (Luck) — chance of a lucky event.` },
+      { q: 'How do I train my racer?', a: 'Timed Training: pick a stat, wait 6 hours, get +0.3. Mini Games: play short challenges for +0.1~0.5. Organic Growth: race and your dominant stat grows +0.05 per race automatically.' },
+      { q: 'Does rarity affect stats?', a: `Rarity sets your stat cap, not your stats: ${THEME.rarity.common} 22, ${THEME.rarity.uncommon} 25, ${THEME.rarity.rare} 28, ${THEME.rarity.epic} 31, ${THEME.rarity.legendary} 35. Rarity gives no bonus in a race — it is condition, not power.` },
     ]
   },
   {
@@ -39,9 +42,9 @@ const SECTIONS = [
     title: 'Economy',
     icon: '\u{1FA99}',
     content: [
-      { q: 'What is ZZZ Coin?', a: 'The in-game currency. Earn from races, quests, daily login, and mini games. Spend on race entries, training, cosmetics, and tactics. Can also be purchased from the Shop.' },
-      { q: 'What is XP?', a: 'Experience Points measure your progress. XP CANNOT be purchased \u2014 only earned by playing. Required for upgrades and evolution.' },
-      { q: 'How do I earn ZZZ Coins?', a: 'Race payouts, daily login bonus (15 ZZZ), daily/weekly quests, mini games, and purchasing from the Shop.' },
+      { q: `What is ${CUR}?`, a: 'The in-game currency. Earn it from races, quests, daily login and mini games. Spend it on race entries, training, cosmetics and tactics. It can also be bought in the Shop.' },
+      { q: 'What is XP?', a: 'Experience Points measure progress. XP cannot be purchased — only earned by playing. Required for upgrades and evolution.' },
+      { q: `How do I earn ${CUR}?`, a: `Race rewards, the daily login bonus (15 ${CUR}), daily and weekly quests, mini games, and the Shop.` },
     ]
   },
   {
@@ -49,9 +52,9 @@ const SECTIONS = [
     title: 'Evolution',
     icon: '\u{2B50}',
     content: [
-      { q: 'How does evolution work?', a: 'Free Sloth \u2192 Sloth (Tier 1) \u2192 Elite (Tier 2) \u2192 Specialized (Tier 3) \u2192 Master (Tier 4). Each tier requires XP, race milestones, and ZZZ Coins.' },
-      { q: 'What are evolution paths?', a: 'At Tier 3 you choose: Caffeine (speed focus), Hibernate (defense focus), or Dreamwalk (luck focus). Each path gives unique passive abilities.' },
-      { q: 'Can I upgrade for free?', a: 'Yes! Free Sloth \u2192 Sloth can be done by earning 1500 XP, completing 30 races, winning 10, and logging in 25 days. Or pay $3 for instant upgrade.' },
+      { q: 'How does evolution work?', a: `${THEME.tiers.free} \u2192 ${THEME.tiers.pro} (Tier 1) \u2192 Tier 2 \u2192 Tier 3 \u2192 Tier 4. Each tier requires XP, race milestones, and ${CUR}. Evolution is how big you get; rarity is how well kept you are. They are separate axes.` },
+      { q: 'What are evolution paths?', a: `At Tier 3 you choose ${THEME.paths.speed.label} (${THEME.paths.speed.statBonus}), ${THEME.paths.endurance.label} (${THEME.paths.endurance.statBonus}), or ${THEME.paths.luck.label} (${THEME.paths.luck.statBonus}). Each path grants a unique passive.` },
+      { q: 'Can I upgrade for free?', a: `Yes. ${THEME.tiers.free} \u2192 ${THEME.tiers.pro} can be earned with 1500 XP, 30 races, 10 wins and 25 login days. Or pay $3 for an instant upgrade.` },
     ]
   },
 ]
@@ -63,7 +66,7 @@ export default function Guide() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">How to Play</h1>
-        <p className="text-gray-400 mt-1">Everything you need to know about Sloth Rush</p>
+        <p className="text-gray-400 mt-1">Everything you need to know about {THEME.brand.name}</p>
       </div>
 
       {/* Quick Links */}
@@ -74,8 +77,8 @@ export default function Guide() {
             onClick={() => setOpenSection(s.id)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
               openSection === s.id
-                ? 'bg-sloth-green/20 text-sloth-green'
-                : 'text-gray-400 hover:text-white bg-sloth-card border border-sloth-border hover:bg-white/5'
+                ? 'bg-brand-primary/20 text-brand-primary'
+                : 'text-gray-400 hover:text-white bg-brand-surface border border-brand-border hover:bg-white/5'
             }`}
           >
             {s.icon} {s.title}
@@ -90,7 +93,7 @@ export default function Guide() {
             key={section.id}
             initial={false}
             animate={{ height: openSection === section.id ? 'auto' : 'auto' }}
-            className={`bg-sloth-card border border-sloth-border rounded-xl overflow-hidden ${
+            className={`bg-brand-surface border border-brand-border rounded-xl overflow-hidden ${
               openSection !== section.id ? 'hidden' : ''
             }`}
           >
@@ -115,19 +118,19 @@ export default function Guide() {
       </div>
 
       {/* CTA */}
-      <div className="mt-8 bg-sloth-card border border-sloth-green/30 rounded-xl p-6 text-center">
+      <div className="mt-8 bg-brand-surface border border-brand-primary/30 rounded-xl p-6 text-center">
         <h3 className="text-white font-bold text-lg mb-2">Ready to race?</h3>
-        <p className="text-gray-400 text-sm mb-4">Mint your free sloth and start racing today!</p>
+        <p className="text-gray-400 text-sm mb-4">Mint your free racer and start racing today!</p>
         <div className="flex justify-center gap-3">
           <Link
             to="/mint"
-            className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors"
+            className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors"
           >
-            Mint Free Sloth
+            Mint {THEME.tiers.free}
           </Link>
           <Link
             to="/race"
-            className="px-6 py-2.5 border border-sloth-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors"
+            className="px-6 py-2.5 border border-brand-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors"
           >
             Enter Race
           </Link>

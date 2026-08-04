@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { CUR } from '../config/theme'
 
 export default function Invite() {
   const { code } = useParams<{ code: string }>()
@@ -17,7 +18,7 @@ export default function Invite() {
   // Store referral code in localStorage so it persists through wallet connect
   useEffect(() => {
     if (code) {
-      localStorage.setItem('sloth-rush-referral', code)
+      localStorage.setItem('racer-rush-referral', code)
     }
   }, [code])
 
@@ -28,8 +29,8 @@ export default function Invite() {
     try {
       await api.applyReferralCode(address, code)
       setApplied(true)
-      localStorage.removeItem('sloth-rush-referral')
-      toast.success('Referral applied! Your friend earned 25 ZZZ')
+      localStorage.removeItem('racer-rush-referral')
+      toast.success(`Referral applied! Your friend earned 25 ${CUR}`)
     } catch (err: any) {
       setError(err.message || 'Failed to apply referral')
     } finally {
@@ -42,12 +43,12 @@ export default function Invite() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-sloth-card border border-sloth-border rounded-2xl p-8 max-w-md w-full text-center"
+        className="bg-brand-surface border border-brand-border rounded-2xl p-8 max-w-md w-full text-center"
       >
         <div className="text-5xl mb-4">&#x1F9B5;</div>
         <h1 className="text-2xl font-bold text-white mb-2">You've Been Invited!</h1>
         <p className="text-gray-400 text-sm mb-6">
-          A friend invited you to Sloth Rush. Connect your wallet and mint a sloth to get started.
+          A friend invited you to Racer Rush. Connect your wallet and mint a racer to get started.
         </p>
 
         {!isConnected ? (
@@ -57,15 +58,15 @@ export default function Invite() {
           </div>
         ) : applied ? (
           <div className="space-y-4">
-            <div className="bg-sloth-green/10 border border-sloth-green/30 rounded-xl p-4">
-              <p className="text-sloth-green font-bold">Referral Applied!</p>
+            <div className="bg-brand-primary/10 border border-brand-primary/30 rounded-xl p-4">
+              <p className="text-brand-primary font-bold">Referral Applied!</p>
               <p className="text-gray-400 text-xs mt-1">Your friend has been rewarded</p>
             </div>
             <button
               onClick={() => navigate('/mint')}
-              className="w-full bg-sloth-green text-black font-bold py-3 rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
+              className="w-full bg-brand-primary text-black font-bold py-3 rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
             >
-              Mint Your Sloth
+              Mint Your Racer
             </button>
           </div>
         ) : (
@@ -82,7 +83,7 @@ export default function Invite() {
             <button
               onClick={handleApply}
               disabled={applying}
-              className="w-full bg-sloth-green text-black font-bold py-3 rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full bg-brand-primary text-black font-bold py-3 rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer disabled:opacity-50"
             >
               {applying ? 'Applying...' : 'Apply Referral & Continue'}
             </button>

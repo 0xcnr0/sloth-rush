@@ -79,7 +79,7 @@ export default function Feedback() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-        <div className="animate-spin w-8 h-8 border-2 border-sloth-green border-t-transparent rounded-full mx-auto" />
+        <div className="animate-spin w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full mx-auto" />
       </div>
     )
   }
@@ -91,7 +91,7 @@ export default function Feedback() {
 
       {/* Quest Gate */}
       {eligibility && !eligibility.eligible && (
-        <div className="bg-sloth-card border border-sloth-border rounded-xl p-6 mb-8">
+        <div className="bg-brand-surface border border-brand-border rounded-xl p-6 mb-8">
           <div className="text-center">
             <div className="text-4xl mb-3">🔒</div>
             <h2 className="text-xl font-bold text-white mb-2">Complete 10 Races to Unlock Feedback</h2>
@@ -100,7 +100,7 @@ export default function Feedback() {
             </p>
             <div className="w-full bg-gray-800 rounded-full h-3 mb-2">
               <div
-                className="bg-sloth-green h-3 rounded-full transition-all"
+                className="bg-brand-primary h-3 rounded-full transition-all"
                 style={{ width: `${Math.min((eligibility.racesCompleted / eligibility.racesRequired) * 100, 100)}%` }}
               />
             </div>
@@ -115,13 +115,13 @@ export default function Feedback() {
       {eligibility?.eligible && (
         <>
           {submitted ? (
-            <div className="bg-sloth-green/10 border border-sloth-green/30 rounded-xl p-6 mb-8 text-center">
+            <div className="bg-brand-primary/10 border border-brand-primary/30 rounded-xl p-6 mb-8 text-center">
               <div className="text-4xl mb-3">✅</div>
-              <h2 className="text-xl font-bold text-sloth-green mb-2">Thanks! Your feedback helps shape the game.</h2>
+              <h2 className="text-xl font-bold text-brand-primary mb-2">Thanks! Your feedback helps shape the game.</h2>
               <p className="text-gray-400">We review every submission.</p>
             </div>
           ) : (
-            <div className="bg-sloth-card border border-sloth-border rounded-xl p-6 mb-8">
+            <div className="bg-brand-surface border border-brand-border rounded-xl p-6 mb-8">
               {!eligibility.canSubmit ? (
                 <div className="text-center text-gray-400">
                   <p>You've submitted {eligibility.feedbackToday}/{eligibility.feedbackLimit} feedback today.</p>
@@ -140,7 +140,7 @@ export default function Feedback() {
                           className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
                             category === cat.id
                               ? cat.color + ' border-current'
-                              : 'border-sloth-border text-gray-400 hover:border-gray-500'
+                              : 'border-brand-border text-gray-400 hover:border-gray-500'
                           }`}
                         >
                           <span className="mr-1">{cat.icon}</span> {cat.label}
@@ -177,7 +177,7 @@ export default function Feedback() {
                       onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT))}
                       placeholder="Tell us what you think..."
                       rows={4}
-                      className="w-full bg-sloth-dark border border-sloth-border rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-sloth-green/50 resize-none"
+                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-brand-primary/50 resize-none"
                     />
                     <div className="flex justify-end mt-1">
                       <span className={`text-xs ${text.length >= MAX_TEXT ? 'text-red-400' : 'text-gray-500'}`}>
@@ -190,7 +190,7 @@ export default function Feedback() {
                   <button
                     onClick={handleSubmit}
                     disabled={!category || !text.trim() || !rating || submitting}
-                    className="w-full py-3 rounded-lg font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-sloth-green text-black hover:bg-sloth-green/90"
+                    className="w-full py-3 rounded-lg font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-brand-primary text-black hover:bg-brand-primary/90"
                   >
                     {submitting ? 'Submitting...' : 'Submit Feedback'}
                   </button>
@@ -211,7 +211,7 @@ export default function Feedback() {
           <h2 className="text-xl font-bold text-white mb-4">Your Feedback History</h2>
           <div className="space-y-3">
             {myFeedback.map((fb) => (
-              <div key={fb.id} className="bg-sloth-card border border-sloth-border rounded-lg p-4">
+              <div key={fb.id} className="bg-brand-surface border border-brand-border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${
@@ -225,7 +225,7 @@ export default function Feedback() {
                   </div>
                   <div className="flex items-center gap-3">
                     {fb.status === 'implemented' && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-sloth-green/10 text-sloth-green border border-sloth-green/30">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/30">
                         Implemented
                       </span>
                     )}

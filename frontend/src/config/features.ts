@@ -1,8 +1,8 @@
 /**
  * MVP Feature Flags — Runtime Hostname Detection
  *
- * Demo mode (slothrush.xyz, *.vercel.app): Only core features (mint + race)
- * Dev mode (app.slothrush.xyz, localhost): All features enabled
+ * Demo mode (winduprush.xyz, *.vercel.app): Only core features (mint + race)
+ * Dev mode (app.winduprush.xyz, localhost): All features enabled
  *
  * Mini App detection is handled separately in lib/farcaster.ts (async).
  * Use isInFarcasterMiniApp() from that module for Mini App context checks.
@@ -14,10 +14,10 @@ function isMvpMode(): boolean {
   const hostname = window.location.hostname
 
   // Full features on app subdomain and localhost
-  if (hostname === 'app.slothrush.xyz') return false
+  if (hostname === 'app.winduprush.xyz') return false
   if (hostname === 'localhost' || hostname === '127.0.0.1') return false
 
-  // Everything else is MVP/demo mode (slothrush.xyz, Vercel preview URLs, etc.)
+  // Everything else is MVP/demo mode (winduprush.xyz, Vercel preview URLs, etc.)
   return true
 }
 
@@ -27,7 +27,7 @@ export const FEATURES = {
   mint: true,            // Always on
   race: true,            // Always on
   leaderboard: true,     // Always on
-  treehouse: true,       // Always on
+  collection: true,       // Always on
   guide: true,           // Always on
 
   shop: !MVP_MODE,       // Hide in MVP

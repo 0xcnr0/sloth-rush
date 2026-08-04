@@ -1,21 +1,22 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { THEME, CUR, rarityLabel, archetypeLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 import { FEATURES } from '../config/features'
 
-type Phase = 'select' | 'lobby' | 'bidding' | 'reveal' | 'starting' | 'gp_break' | 'gp_final_bid'
+type Phase = 'select' | 'lobby' | 'reveal' | 'starting' | 'gp_break'
 
 const FORMATS = [
-  { id: 'exhibition', name: 'Exhibition', fee: 0, maxRaise: 0, desc: 'Free practice race' },
-  { id: 'demo_standard', name: 'Demo Standard', fee: 0, maxRaise: 100, desc: 'Quick 20s demo race' },
-  { id: 'standard', name: 'Standard Race', fee: 50, maxRaise: 100, desc: '50 ZZZ entry, win big' },
-  { id: 'grand_prix', name: 'Grand Prix', fee: 150, maxRaise: 300, desc: 'High stakes racing' },
-  { id: 'tactic', name: 'Tactic Challenge', fee: 75, maxRaise: 150, desc: 'Use Boost & Pillow during race!' },
+  { id: 'exhibition', name: 'Exhibition', fee: 0, maxTune: 0, desc: 'Free practice race' },
+  { id: 'demo_standard', name: 'Demo Standard', fee: 0, maxTune: 100, desc: 'Quick 20s demo race' },
+  { id: 'standard', name: 'Standard Race', fee: 50, maxTune: 100, desc: `50 ${CUR} entry, win big` },
+  { id: 'grand_prix', name: 'Grand Prix', fee: 150, maxTune: 300, desc: 'Multi-round championship' },
+  { id: 'tactic', name: 'Tactic Challenge', fee: 75, maxTune: 150, desc: `Use ${THEME.tactics.boost} & ${THEME.tactics.projectile} mid-race!` },
 ]
 
 const visibleFormats = FORMATS.filter(f => {
@@ -34,33 +35,26 @@ export default function RaceLobby() {
   const [liveLoading, setLiveLoading] = useState(false)
 
   const [phase, setPhase] = useState<Phase>('select')
-  const [sloths, setSloths] = useState<any[]>([])
+  const [racers, setRacers] = useState<any[]>([])
   const [coinBalance, setCoinBalance] = useState(0)
-  const [selectedSloth, setSelectedSloth] = useState<any>(null)
+  const [selectedRacer, setSelectedRacer] = useState<any>(null)
   const [selectedFormat, setSelectedFormat] = useState(FORMATS[1])
   const [raceId, setRaceId] = useState('')
-  const [participants, setParticipants] = useState<any[]>([])
-  const [bidAmount, setBidAmount] = useState(0)
-  const [bidSubmitted, setBidSubmitted] = useState(false)
-  const [countdown, setCountdown] = useState(10)
   const [gridPositions, setGridPositions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [gpQualifyId, setGpQualifyId] = useState('')
-  const [gpFinalId, setGpFinalId] = useState('')
   const [gpQualifiers, setGpQualifiers] = useState<any[]>([])
   const [gpBreakCountdown, setGpBreakCountdown] = useState(30)
   const [dailyRace, setDailyRace] = useState<{ raceId: string; weather: string; date: string } | null>(null)
 
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  // Load creatures (sloths + free sloths)
+  // Load creatures (racers + free racers)
   const [allCreatures, setAllCreatures] = useState<any[]>([])
   useEffect(() => {
     if (!address) return
-    api.getTreehouse(address).then(data => {
-      setAllCreatures(data.sloths)
+    api.getCollection(address).then(data => {
+      setAllCreatures(data.racers)
       setCoinBalance(data.coinBalance)
-    }).catch((err) => { console.error('Failed to load treehouse:', err); toast.error('Failed to load data. Please refresh.') })
+    }).catch((err) => { console.error('Failed to load collection:', err); toast.error('Failed to load data. Please refresh.') })
   }, [address])
 
   // Load daily race info
@@ -68,21 +62,21 @@ export default function RaceLobby() {
     api.getDailyRace().then(setDailyRace).catch((err) => { console.error('Failed to load daily race:', err) })
   }, [])
 
-  // Filter creatures based on format: exhibition → all, others → sloths only, GP → tier gate
+  // Filter creatures based on format: exhibition → all, others → racers only, GP → tier gate
   useEffect(() => {
     if (selectedFormat.id === 'exhibition' || selectedFormat.id === 'demo_standard') {
-      setSloths(allCreatures)
+      setRacers(allCreatures)
     } else if (selectedFormat.id === 'grand_prix') {
-      // GP: no free sloths, Gold GP (fee > 150) requires tier >= 2
-      setSloths(allCreatures.filter((s: any) => {
-        if (s.type === 'free_sloth') return false
+      // GP: no free racers, Gold GP (fee > 150) requires tier >= 2
+      setRacers(allCreatures.filter((s: any) => {
+        if (s.type === 'free') return false
         if (selectedFormat.fee > 150 && (s.tier || 0) < 2) return false
         return true
       }))
     } else {
-      setSloths(allCreatures.filter((s: any) => s.type === 'sloth'))
+      setRacers(allCreatures.filter((s: any) => s.type === 'pro'))
     }
-    setSelectedSloth(null)
+    setSelectedRacer(null)
   }, [selectedFormat, allCreatures])
 
   // Poll live races when on the Live Races tab
@@ -100,47 +94,25 @@ export default function RaceLobby() {
     return () => clearInterval(interval)
   }, [mainTab])
 
-  // Countdown timer for bidding
-  const startCountdown = useCallback(() => {
-    setCountdown(10)
-    countdownRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          if (countdownRef.current) clearInterval(countdownRef.current)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }, [])
-
-  // Auto-submit bid when countdown reaches 0
-  useEffect(() => {
-    if (countdown === 0 && (phase === 'bidding' || phase === 'gp_final_bid') && !bidSubmitted) {
-      handleBidSubmit()
-    }
-  }, [countdown, phase, bidSubmitted])
-
   async function handleCreateAndJoin() {
-    if (!address || !selectedSloth) return
+    if (!address || !selectedRacer) return
     setLoading(true)
     try {
       if (selectedFormat.id === 'grand_prix') {
         // GP flow: create GP, join qualifying
         const gp = await api.createGP()
         setGpQualifyId(gp.qualifyRaceId)
-        setGpFinalId(gp.finalRaceId)
         setRaceId(gp.qualifyRaceId)
 
-        const joined = await api.joinRace(gp.qualifyRaceId, selectedSloth.id, address)
+        const joined = await api.joinRace(gp.qualifyRaceId, selectedRacer.id, address)
         setCoinBalance(joined.newBalance)
         setPhase('lobby')
       } else {
         const apiFormat = selectedFormat.id === 'demo_standard' ? 'exhibition' : selectedFormat.id
-        const race = await api.createRace(address, selectedSloth.id, apiFormat)
+        const race = await api.createRace(address, selectedRacer.id, apiFormat)
         setRaceId(race.raceId)
 
-        const joined = await api.joinRace(race.raceId, selectedSloth.id, address)
+        const joined = await api.joinRace(race.raceId, selectedRacer.id, address)
         setCoinBalance(joined.newBalance)
         setPhase('lobby')
       }
@@ -150,70 +122,30 @@ export default function RaceLobby() {
     setLoading(false)
   }
 
-  async function handleStartBidding() {
+  async function handleStartRace() {
     if (!raceId) return
     setLoading(true)
     try {
-      const biddingResult = await api.startBidding(raceId)
-      // Load participants
-      const raceData = await api.getRace(raceId)
-      setParticipants(raceData.participants || [])
-
-      // Exhibition races skip bidding — go straight to simulation (but not demo_standard)
-      if ((biddingResult.skipBidding || selectedFormat.maxRaise === 0) && selectedFormat.id !== 'demo_standard') {
-        setPhase('starting')
-        const result = await api.simulateRace(raceId)
-        setGridPositions(result.gridPositions)
-        const isDemo = selectedFormat.id === 'demo_standard'
-        navigate(`/race/${raceId}`, { state: { raceResult: result, format: isDemo ? 'exhibition' : selectedFormat.id, slothId: selectedSloth?.id, demo: isDemo } })
-      } else {
-        setPhase('bidding')
-        startCountdown()
-      }
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-    setLoading(false)
-  }
-
-  async function handleBidSubmit() {
-    if (!raceId || !address || bidSubmitted) return
-    setBidSubmitted(true)
-    if (countdownRef.current) clearInterval(countdownRef.current)
-    try {
-      if (selectedFormat.id === 'demo_standard') {
-        // Demo races skip backend bid — go straight to simulate
-        await new Promise(r => setTimeout(r, 800))
-      } else {
-        await api.submitBid(raceId, address, bidAmount)
-        await new Promise(r => setTimeout(r, 1500))
-      }
+      await api.startTuning(raceId)
+      setPhase('starting')
       const result = await api.simulateRace(raceId)
       setGridPositions(result.gridPositions)
       setPhase('reveal')
 
       if (gpQualifyId && raceId === gpQualifyId) {
-        // GP qualifying done — go to break phase
+        // GP qualifying done — go to break phase, then straight into the final
         setTimeout(async () => {
           try {
             const advanced = await api.advanceGP(gpQualifyId)
             setGpQualifiers(advanced.qualifiers)
-            setGpFinalId(advanced.finalRaceId)
             setPhase('gp_break')
-            // 30s break countdown
             let t = 30
             const interval = setInterval(() => {
               t--
               setGpBreakCountdown(t)
               if (t <= 0) {
                 clearInterval(interval)
-                // Move to final bidding
-                setRaceId(advanced.finalRaceId)
-                setBidSubmitted(false)
-                setBidAmount(0)
-                setCountdown(10)
-                setPhase('gp_final_bid')
-                startCountdown()
+                void runGpFinal(advanced.finalRaceId)
               }
             }, 1000)
           } catch (err: any) {
@@ -221,15 +153,23 @@ export default function RaceLobby() {
           }
         }, 4000)
       } else {
-        // Regular race — navigate to broadcast
         const isDemoNav = selectedFormat.id === 'demo_standard'
         setTimeout(() => {
-          navigate(`/race/${raceId}`, { state: { raceResult: result, format: isDemoNav ? 'exhibition' : selectedFormat.id, slothId: selectedSloth?.id, demo: isDemoNav } })
+          navigate(`/race/${raceId}`, { state: { raceResult: result, format: isDemoNav ? 'exhibition' : selectedFormat.id, racerId: selectedRacer?.id, demo: isDemoNav } })
         }, 4000)
       }
     } catch (err: any) {
       toast.error(err.message)
-      setBidSubmitted(false)
+    }
+    setLoading(false)
+  }
+
+  async function runGpFinal(finalRaceId: string) {
+    try {
+      const result = await api.simulateRace(finalRaceId)
+      navigate(`/race/${finalRaceId}`, { state: { raceResult: result, format: 'gp_final', racerId: selectedRacer?.id } })
+    } catch (err: any) {
+      toast.error(err.message)
     }
   }
 
@@ -251,7 +191,7 @@ export default function RaceLobby() {
             <button
               onClick={() => setMainTab('create')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mainTab === 'create' ? 'bg-sloth-green/20 text-sloth-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                mainTab === 'create' ? 'bg-brand-primary/20 text-brand-primary' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
               Create Race
@@ -259,7 +199,7 @@ export default function RaceLobby() {
             <button
               onClick={() => setMainTab('live')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mainTab === 'live' ? 'bg-sloth-green/20 text-sloth-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                mainTab === 'live' ? 'bg-brand-primary/20 text-brand-primary' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
               Live Races
@@ -294,10 +234,10 @@ export default function RaceLobby() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="bg-sloth-card border border-sloth-border rounded-xl p-4 flex items-center justify-between hover:border-sloth-green/30 transition-colors"
+                  className="bg-brand-surface border border-brand-border rounded-xl p-4 flex items-center justify-between hover:border-brand-primary/30 transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-sloth-green/10 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
                       <span className="text-xl">{'\u{1F9A5}'}</span>
                     </div>
                     <div>
@@ -317,7 +257,7 @@ export default function RaceLobby() {
                     </div>
                     <button
                       onClick={() => navigate(`/race/${race.raceId || race.id}`)}
-                      className="px-4 py-2 bg-sloth-green/20 text-sloth-green font-semibold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer text-sm"
+                      className="px-4 py-2 bg-brand-primary/20 text-brand-primary font-semibold rounded-lg hover:bg-brand-primary/30 transition-colors cursor-pointer text-sm"
                     >
                       Watch
                     </button>
@@ -333,7 +273,7 @@ export default function RaceLobby() {
       {(mainTab === 'create' || phase !== 'select') && (
       <div className="max-w-3xl mx-auto px-4 py-8">
       <AnimatePresence mode="wait">
-        {/* Phase 1: Sloth & Format Selection */}
+        {/* Phase 1: Racer & Format Selection */}
         {phase === 'select' && (
           <motion.div
             key="select"
@@ -345,12 +285,12 @@ export default function RaceLobby() {
 
             {/* Daily Race Banner */}
             {dailyRace && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-sloth-purple/20 to-sloth-green/20 border border-sloth-purple/30 rounded-xl">
+              <div className="mb-6 p-4 bg-gradient-to-r from-brand-accent/20 to-brand-primary/20 border border-brand-accent/30 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white font-bold text-sm">Daily Race</p>
                     <p className="text-gray-400 text-xs">
-                      Weather: <span className="text-sloth-green font-semibold capitalize">{dailyRace.weather}</span>
+                      Weather: <span className="text-brand-primary font-semibold capitalize">{dailyRace.weather}</span>
                       {' \u2022 '}Daily Exhibition Race
                     </p>
                     <p className="text-gray-500 text-[10px] mt-0.5">Free exhibition race with today's weather. Play as many times as you want.</p>
@@ -360,7 +300,7 @@ export default function RaceLobby() {
                       setSelectedFormat(FORMATS[0]) // Exhibition
                       setRaceId(dailyRace.raceId)
                     }}
-                    className="px-4 py-1.5 bg-sloth-purple text-white font-bold rounded-lg text-sm cursor-pointer hover:bg-sloth-purple/80"
+                    className="px-4 py-1.5 bg-brand-accent text-white font-bold rounded-lg text-sm cursor-pointer hover:bg-brand-accent/80"
                   >
                     Join Daily
                   </button>
@@ -381,15 +321,15 @@ export default function RaceLobby() {
             </div>
             )}
 
-            {sloths.length === 0 ? (
+            {racers.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">&#x1f9a5;</div>
-                <p className="text-gray-400 mb-4">You need a Sloth to race</p>
+                <p className="text-gray-400 mb-4">You need a Racer to race</p>
                 <button
-                  onClick={() => navigate('/treehouse')}
-                  className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl cursor-pointer"
+                  onClick={() => navigate('/collection')}
+                  className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl cursor-pointer"
                 >
-                  Go to Treehouse
+                  Go to {THEME.locations.home}
                 </button>
               </div>
             ) : (
@@ -397,8 +337,8 @@ export default function RaceLobby() {
                 {/* Balance */}
                 <div className="flex items-center gap-2 mb-6">
                   <span className="text-gray-400">Balance:</span>
-                  <span className="text-sloth-green font-bold text-xl">{coinBalance}</span>
-                  <span className="text-sloth-green/70 text-sm">ZZZ</span>
+                  <span className="text-brand-primary font-bold text-xl">{coinBalance}</span>
+                  <span className="text-brand-primary/70 text-sm">{CUR}</span>
                 </div>
 
                 {/* Format selection */}
@@ -410,8 +350,8 @@ export default function RaceLobby() {
                       onClick={() => setSelectedFormat(fmt)}
                       className={`p-4 rounded-xl border text-left transition-colors cursor-pointer ${
                         selectedFormat.id === fmt.id
-                          ? 'border-sloth-green bg-sloth-green/10'
-                          : 'border-sloth-border bg-sloth-card hover:border-gray-500'
+                          ? 'border-brand-primary bg-brand-primary/10'
+                          : 'border-brand-border bg-brand-surface hover:border-gray-500'
                       }`}
                     >
                       <p className="text-white font-semibold">
@@ -422,35 +362,35 @@ export default function RaceLobby() {
                       </p>
                       <p className="text-gray-500 text-sm mt-1">{fmt.desc}</p>
                       {fmt.fee > 0 && (
-                        <p className="text-sloth-green text-sm font-bold mt-2">{fmt.fee} ZZZ Entry</p>
+                        <p className="text-brand-primary text-sm font-bold mt-2">{fmt.fee} {CUR} Entry</p>
                       )}
                     </button>
                   ))}
                 </div>
 
-                {/* Sloth selection */}
-                <h2 className="text-lg font-semibold text-gray-300 mb-3">Select Your Sloth</h2>
+                {/* Racer selection */}
+                <h2 className="text-lg font-semibold text-gray-300 mb-3">Select Your Racer</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                  {sloths.map(sloth => (
+                  {racers.map(racer => (
                     <button
-                      key={sloth.id}
-                      onClick={() => setSelectedSloth(sloth)}
+                      key={racer.id}
+                      onClick={() => setSelectedRacer(racer)}
                       className={`p-4 rounded-xl border flex items-center gap-4 transition-colors cursor-pointer ${
-                        selectedSloth?.id === sloth.id
-                          ? 'border-sloth-green bg-sloth-green/10'
-                          : 'border-sloth-border bg-sloth-card hover:border-gray-500'
+                        selectedRacer?.id === racer.id
+                          ? 'border-brand-primary bg-brand-primary/10'
+                          : 'border-brand-border bg-brand-surface hover:border-gray-500'
                       }`}
                     >
                       <span className="text-3xl">&#x1f9a5;</span>
                       <div className="text-left">
                         <p className="text-white font-semibold flex items-center gap-2">
-                          {sloth.name}
-                          {sloth.type === 'free_sloth' && (
-                            <span className="px-1.5 py-0.5 bg-sloth-blue/20 text-sloth-blue text-[10px] font-bold rounded">FREE ZZZ</span>
+                          {racer.name}
+                          {racer.type === 'free' && (
+                            <span className="px-1.5 py-0.5 bg-brand-info/20 text-brand-info text-[10px] font-bold rounded">{THEME.tiers.free.toUpperCase()}</span>
                           )}
                         </p>
                         <p className="text-gray-500 text-xs capitalize">
-                          {sloth.type === 'free_sloth' ? 'Free Sloth' : `${sloth.rarity} ${sloth.race?.replace('_', ' ')}`}
+                          {racer.type === 'free' ? THEME.tiers.free : `${rarityLabel(racer.rarity)} ${archetypeLabel(racer.race)}`}
                         </p>
                       </div>
                     </button>
@@ -460,14 +400,14 @@ export default function RaceLobby() {
                 {/* Start button */}
                 <button
                   onClick={handleCreateAndJoin}
-                  disabled={!selectedSloth || loading || (selectedFormat.fee > coinBalance)}
-                  className="w-full py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors disabled:opacity-50 cursor-pointer"
+                  disabled={!selectedRacer || loading || (selectedFormat.fee > coinBalance)}
+                  className="w-full py-3 bg-brand-primary text-brand-bg font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {loading ? 'Creating Race...' : `Enter Race (${selectedFormat.fee > 0 ? selectedFormat.fee + ' ZZZ' : 'Free'})`}
+                  {loading ? 'Creating Race...' : `Enter Race (${selectedFormat.fee > 0 ? `${selectedFormat.fee} ${CUR}` : 'Free'})`}
                 </button>
                 {selectedFormat.fee > 0 && coinBalance < selectedFormat.fee && (
                   <p className="text-red-400 text-sm text-center mt-2">
-                    Need {selectedFormat.fee} ZZZ — you have {coinBalance}. Visit the Shop to buy more.
+                    Need {selectedFormat.fee} {CUR} — you have {coinBalance}. Visit the Shop to buy more.
                   </p>
                 )}
               </>
@@ -490,14 +430,14 @@ export default function RaceLobby() {
             {/* 4 slots */}
             <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
               {/* Player slot */}
-              <div className="bg-sloth-card border-2 border-sloth-green rounded-xl p-4 text-center">
+              <div className="bg-brand-surface border-2 border-brand-primary rounded-xl p-4 text-center">
                 <div className="text-3xl mb-2">&#x1f9a5;</div>
-                <p className="text-white font-semibold text-sm">{selectedSloth?.name}</p>
-                <p className="text-sloth-green text-xs">YOU</p>
+                <p className="text-white font-semibold text-sm">{selectedRacer?.name}</p>
+                <p className="text-brand-primary text-xs">YOU</p>
               </div>
               {/* Bot slots */}
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-sloth-card border border-sloth-border rounded-xl p-4 text-center">
+                <div key={i} className="bg-brand-surface border border-brand-border rounded-xl p-4 text-center">
                   <div className="text-3xl mb-2 opacity-30">&#x1f916;</div>
                   <p className="text-gray-500 text-sm">Waiting...</p>
                   <p className="text-gray-600 text-xs">BOT</p>
@@ -506,97 +446,16 @@ export default function RaceLobby() {
             </div>
 
             <button
-              onClick={handleStartBidding}
+              onClick={handleStartRace}
               disabled={loading}
-              className="px-8 py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-green/90 transition-colors disabled:opacity-50 cursor-pointer"
+              className="px-8 py-3 bg-brand-primary text-brand-bg font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
             >
               {loading ? 'Filling with Bots...' : 'Start Race!'}
             </button>
           </motion.div>
         )}
 
-        {/* Phase 3: Sealed Bid */}
-        {phase === 'bidding' && (
-          <motion.div
-            key="bidding"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="text-center"
-          >
-            <h1 className="text-2xl font-bold mb-2">GRID BOOST</h1>
-            <p className="text-gray-400 mb-2">Boost your starting position!</p>
-            <p className="text-gray-500 text-xs mb-6 max-w-sm mx-auto">Spend ZZZ Coins to boost your grid position. Highest boost starts in pole position with a small lead. Coins are returned — it only determines starting order.</p>
-
-            {/* Big countdown */}
-            <motion.div
-              key={countdown}
-              initial={{ scale: 1.3, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className={`text-8xl font-extrabold mb-8 ${
-                countdown <= 3 ? 'text-sloth-red' : countdown <= 5 ? 'text-sloth-gold' : 'text-white'
-              }`}
-            >
-              {countdown}
-            </motion.div>
-
-            {/* Participants */}
-            <div className="flex justify-center gap-3 mb-8">
-              {participants.map((p: any, i: number) => (
-                <div
-                  key={i}
-                  className={`bg-sloth-card border rounded-lg p-3 text-center w-20 ${
-                    p.wallet === address ? 'border-sloth-green' : 'border-sloth-border'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{p.is_bot ? '\u{1F916}' : '\u{1F9A5}'}</div>
-                  <p className="text-xs text-gray-400 truncate">{p.name}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Bid slider */}
-            {!bidSubmitted ? (
-              <div className="max-w-sm mx-auto">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-400 text-sm">Boost Amount</span>
-                  <span className="text-sloth-green font-bold text-lg">{bidAmount} ZZZ</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.min(selectedFormat.maxRaise, coinBalance)}
-                  value={bidAmount}
-                  onChange={e => setBidAmount(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-sloth-border accent-sloth-green"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>0</span>
-                  <span>Max: {Math.min(selectedFormat.maxRaise, coinBalance)}</span>
-                </div>
-
-                <button
-                  onClick={handleBidSubmit}
-                  className="w-full mt-6 py-3 bg-sloth-gold text-sloth-dark font-bold rounded-xl text-lg hover:bg-sloth-gold/90 transition-colors cursor-pointer"
-                >
-                  CONFIRM BOOST
-                </button>
-              </div>
-            ) : (
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-sloth-green/10 border border-sloth-green rounded-xl p-6 max-w-sm mx-auto"
-              >
-                <div className="text-3xl mb-2">&#x1f512;</div>
-                <p className="text-sloth-green font-bold">Boost Locked: {bidAmount} ZZZ</p>
-                <p className="text-gray-400 text-sm mt-1">Revealing boosts...</p>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Phase 4: Bid Reveal */}
+        {/* Grid Reveal */}
         {phase === 'reveal' && (
           <motion.div
             key="reveal"
@@ -609,7 +468,7 @@ export default function RaceLobby() {
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 150 }}
-              className="text-3xl font-extrabold text-sloth-gold mb-8"
+              className="text-3xl font-extrabold text-brand-gold mb-8"
             >
               WHO GOT POLE POSITION?
             </motion.h1>
@@ -622,20 +481,19 @@ export default function RaceLobby() {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: i * 0.6, type: 'spring' }}
                   className={`flex items-center gap-4 p-4 rounded-xl border ${
-                    i === 0 ? 'bg-sloth-gold/10 border-sloth-gold' :
-                    'bg-sloth-card border-sloth-border'
+                    i === 0 ? 'bg-brand-gold/10 border-brand-gold' :
+                    'bg-brand-surface border-brand-border'
                   }`}
                 >
-                  <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-sloth-gold' : 'text-gray-500'}`}>
+                  <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-brand-gold' : 'text-gray-500'}`}>
                     P{gp.position}
                   </span>
                   <span className="text-2xl">&#x1f9a5;</span>
                   <div className="flex-1 text-left">
                     <p className="text-white font-semibold">{gp.name}</p>
-                    <p className="text-gray-500 text-xs">Boost: {gp.bid} ZZZ</p>
                   </div>
                   {i === 0 && (
-                    <span className="text-sloth-gold text-sm font-bold">POLE</span>
+                    <span className="text-brand-gold text-sm font-bold">POLE</span>
                   )}
                 </motion.div>
               ))}
@@ -663,7 +521,7 @@ export default function RaceLobby() {
             <motion.h1
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
-              className="text-3xl font-extrabold text-sloth-gold mb-4"
+              className="text-3xl font-extrabold text-brand-gold mb-4"
             >
               ELIMINATION COMPLETE!
             </motion.h1>
@@ -679,84 +537,20 @@ export default function RaceLobby() {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: i * 0.3 }}
                   className={`flex items-center gap-3 p-3 rounded-lg ${
-                    i === 0 ? 'bg-sloth-gold/10 border border-sloth-gold' : 'bg-sloth-card border border-sloth-border'
+                    i === 0 ? 'bg-brand-gold/10 border border-brand-gold' : 'bg-brand-surface border border-brand-border'
                   }`}
                 >
-                  <span className={`font-bold w-8 ${i === 0 ? 'text-sloth-gold' : 'text-gray-500'}`}>{i + 1}.</span>
+                  <span className={`font-bold w-8 ${i === 0 ? 'text-brand-gold' : 'text-gray-500'}`}>{i + 1}.</span>
                   <span className="text-white font-semibold">{q.name}</span>
                   {q.isBot && <span className="text-gray-600 text-xs">BOT</span>}
                 </motion.div>
               ))}
             </div>
 
-            <p className="text-sloth-purple text-sm font-bold">FINAL = TACTIC MODE + GDA PRICING + CHAOS MODE!</p>
+            <p className="text-brand-accent text-sm font-bold">FINAL = TACTIC MODE + GDA PRICING + CHAOS MODE!</p>
           </motion.div>
         )}
 
-        {/* GP Final Bid Phase */}
-        {phase === 'gp_final_bid' && (
-          <motion.div
-            key="gp_final_bid"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="text-center"
-          >
-            <h1 className="text-2xl font-bold mb-2 text-sloth-gold">GRAND PRIX FINAL</h1>
-            <p className="text-gray-400 mb-4">Final boost! Race in Tactic Mode!</p>
-
-            <motion.div
-              key={countdown}
-              initial={{ scale: 1.3, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className={`text-7xl font-extrabold mb-6 ${countdown <= 3 ? 'text-sloth-red' : 'text-white'}`}
-            >
-              {countdown}
-            </motion.div>
-
-            {!bidSubmitted ? (
-              <div className="max-w-sm mx-auto">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-400 text-sm">Final Boost</span>
-                  <span className="text-sloth-green font-bold text-lg">{bidAmount} ZZZ</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.min(selectedFormat?.maxRaise || 300, coinBalance)}
-                  value={bidAmount}
-                  onChange={e => setBidAmount(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-sloth-border accent-sloth-green"
-                />
-                <button
-                  onClick={async () => {
-                    if (!address || !gpFinalId || bidSubmitted) return
-                    setBidSubmitted(true)
-                    if (countdownRef.current) clearInterval(countdownRef.current)
-                    try {
-                      await api.submitBid(gpFinalId, address, bidAmount)
-                      await new Promise(r => setTimeout(r, 1500))
-                      const result = await api.simulateRace(gpFinalId)
-                      navigate(`/race/${gpFinalId}`, { state: { raceResult: result, format: 'gp_final', slothId: selectedSloth?.id } })
-                    } catch (err: any) {
-                      toast.error(err.message)
-                      setBidSubmitted(false)
-                    }
-                  }}
-                  className="w-full mt-4 py-3 bg-sloth-gold text-sloth-dark font-bold rounded-xl text-lg cursor-pointer"
-                >
-                  CONFIRM FINAL BOOST
-                </button>
-              </div>
-            ) : (
-              <div className="bg-sloth-green/10 border border-sloth-green rounded-xl p-6 max-w-sm mx-auto">
-                <div className="text-3xl mb-2">&#x1f512;</div>
-                <p className="text-sloth-green font-bold">Final Boost Locked: {bidAmount} ZZZ</p>
-                <p className="text-gray-400 text-sm mt-1">Starting Grand Prix Final...</p>
-              </div>
-            )}
-          </motion.div>
-        )}
       </AnimatePresence>
     </div>
       )}

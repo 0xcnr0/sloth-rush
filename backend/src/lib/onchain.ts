@@ -2,8 +2,8 @@ import { createPublicClient, createWalletClient, http, keccak256, toHex } from '
 import { baseSepolia } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 
-const SLOTH_RUSH_ADDRESS = '0xda1553aDffDEf8b5fc8C9E344dFf35CC26d60141' as const
-const SLOTH_RUSH_ABI = [
+const RACE_CORE_ADDRESS = '0xda1553aDffDEf8b5fc8C9E344dFf35CC26d60141' as const
+const RACE_CORE_ABI = [
   {
     inputs: [
       { name: 'raceId', type: 'bytes32' },
@@ -53,8 +53,8 @@ export async function recordRaceResultOnchain(
     const winnerAddr = winnerWallet as `0x${string}`
 
     const hash = await ctx.client.writeContract({
-      address: SLOTH_RUSH_ADDRESS,
-      abi: SLOTH_RUSH_ABI,
+      address: RACE_CORE_ADDRESS,
+      abi: RACE_CORE_ABI,
       functionName: 'recordRaceResult',
       args: [raceIdBytes32, resultHashBytes32, winnerAddr],
       chain: baseSepolia,

@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { initDB, getOne, getAll } from "./db";
-import slothRoutes from "./routes/sloth";
+import racerRoutes from "./routes/racer";
 import raceRoutes from "./routes/race";
 import shopRoutes from "./routes/shop";
 import questRoutes from "./routes/quest";
@@ -52,17 +52,17 @@ async function main() {
     max: 10,
     message: { error: "Too many requests, please try again later" },
   });
-  app.use('/api/sloth/mint', strictLimiter);
-  app.use('/api/sloth/daily-login', strictLimiter);
-  app.use('/api/sloth/evolve', strictLimiter);
+  app.use('/api/racer/mint', strictLimiter);
+  app.use('/api/racer/daily-login', strictLimiter);
+  app.use('/api/racer/evolve', strictLimiter);
   app.use('/api/shop/buy-coins', strictLimiter);
 
   // Routes
   app.get("/health", (_req, res) => {
-    res.json({ status: "ok", service: "sloth-rush-api" });
+    res.json({ status: "ok", service: "race-api" });
   });
 
-  app.use("/api/sloth", slothRoutes);
+  app.use("/api/racer", racerRoutes);
   app.use("/api/race", raceRoutes);
   app.use("/api/shop", shopRoutes);
   app.use("/api/quests", questRoutes);
@@ -74,15 +74,15 @@ async function main() {
   // Debug endpoints (non-production only)
   if (!isProduction) {
     app.get("/api/debug/economy-stats", async (_req, res) => {
-      const totalZzz = await getOne("SELECT COALESCE(SUM(balance), 0) as total FROM coin_balances");
+      const totalCoins = await getOne("SELECT COALESCE(SUM(balance), 0) as total FROM coin_balances");
       const avgBalance = await getOne("SELECT COALESCE(AVG(balance), 0) as avg FROM coin_balances");
       const playerCount = await getOne("SELECT COUNT(*) as count FROM coin_balances WHERE balance > 0");
-      res.json({ totalZzzInCirculation: parseInt(totalZzz.total), averageBalance: Math.round(parseFloat(avgBalance.avg)), activePlayers: parseInt(playerCount.count) });
+      res.json({ totalCoinsInCirculation: parseInt(totalCoins.total), averageBalance: Math.round(parseFloat(avgBalance.avg)), activePlayers: parseInt(playerCount.count) });
     });
 
     app.get("/api/debug/progression-stats", async (_req, res) => {
       const avgXP = await getOne("SELECT COALESCE(AVG(total_xp), 0) as avg FROM user_xp");
-      const tierDist = await getAll("SELECT COALESCE(tier, 0) as tier, COUNT(*) as count FROM sloths WHERE is_burned = 0 AND type = 'sloth' GROUP BY tier ORDER BY tier");
+      const tierDist = await getAll("SELECT COALESCE(tier, 0) as tier, COUNT(*) as count FROM racers WHERE is_burned = 0 AND type = 'pro' GROUP BY tier ORDER BY tier");
       res.json({ averageXP: Math.round(parseFloat(avgXP.avg)), tierDistribution: tierDist });
     });
   }
@@ -94,7 +94,7 @@ async function main() {
   });
 
   app.listen(PORT, () => {
-    console.log(`Sloth Rush API running on port ${PORT}`);
+    console.log(`Race API running on port ${PORT}`);
   });
 }
 

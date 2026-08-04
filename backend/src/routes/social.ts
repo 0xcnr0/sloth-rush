@@ -4,7 +4,7 @@ import { query, getOne, getAll, runTransaction } from "../db";
 
 const router = Router();
 
-const APP_URL = process.env.APP_URL || "https://app.slothrush.xyz";
+const APP_URL = process.env.APP_URL || "https://app.winduprush.xyz";
 
 // =============================================
 // FARCASTER FRAME — Race Result
@@ -29,7 +29,7 @@ router.get("/frame/:raceId", async (req: Request, res: Response) => {
     }
 
     const winner = finalOrder[0];
-    const title = winner ? `${winner.name} wins the race!` : "Sloth Rush Race Result";
+    const title = winner ? `${winner.name} wins the race!` : "Racer Rush Race Result";
     const description = finalOrder.slice(0, 4).map((fo: any, i: number) => `${i + 1}. ${fo.name}`).join(" | ");
     const ogImageUrl = `${APP_URL}/api/social/og/${raceId}`;
     const raceUrl = `${APP_URL}/race/${raceId}`;
@@ -95,10 +95,10 @@ router.get("/og/:raceId", async (req: Request, res: Response) => {
       const y = 200 + i * 50;
       const medal = i === 0 ? "🏆" : i === 1 ? "🥈" : i === 2 ? "🥉" : "4.";
       const color = i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#cd7f32" : "#6b7280";
-      const payout = fo.payout > 0 ? `+${fo.payout} ZZZ` : "";
+      const reward = fo.reward > 0 ? `+${fo.reward}` : "";
       return `
         <text x="60" y="${y}" fill="${color}" font-size="22" font-weight="bold" font-family="sans-serif">${medal} ${fo.name}</text>
-        ${payout ? `<text x="540" y="${y}" fill="#22c55e" font-size="18" font-weight="bold" font-family="sans-serif" text-anchor="end">${payout}</text>` : ""}
+        ${reward ? `<text x="540" y="${y}" fill="#22c55e" font-size="18" font-weight="bold" font-family="sans-serif" text-anchor="end">${reward}</text>` : ""}
       `;
     }).join("");
 
@@ -113,7 +113,7 @@ router.get("/og/:raceId", async (req: Request, res: Response) => {
   <rect width="600" height="400" fill="url(#bg)" rx="16"/>
 
   <!-- Header -->
-  <text x="300" y="50" fill="#22c55e" font-size="28" font-weight="bold" font-family="sans-serif" text-anchor="middle">SLOTH RUSH</text>
+  <text x="300" y="50" fill="#22c55e" font-size="28" font-weight="bold" font-family="sans-serif" text-anchor="middle">RACER RUSH</text>
   <text x="300" y="80" fill="#6b7280" font-size="14" font-family="sans-serif" text-anchor="middle">${formatLabel} Race Result</text>
 
   <!-- Winner highlight -->
@@ -125,7 +125,7 @@ router.get("/og/:raceId", async (req: Request, res: Response) => {
   ${standings}
 
   <!-- Footer -->
-  <text x="300" y="385" fill="#4a5568" font-size="12" font-family="sans-serif" text-anchor="middle">app.slothrush.xyz — Race on Base L2</text>
+  <text x="300" y="385" fill="#4a5568" font-size="12" font-family="sans-serif" text-anchor="middle">app.winduprush.xyz — Race on Base L2</text>
 </svg>`;
 
     res.setHeader("Content-Type", "image/svg+xml");
@@ -136,7 +136,7 @@ router.get("/og/:raceId", async (req: Request, res: Response) => {
     // Return a fallback SVG
     const fallback = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
       <rect width="600" height="400" fill="#0a0e17" rx="16"/>
-      <text x="300" y="200" fill="#22c55e" font-size="28" font-weight="bold" font-family="sans-serif" text-anchor="middle">SLOTH RUSH</text>
+      <text x="300" y="200" fill="#22c55e" font-size="28" font-weight="bold" font-family="sans-serif" text-anchor="middle">RACER RUSH</text>
     </svg>`;
     res.setHeader("Content-Type", "image/svg+xml");
     res.send(fallback);
@@ -212,7 +212,7 @@ router.post("/referral/apply", async (req: Request, res: Response) => {
         [referrer.wallet, w, code]
       );
 
-      // Reward referrer: 25 ZZZ
+      // Reward referrer: 25 coins
       await client.query(
         `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 25)
          ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 25, updated_at = NOW()`,

@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { CUR } from '../config/theme'
 
 type Quest = {
   id: number
@@ -10,7 +11,7 @@ type Quest = {
   description: string
   requirement_type: string
   requirement_value: number
-  sloth_reward: number
+  coin_reward: number
   xp_reward: number
   progress: number
   completed: boolean
@@ -48,16 +49,16 @@ export default function QuestPanel() {
   ]
 
   return (
-    <div className="bg-sloth-card border border-sloth-border rounded-xl p-5">
+    <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
       {/* Tab header */}
-      <div className="flex items-center gap-1 mb-4 bg-sloth-dark rounded-lg p-1">
+      <div className="flex items-center gap-1 mb-4 bg-brand-bg rounded-lg p-1">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex-1 py-1.5 px-3 rounded-md text-sm font-semibold transition-colors cursor-pointer ${
               tab === t.id
-                ? 'bg-sloth-green/20 text-sloth-green'
+                ? 'bg-brand-primary/20 text-brand-primary'
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
@@ -86,28 +87,28 @@ export default function QuestPanel() {
                 animate={{ opacity: 1, x: 0 }}
                 className={`p-3 rounded-lg border ${
                   quest.completed
-                    ? 'border-sloth-green/30 bg-sloth-green/5'
-                    : 'border-sloth-border bg-sloth-dark'
+                    ? 'border-brand-primary/30 bg-brand-primary/5'
+                    : 'border-brand-border bg-brand-bg'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <p className={`text-sm font-semibold ${quest.completed ? 'text-sloth-green' : 'text-white'}`}>
+                  <p className={`text-sm font-semibold ${quest.completed ? 'text-brand-primary' : 'text-white'}`}>
                     {quest.completed ? '\u2705 ' : ''}{quest.title}
                   </p>
                   <div className="flex items-center gap-2 text-xs">
-                    {quest.sloth_reward > 0 && (
-                      <span className="text-sloth-green font-bold">+{quest.sloth_reward} ZZZ</span>
+                    {quest.coin_reward > 0 && (
+                      <span className="text-brand-primary font-bold">+{quest.coin_reward} {CUR}</span>
                     )}
                     {quest.xp_reward > 0 && (
-                      <span className="text-sloth-purple font-bold">+{quest.xp_reward} XP</span>
+                      <span className="text-brand-accent font-bold">+{quest.xp_reward} XP</span>
                     )}
                   </div>
                 </div>
                 <p className="text-gray-500 text-xs mb-2">{quest.description}</p>
-                <div className="w-full bg-sloth-border rounded-full h-1.5">
+                <div className="w-full bg-brand-border rounded-full h-1.5">
                   <div
                     className={`h-1.5 rounded-full transition-all duration-500 ${
-                      quest.completed ? 'bg-sloth-green' : 'bg-sloth-purple'
+                      quest.completed ? 'bg-brand-primary' : 'bg-brand-accent'
                     }`}
                     style={{ width: `${pct}%` }}
                   />

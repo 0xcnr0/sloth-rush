@@ -2,46 +2,25 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { THEME, CUR, pathLabel, passiveLabel } from '../config/theme'
 
 interface EvolutionModalProps {
-  slothId: number
-  slothName: string
+  racerId: number
+  racerName: string
   wallet: string
   onClose: () => void
   onEvolved: () => void
 }
 
+// Path ids are the functional stat axis; every label, passive name and blurb
+// comes from the theme config.
 const EVOLUTION_PATHS = [
-  {
-    id: 'caffeine',
-    name: 'Caffeine',
-    icon: '\u{26A1}',
-    color: 'text-yellow-400 border-yellow-400 bg-yellow-400/10',
-    statBonus: 'SPD/ACC +5 cap',
-    passive: 'Last 100m caffeine kicks in, +10% speed',
-    description: 'The path of raw speed. Your sloth runs on pure espresso, excelling in final sprints.',
-  },
-  {
-    id: 'hibernate',
-    name: 'Hibernate',
-    icon: '\u{1F6E1}\uFE0F',
-    color: 'text-blue-400 border-blue-400 bg-blue-400/10',
-    statBonus: 'STA/REF +5 cap',
-    passive: 'Deep hibernation, fatigue builds 50% slower',
-    description: 'The path of resilience. Deep hibernation makes your sloth an unstoppable tank, shrugging off fatigue.',
-  },
-  {
-    id: 'dreamwalk',
-    name: 'Dreamwalk',
-    icon: '\u{2728}',
-    color: 'text-purple-400 border-purple-400 bg-purple-400/10',
-    statBonus: 'LCK/AGI +5 cap',
-    passive: 'Dream Catcher attracts Luck Orbs 20% more',
-    description: 'The path of fortune. Your sloth bends reality through lucid dreams, attracting beneficial events.',
-  },
+  { id: 'speed', icon: '\u{26A1}', color: 'text-yellow-400 border-yellow-400 bg-yellow-400/10', passive: 'late_surge' },
+  { id: 'endurance', icon: '\u{1F6E1}\uFE0F', color: 'text-blue-400 border-blue-400 bg-blue-400/10', passive: 'fatigue_resist' },
+  { id: 'luck', icon: '\u{2728}', color: 'text-purple-400 border-purple-400 bg-purple-400/10', passive: 'luck_magnet' },
 ]
 
-export default function EvolutionModal({ slothId, slothName, wallet, onClose, onEvolved }: EvolutionModalProps) {
+export default function EvolutionModal({ racerId, racerName, wallet, onClose, onEvolved }: EvolutionModalProps) {
   const [progress, setProgress] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [evolving, setEvolving] = useState(false)
@@ -50,26 +29,26 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
   const [evolveResult, setEvolveResult] = useState<any>(null)
 
   useEffect(() => {
-    api.getEvolutionProgress(slothId)
+    api.getEvolutionProgress(racerId)
       .then(setProgress)
       .catch((err) => { console.error('Failed to load evolution progress:', err); toast.error('Failed to load data. Please refresh.') })
       .finally(() => setLoading(false))
-  }, [slothId])
+  }, [racerId])
 
   async function handleEvolve() {
     if (evolving) return
     // For tier 2->3 a path must be chosen
     if (progress?.tier === 2 && !selectedPath) return
     // Confirmation dialog
-    const zzzCost = requirements?.zzz || 0
-    const pathLabel = selectedPath ? ` via ${selectedPath.charAt(0).toUpperCase() + selectedPath.slice(1)} path` : ''
+    const coinCost = requirements?.coins || 0
+    const pathSuffix = selectedPath ? ` via the ${pathLabel(selectedPath)} path` : ''
     const confirmed = window.confirm(
-      `Evolve ${slothName} to Tier ${tier + 1}${pathLabel}?\n\nThis will cost ${zzzCost} ZZZ Coins. This action cannot be undone.`
+      `Evolve ${racerName} to Tier ${tier + 1}${pathSuffix}?\n\nThis will cost ${coinCost} ${CUR}. This action cannot be undone.`
     )
     if (!confirmed) return
     setEvolving(true)
     try {
-      const result = await api.evolve(wallet, slothId, selectedPath || undefined)
+      const result = await api.evolve(wallet, racerId, selectedPath || undefined)
       setEvolveResult(result)
       setEvolved(true)
     } catch (err: any) {
@@ -89,7 +68,7 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
   if (requirements.xp !== undefined) reqItems.push({ label: 'XP', current: prog.xp || 0, target: requirements.xp })
   if (requirements.races !== undefined) reqItems.push({ label: 'Races', current: prog.races || 0, target: requirements.races })
   if (requirements.wins !== undefined) reqItems.push({ label: 'Wins', current: prog.wins || 0, target: requirements.wins })
-  if (requirements.zzz !== undefined) reqItems.push({ label: 'ZZZ', current: prog.zzz || 0, target: requirements.zzz })
+  if (requirements.coins !== undefined) reqItems.push({ label: CUR, current: prog.coins || 0, target: requirements.coins })
   if (requirements.stat !== undefined) reqItems.push({ label: 'Stat Total', current: prog.stat || 0, target: requirements.stat })
 
   return (
@@ -106,13 +85,13 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={e => e.stopPropagation()}
-          className="bg-sloth-card border border-sloth-border rounded-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="bg-brand-surface border border-brand-border rounded-2xl max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-sloth-border">
+          <div className="flex items-center justify-between p-5 border-b border-brand-border">
             <div>
               <h2 className="text-white font-bold text-lg">Evolution</h2>
-              <p className="text-gray-400 text-sm">{slothName}</p>
+              <p className="text-gray-400 text-sm">{racerName}</p>
             </div>
             <button
               onClick={onClose}
@@ -141,19 +120,19 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
                 >
                   {'\u{2728}'}
                 </motion.div>
-                <h3 className="text-2xl font-bold text-sloth-green mb-2">Evolution Complete!</h3>
+                <h3 className="text-2xl font-bold text-brand-primary mb-2">Evolution Complete!</h3>
                 <p className="text-white font-semibold mb-1">Tier {evolveResult.tier}</p>
                 {evolveResult.evolutionPath && (
-                  <p className="text-sloth-purple font-semibold mb-1">
-                    Path: {evolveResult.evolutionPath}
+                  <p className="text-brand-accent font-semibold mb-1">
+                    Path: {pathLabel(evolveResult.evolutionPath)}
                   </p>
                 )}
                 {evolveResult.passive && (
-                  <p className="text-gray-400 text-sm mb-4">Passive: {evolveResult.passive}</p>
+                  <p className="text-gray-400 text-sm mb-4">Passive: {passiveLabel(evolveResult.passive)}</p>
                 )}
                 <button
                   onClick={() => { onEvolved(); onClose() }}
-                  className="px-8 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
+                  className="px-8 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
                 >
                   Done
                 </button>
@@ -167,14 +146,14 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
                 <div className="text-center mb-6">
                   <div className="inline-flex items-center gap-3">
                     <div className="text-center">
-                      <div className="w-16 h-16 rounded-full bg-sloth-green/20 border-2 border-sloth-green flex items-center justify-center text-2xl font-extrabold text-sloth-green">
+                      <div className="w-16 h-16 rounded-full bg-brand-primary/20 border-2 border-brand-primary flex items-center justify-center text-2xl font-extrabold text-brand-primary">
                         T{tier}
                       </div>
                       <p className="text-xs text-gray-400 mt-1">Current</p>
                     </div>
                     <div className="text-gray-500 text-2xl">{'\u{2192}'}</div>
                     <div className="text-center">
-                      <div className="w-16 h-16 rounded-full bg-sloth-purple/20 border-2 border-sloth-purple flex items-center justify-center text-2xl font-extrabold text-sloth-purple">
+                      <div className="w-16 h-16 rounded-full bg-brand-accent/20 border-2 border-brand-accent flex items-center justify-center text-2xl font-extrabold text-brand-accent">
                         T{tier + 1}
                       </div>
                       <p className="text-xs text-gray-400 mt-1">Next</p>
@@ -193,17 +172,17 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
                         return (
                           <div key={item.label}>
                             <div className="flex items-center justify-between mb-1">
-                              <span className={`text-sm font-semibold ${done ? 'text-sloth-green' : 'text-gray-300'}`}>
+                              <span className={`text-sm font-semibold ${done ? 'text-brand-primary' : 'text-gray-300'}`}>
                                 {done ? '\u{2705} ' : ''}{item.label}
                               </span>
                               <span className="text-xs text-gray-500">{item.current}/{item.target}</span>
                             </div>
-                            <div className="w-full bg-sloth-dark rounded-full h-2">
+                            <div className="w-full bg-brand-bg rounded-full h-2">
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${pct}%` }}
                                 transition={{ duration: 0.5 }}
-                                className={`h-2 rounded-full ${done ? 'bg-sloth-green' : 'bg-sloth-purple'}`}
+                                className={`h-2 rounded-full ${done ? 'bg-brand-primary' : 'bg-brand-accent'}`}
                               />
                             </div>
                           </div>
@@ -227,16 +206,16 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
                           className={`w-full text-left p-4 rounded-xl border-2 cursor-pointer transition-colors ${
                             selectedPath === path.id
                               ? path.color
-                              : 'border-sloth-border bg-sloth-dark hover:border-gray-500'
+                              : 'border-brand-border bg-brand-bg hover:border-gray-500'
                           }`}
                         >
                           <div className="flex items-start gap-3">
                             <span className="text-2xl">{path.icon}</span>
                             <div className="flex-1">
-                              <p className="text-white font-bold">{path.name}</p>
-                              <p className="text-gray-400 text-xs mt-0.5">{path.statBonus}</p>
-                              <p className="text-gray-500 text-xs mt-1">{path.description}</p>
-                              <p className="text-sloth-green text-xs font-semibold mt-1">Passive: {path.passive}</p>
+                              <p className="text-white font-bold">{pathLabel(path.id)}</p>
+                              <p className="text-gray-400 text-xs mt-0.5">{THEME.paths[path.id]?.statBonus}</p>
+                              <p className="text-gray-500 text-xs mt-1">{THEME.paths[path.id]?.description}</p>
+                              <p className="text-brand-primary text-xs font-semibold mt-1">Passive: {passiveLabel(path.passive)}</p>
                             </div>
                           </div>
                         </motion.button>
@@ -247,11 +226,11 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
 
                 {/* Current passive/path info */}
                 {progress.evolutionPath && (
-                  <div className="mb-4 p-3 bg-sloth-dark rounded-xl border border-sloth-border">
+                  <div className="mb-4 p-3 bg-brand-bg rounded-xl border border-brand-border">
                     <p className="text-gray-400 text-xs">Current Path</p>
-                    <p className="text-white font-semibold">{progress.evolutionPath}</p>
+                    <p className="text-white font-semibold">{pathLabel(progress.evolutionPath)}</p>
                     {progress.passive && (
-                      <p className="text-sloth-green text-xs mt-1">Passive: {progress.passive}</p>
+                      <p className="text-brand-primary text-xs mt-1">Passive: {passiveLabel(progress.passive)}</p>
                     )}
                   </div>
                 )}
@@ -260,7 +239,7 @@ export default function EvolutionModal({ slothId, slothName, wallet, onClose, on
                 <button
                   onClick={handleEvolve}
                   disabled={!eligible || evolving || (needsPath && !selectedPath)}
-                  className="w-full py-3 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-lg"
+                  className="w-full py-3 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-lg"
                 >
                   {evolving
                     ? 'Evolving...'

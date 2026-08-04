@@ -102,7 +102,7 @@ export default function CommunityBoard() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <div className="animate-spin w-8 h-8 border-2 border-sloth-green border-t-transparent rounded-full mx-auto" />
+        <div className="animate-spin w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full mx-auto" />
       </div>
     )
   }
@@ -116,7 +116,7 @@ export default function CommunityBoard() {
         </div>
         <Link
           to="/feedback"
-          className="px-4 py-2 bg-sloth-green text-black font-bold rounded-lg text-sm hover:bg-sloth-green/90 transition-colors"
+          className="px-4 py-2 bg-brand-primary text-black font-bold rounded-lg text-sm hover:bg-brand-primary/90 transition-colors"
         >
           Submit Feedback
         </Link>
@@ -124,8 +124,8 @@ export default function CommunityBoard() {
 
       {/* Weekly Insights Card */}
       {report && (
-        <div className="bg-gradient-to-br from-sloth-card to-sloth-green/5 border border-sloth-green/20 rounded-xl p-6 mb-8">
-          <h2 className="text-lg font-bold text-sloth-green mb-4">This Week's Insights</h2>
+        <div className="bg-gradient-to-br from-brand-surface to-brand-primary/5 border border-brand-primary/20 rounded-xl p-6 mb-8">
+          <h2 className="text-lg font-bold text-brand-primary mb-4">This Week's Insights</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-white">{report.total_feedback}</p>
@@ -188,7 +188,7 @@ export default function CommunityBoard() {
 
       {/* Stats Summary (if no report) */}
       {!report && stats && (
-        <div className="bg-sloth-card border border-sloth-border rounded-xl p-6 mb-8">
+        <div className="bg-brand-surface border border-brand-border rounded-xl p-6 mb-8">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-2xl font-bold text-white">{stats.total}</p>
@@ -199,7 +199,7 @@ export default function CommunityBoard() {
               <p className="text-xs text-gray-400">Avg Rating</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-sloth-green">{stats.categories?.length || 0}</p>
+              <p className="text-2xl font-bold text-brand-primary">{stats.categories?.length || 0}</p>
               <p className="text-xs text-gray-400">Categories</p>
             </div>
           </div>
@@ -212,14 +212,14 @@ export default function CommunityBoard() {
           <h2 className="text-lg font-bold text-white mb-3">Trending</h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {trending.slice(0, 5).map((fb) => (
-              <div key={fb.id} className="bg-sloth-card border border-sloth-border rounded-lg p-3 min-w-[200px] shrink-0">
+              <div key={fb.id} className="bg-brand-surface border border-brand-border rounded-lg p-3 min-w-[200px] shrink-0">
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
                     CATEGORIES.find(c => c.id === fb.category)?.color || ''
                   }`}>
                     {fb.category}
                   </span>
-                  <span className="text-xs text-sloth-green font-bold">▲ {fb.upvotes}</span>
+                  <span className="text-xs text-brand-primary font-bold">▲ {fb.upvotes}</span>
                 </div>
                 <p className="text-sm text-gray-300 line-clamp-2">{fb.text}</p>
               </div>
@@ -230,11 +230,11 @@ export default function CommunityBoard() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
-        <div className="flex gap-1 bg-sloth-card rounded-lg p-1 border border-sloth-border">
+        <div className="flex gap-1 bg-brand-surface rounded-lg p-1 border border-brand-border">
           <button
             onClick={() => setSort('date')}
             className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              sort === 'date' ? 'bg-sloth-green/20 text-sloth-green' : 'text-gray-400 hover:text-white'
+              sort === 'date' ? 'bg-brand-primary/20 text-brand-primary' : 'text-gray-400 hover:text-white'
             }`}
           >
             Newest
@@ -242,7 +242,7 @@ export default function CommunityBoard() {
           <button
             onClick={() => setSort('upvotes')}
             className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              sort === 'upvotes' ? 'bg-sloth-green/20 text-sloth-green' : 'text-gray-400 hover:text-white'
+              sort === 'upvotes' ? 'bg-brand-primary/20 text-brand-primary' : 'text-gray-400 hover:text-white'
             }`}
           >
             Most Upvoted
@@ -252,7 +252,7 @@ export default function CommunityBoard() {
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
-          className="bg-sloth-card border border-sloth-border rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-sloth-green/50"
+          className="bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-brand-primary/50"
         >
           <option value="">All Categories</option>
           {CATEGORIES.map(c => (
@@ -263,7 +263,7 @@ export default function CommunityBoard() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="bg-sloth-card border border-sloth-border rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-sloth-green/50"
+          className="bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-brand-primary/50"
         >
           {STATUS_OPTIONS.map(s => (
             <option key={s.id} value={s.id}>{s.label}</option>
@@ -282,10 +282,10 @@ export default function CommunityBoard() {
         {feedbacks.map((fb) => (
           <div
             key={fb.id}
-            className={`bg-sloth-card border rounded-lg p-4 transition-colors ${
+            className={`bg-brand-surface border rounded-lg p-4 transition-colors ${
               fb.status === 'implemented'
-                ? 'border-sloth-green/30 bg-sloth-green/5'
-                : 'border-sloth-border'
+                ? 'border-brand-primary/30 bg-brand-primary/5'
+                : 'border-brand-border'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -295,8 +295,8 @@ export default function CommunityBoard() {
                 disabled={upvoted.has(fb.id)}
                 className={`flex flex-col items-center min-w-[40px] py-1 rounded transition-colors ${
                   upvoted.has(fb.id)
-                    ? 'text-sloth-green'
-                    : 'text-gray-500 hover:text-sloth-green'
+                    ? 'text-brand-primary'
+                    : 'text-gray-500 hover:text-brand-primary'
                 }`}
               >
                 <span className="text-sm">▲</span>
@@ -317,7 +317,7 @@ export default function CommunityBoard() {
                   <SentimentIcon sentiment={fb.ai_sentiment} />
                   <PriorityBadge priority={fb.ai_priority} />
                   {fb.status === 'implemented' && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-sloth-green/10 text-sloth-green border border-sloth-green/30 font-medium">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-primary border border-brand-primary/30 font-medium">
                       ✓ Your voice was heard!
                     </span>
                   )}
@@ -348,7 +348,7 @@ export default function CommunityBoard() {
           <button
             onClick={() => loadFeedbacks(pagination.page - 1)}
             disabled={pagination.page <= 1}
-            className="px-3 py-1.5 rounded-lg text-sm border border-sloth-border text-gray-400 disabled:opacity-30 hover:border-sloth-green/50 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-sm border border-brand-border text-gray-400 disabled:opacity-30 hover:border-brand-primary/50 transition-colors"
           >
             Prev
           </button>
@@ -358,7 +358,7 @@ export default function CommunityBoard() {
           <button
             onClick={() => loadFeedbacks(pagination.page + 1)}
             disabled={pagination.page >= pagination.totalPages}
-            className="px-3 py-1.5 rounded-lg text-sm border border-sloth-border text-gray-400 disabled:opacity-30 hover:border-sloth-green/50 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-sm border border-brand-border text-gray-400 disabled:opacity-30 hover:border-brand-primary/50 transition-colors"
           >
             Next
           </button>

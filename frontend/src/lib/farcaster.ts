@@ -31,10 +31,10 @@ export async function initFarcaster(): Promise<boolean> {
       // Tell the host app we're ready — hides the splash/loading screen
       sdk.actions.ready()
 
-      console.log('[SlothRush] Running as Farcaster Mini App, FID:', context.user?.fid)
+      console.log('[App] Running as Farcaster Mini App, FID:', context.user?.fid)
     }
   } catch (err) {
-    console.log('[SlothRush] Not in Mini App context (standalone browser)')
+    console.log('[App] Not in Mini App context (standalone browser)')
     miniAppActive = false
   }
 

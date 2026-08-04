@@ -45,7 +45,7 @@ export async function analyzeFeedback(
     messages: [
       {
         role: "user",
-        content: `You are analyzing player feedback for a blockchain sloth racing game called "Sloth Rush".
+        content: `You are analyzing player feedback for a blockchain racer racing game called "Racer Rush".
 For each feedback item, determine:
 1. sentiment: "positive", "neutral", or "negative"
 2. priority: "high" (game-breaking bugs, critical issues), "medium" (important features, balance issues), or "low" (minor suggestions, cosmetic requests)
@@ -94,7 +94,7 @@ export async function generateWeeklyReport(
     messages: [
       {
         role: "user",
-        content: `You are generating a weekly feedback report for "Sloth Rush", a blockchain sloth racing game on Base L2.
+        content: `You are generating a weekly feedback report for "Racer Rush", a blockchain racer racing game on Base L2.
 
 Analyze these ${feedbackList.length} feedback items from this week:
 ${feedbackText}

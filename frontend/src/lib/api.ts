@@ -16,60 +16,54 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data
 }
 
-// Sloth endpoints
+// Racer endpoints
 export const api = {
-  mintSloth: (wallet: string) =>
-    request<{ sloth: any }>('/sloth/mint', {
+  mintRacer: (wallet: string) =>
+    request<{ racer: any }>('/racer/mint', {
       method: 'POST',
       body: JSON.stringify({ wallet }),
     }),
 
-  upgradeSloth: (wallet: string) =>
-    request<{ sloth: any; burnedSlothId: number; coinBonus: number }>('/sloth/upgrade', {
+  upgradeRacer: (wallet: string) =>
+    request<{ racer: any; burnedRacerId: number; coinBonus: number }>('/racer/upgrade', {
       method: 'POST',
       body: JSON.stringify({ wallet }),
     }),
 
-  getTreehouse: (wallet: string) =>
-    request<{ sloths: any[]; coinBalance: number }>(`/sloth/treehouse/${wallet}`),
+  getCollection: (wallet: string) =>
+    request<{ racers: any[]; coinBalance: number }>(`/racer/collection/${wallet}`),
 
   getCoinBalance: (wallet: string) =>
-    request<{ wallet: string; balance: number }>(`/sloth/coin/${wallet}`),
+    request<{ wallet: string; balance: number }>(`/racer/coin/${wallet}`),
 
   getStreaks: (wallet: string) =>
-    request<{ streaks: { sloth_id: number; current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }[] }>(
-      `/sloth/streaks/${wallet}`
+    request<{ streaks: { racer_id: number; current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }[] }>(
+      `/racer/streaks/${wallet}`
     ),
 
-  renameSloth: (wallet: string, slothId: number, name: string) =>
-    request<{ renamed: boolean; slothId: number; newName: string }>('/sloth/rename', {
+  renameRacer: (wallet: string, racerId: number, name: string) =>
+    request<{ renamed: boolean; racerId: number; newName: string }>('/racer/rename', {
       method: 'POST',
-      body: JSON.stringify({ wallet, slothId: slothId, name }),
+      body: JSON.stringify({ wallet, racerId: racerId, name }),
     }),
 
   // Race endpoints
-  createRace: (wallet: string, slothId: number, format: string = 'standard') =>
-    request<{ raceId: string; format: string; entryFee: number; maxRaise: number; status: string }>(
+  createRace: (wallet: string, racerId: number, format: string = 'standard') =>
+    request<{ raceId: string; format: string; entryFee: number; maxTune: number; status: string }>(
       '/race/create',
-      { method: 'POST', body: JSON.stringify({ wallet, slothId: slothId, format }) }
+      { method: 'POST', body: JSON.stringify({ wallet, racerId: racerId, format }) }
     ),
 
-  joinRace: (raceId: string, slothId: number, wallet: string) =>
+  joinRace: (raceId: string, racerId: number, wallet: string) =>
     request<{ joined: boolean; raceId: string; entryFeeCharged: number; newBalance: number }>(
       '/race/join',
-      { method: 'POST', body: JSON.stringify({ raceId, slothId: slothId, wallet }) }
+      { method: 'POST', body: JSON.stringify({ raceId, racerId: racerId, wallet }) }
     ),
 
-  startBidding: (raceId: string) =>
-    request<{ raceId: string; status: string; botsAdded: number; skipBidding?: boolean }>(
-      '/race/start-bidding',
+  startTuning: (raceId: string) =>
+    request<{ raceId: string; status: string; botsAdded: number }>(
+      '/race/start-tuning',
       { method: 'POST', body: JSON.stringify({ raceId }) }
-    ),
-
-  submitBid: (raceId: string, wallet: string, amount: number) =>
-    request<{ raceId: string; wallet: string; bidAmount: number }>(
-      '/race/bid',
-      { method: 'POST', body: JSON.stringify({ raceId, wallet, amount }) }
     ),
 
   simulateRace: (raceId: string) =>
@@ -77,28 +71,28 @@ export const api = {
       raceId: string
       seed: string
       resultHash: string
-      gridPositions: { id: number; name: string; position: number; bid: number }[]
+      gridPositions: { id: number; name: string; position: number }[]
       frames: { tick: number; positions: { id: number; distance: number; speed: number; event?: string }[] }[]
       events: { tick: number; type: string; description: string; affectedIds: number[] }[]
-      finalOrder: { id: number; wallet: string; name: string; isBot: boolean; position: number; payout: number }[]
-      totalPot: number
+      finalOrder: { id: number; wallet: string; name: string; isBot: boolean; position: number; reward: number }[]
+      totalPrizePool: number
       trackLength: number
     }>('/race/simulate', {
       method: 'POST',
       body: JSON.stringify({ raceId }),
     }),
 
-  submitAction: (raceId: string, wallet: string, slothId: number, actionType: 'boost' | 'pillow', tick: number) =>
+  submitAction: (raceId: string, wallet: string, racerId: number, actionType: 'boost' | 'projectile', tick: number) =>
     request<{ raceId: string; actionType: string; tick: number; cost: number; newBalance: number }>(
       '/race/action',
-      { method: 'POST', body: JSON.stringify({ raceId, wallet, slothId: slothId, actionType, tick }) }
+      { method: 'POST', body: JSON.stringify({ raceId, wallet, racerId: racerId, actionType, tick }) }
     ),
 
   getRace: (raceId: string) =>
     request<any>(`/race/${raceId}`),
 
   createGP: () =>
-    request<{ gpId: string; qualifyRaceId: string; finalRaceId: string; stage: string; entryFee: number; maxRaise: number }>(
+    request<{ gpId: string; qualifyRaceId: string; finalRaceId: string; stage: string; entryFee: number; maxTune: number }>(
       '/race/gp/create',
       { method: 'POST', body: JSON.stringify({}) }
     ),
@@ -109,14 +103,8 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ qualifyRaceId }) }
     ),
 
-  predictWinner: (raceId: string, wallet: string, slothId: number) =>
-    request<{ predicted: boolean; raceId: string; slothId: number }>('/race/predict', {
-      method: 'POST',
-      body: JSON.stringify({ raceId, wallet, slothId: slothId }),
-    }),
-
   getGDAPrices: (raceId: string, tick: number) =>
-    request<{ boostPrice: number; pillowPrice: number; boostPurchases: number; pillowPurchases: number }>(
+    request<{ boostPrice: number; projectilePrice: number; boostPurchases: number; projectilePurchases: number }>(
       `/race/${raceId}/prices?tick=${tick}`
     ),
 
@@ -141,17 +129,17 @@ export const api = {
   // Daily login bonus
   claimDailyLogin: (wallet: string) =>
     request<{ claimed: boolean; bonus?: number; newBalance?: number; message?: string }>(
-      '/sloth/daily-login',
+      '/racer/daily-login',
       { method: 'POST', body: JSON.stringify({ wallet }) }
     ),
 
   // XP
   getXP: (wallet: string) =>
-    request<{ wallet: string; xp: number }>(`/sloth/xp/${wallet}`),
+    request<{ wallet: string; xp: number }>(`/racer/xp/${wallet}`),
 
   // Quests
   getDailyQuests: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; sloth_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; coin_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
       `/quests/daily/${wallet}`
     ),
 
@@ -164,18 +152,18 @@ export const api = {
   // Upgrade progress (free path)
   getUpgradeProgress: (wallet: string) =>
     request<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean }>(
-      `/sloth/upgrade-progress/${wallet}`
+      `/racer/upgrade-progress/${wallet}`
     ),
 
   freeUpgrade: (wallet: string) =>
-    request<{ sloth: any; burnedSlothId: number; coinBonus: number }>('/sloth/free-upgrade', {
+    request<{ racer: any; burnedRacerId: number; coinBonus: number }>('/racer/free-upgrade', {
       method: 'POST',
       body: JSON.stringify({ wallet }),
     }),
 
   // Leaderboard
   getLeaderboard: (league: string) =>
-    request<{ leaderboard: { rank: number; wallet: string; sloth_name: string; rarity: string; total_rp: number }[] }>(
+    request<{ leaderboard: { rank: number; wallet: string; racer_name: string; rarity: string; total_rp: number }[] }>(
       `/leaderboard/${league}`
     ),
 
@@ -185,31 +173,31 @@ export const api = {
     ),
 
   // Training
-  startTraining: (wallet: string, slothId: number, stat: string) =>
-    request<{ started: boolean; slothId: number; stat: string; completedAt: string }>('/sloth/train', {
+  startTraining: (wallet: string, racerId: number, stat: string) =>
+    request<{ started: boolean; racerId: number; stat: string; completedAt: string }>('/racer/train', {
       method: 'POST',
-      body: JSON.stringify({ wallet, slothId: slothId, stat }),
+      body: JSON.stringify({ wallet, racerId: racerId, stat }),
     }),
 
-  claimTraining: (wallet: string, slothId: number) =>
-    request<{ claimed: boolean; slothId: number; stat: string; gain: number; newStatValue: number }>('/sloth/claim-training', {
+  claimTraining: (wallet: string, racerId: number) =>
+    request<{ claimed: boolean; racerId: number; stat: string; gain: number; newStatValue: number }>('/racer/claim-training', {
       method: 'POST',
-      body: JSON.stringify({ wallet, slothId: slothId }),
+      body: JSON.stringify({ wallet, racerId: racerId }),
     }),
 
   getTrainingStatus: (wallet: string) =>
-    request<{ trainings: { slothId: number; slothName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]; weeklyCounts?: Record<number, number> }>(
-      `/sloth/training-status/${wallet}`
+    request<{ trainings: { racerId: number; racerName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]; weeklyCounts?: Record<number, number> }>(
+      `/racer/training-status/${wallet}`
     ),
 
   // Weekly & Milestone quests
   getWeeklyQuests: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; sloth_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; coin_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
       `/quests/weekly/${wallet}`
     ),
 
   getMilestones: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; sloth_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
+    request<{ quests: { id: number; title: string; description: string; requirement_type: string; coin_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
       `/quests/milestones/${wallet}`
     ),
 
@@ -218,22 +206,22 @@ export const api = {
     request<{ raceId: string; weather: string; date: string; isNew?: boolean }>('/race/daily'),
 
   // Mini games
-  playMiniGame: (wallet: string, slothId: number, gameType: string, score: number) =>
-    request<{ gain: number; newStatValue: number; stat: string }>('/sloth/mini-game', {
+  playMiniGame: (wallet: string, racerId: number, gameType: string, score: number) =>
+    request<{ gain: number; newStatValue: number; stat: string }>('/racer/mini-game', {
       method: 'POST',
-      body: JSON.stringify({ wallet, slothId: slothId, gameType, score }),
+      body: JSON.stringify({ wallet, racerId: racerId, gameType, score }),
     }),
 
   // Evolution
-  getEvolutionProgress: (slothId: number) =>
+  getEvolutionProgress: (racerId: number) =>
     request<{ tier: number; evolutionPath: string | null; passive: string | null; requirements: any; progress: any; eligible: boolean }>(
-      `/sloth/evolution-progress/${slothId}`
+      `/racer/evolution-progress/${racerId}`
     ),
 
-  evolve: (wallet: string, slothId: number, path?: string) =>
-    request<{ evolved: boolean; tier: number; evolutionPath: string | null; passive: string | null }>('/sloth/evolve', {
+  evolve: (wallet: string, racerId: number, path?: string) =>
+    request<{ evolved: boolean; tier: number; evolutionPath: string | null; passive: string | null }>('/racer/evolve', {
       method: 'POST',
-      body: JSON.stringify({ wallet, slothId: slothId, path }),
+      body: JSON.stringify({ wallet, racerId: racerId, path }),
     }),
 
   // Cosmetics
@@ -246,10 +234,10 @@ export const api = {
       body: JSON.stringify({ wallet, cosmeticId }),
     }),
 
-  equipCosmetic: (wallet: string, slothId: number, cosmeticId: number) =>
-    request<{ equipped: boolean }>('/sloth/equip-cosmetic', {
+  equipCosmetic: (wallet: string, racerId: number, cosmeticId: number) =>
+    request<{ equipped: boolean }>('/racer/equip-cosmetic', {
       method: 'POST',
-      body: JSON.stringify({ wallet, slothId: slothId, cosmeticId }),
+      body: JSON.stringify({ wallet, racerId: racerId, cosmeticId }),
     }),
 
   // Accessories
@@ -262,27 +250,27 @@ export const api = {
       body: JSON.stringify({ wallet, accessoryId }),
     }),
 
-  equipAccessory: (wallet: string, slothId: number, accessoryId: number) =>
-    request<{ equipped: boolean }>('/sloth/equip-accessory', {
+  equipAccessory: (wallet: string, racerId: number, accessoryId: number) =>
+    request<{ equipped: boolean }>('/racer/equip-accessory', {
       method: 'POST',
-      body: JSON.stringify({ wallet, slothId: slothId, accessoryId }),
+      body: JSON.stringify({ wallet, racerId: racerId, accessoryId }),
     }),
 
-  unequipAccessory: (wallet: string, slothId: number) =>
-    request<{ unequipped: boolean }>('/sloth/unequip-accessory', {
+  unequipAccessory: (wallet: string, racerId: number) =>
+    request<{ unequipped: boolean }>('/racer/unequip-accessory', {
       method: 'POST',
-      body: JSON.stringify({ wallet, slothId: slothId }),
+      body: JSON.stringify({ wallet, racerId: racerId }),
     }),
 
   // Profile
   getProfile: (wallet: string) =>
-    request<{ wallet: string; balance: number; xp: number; totalRaces: number; totalWins: number; totalEarnings: number; loginDays: number; freeSlothCount: number; slothCount: number }>(
-      `/sloth/profile/${wallet}`
+    request<{ wallet: string; balance: number; xp: number; totalRaces: number; totalWins: number; totalEarnings: number; loginDays: number; freeRacerCount: number; racerCount: number }>(
+      `/racer/profile/${wallet}`
     ),
 
   getProfileTransactions: (wallet: string) =>
     request<{ transactions: { type: string; amount: number; description: string; created_at: string }[] }>(
-      `/sloth/profile/transactions/${wallet}`
+      `/racer/profile/transactions/${wallet}`
     ),
 
   // Race replay
@@ -291,11 +279,6 @@ export const api = {
 
   getActiveRaces: () =>
     request<{ races: any[] }>('/race/active'),
-
-  getPredictionStats: (wallet: string) =>
-    request<{ total: number; correct: number; percentage: number }>(
-      `/race/predictions/stats/${wallet}`
-    ),
 
   // Season
   getCurrentSeason: () =>

@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import Mint from './pages/Mint'
-import Treehouse from './pages/Treehouse'
+import Collection from './pages/Collection'
 import RaceLobby from './pages/RaceLobby'
 import RaceBroadcast from './pages/RaceBroadcast'
 import Shop from './pages/Shop'
@@ -23,12 +23,12 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Landing />} />
         <Route path="/mint" element={<Mint />} />
-        <Route path="/treehouse" element={<Treehouse />} />
+        <Route path="/collection" element={<Collection />} />
         <Route path="/race" element={<RaceLobby />} />
         <Route path="/race/:id" element={<RaceBroadcast />} />
         <Route path="/shop" element={FEATURES.shop ? <Shop /> : <Navigate to="/" replace />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/mini-games" element={<Navigate to="/treehouse" replace />} />
+        <Route path="/mini-games" element={<Navigate to="/collection" replace />} />
         <Route path="/spectate" element={<Spectate />} />
         <Route path="/replay/:id" element={FEATURES.replay ? <RaceReplay /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={FEATURES.profile ? <Profile /> : <Navigate to="/" replace />} />
@@ -37,7 +37,8 @@ export default function App() {
         <Route path="/community" element={FEATURES.community ? <CommunityBoard /> : <Navigate to="/" replace />} />
         <Route path="/invite/:code" element={<Invite />} />
         {/* Redirects for old routes */}
-        <Route path="/stable" element={<Navigate to="/treehouse" replace />} />
+        <Route path="/stable" element={<Navigate to="/collection" replace />} />
+        <Route path="/treehouse" element={<Navigate to="/collection" replace />} />
         <Route path="/history" element={<Navigate to="/profile" replace />} />
         <Route path="*" element={<NotFound />} />
       </Route>

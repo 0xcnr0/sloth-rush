@@ -47,14 +47,14 @@ router.get("/me/:wallet", async (req: Request, res: Response) => {
 router.get("/career", async (_req: Request, res: Response) => {
   try {
     const leaderboard = await getAll(
-      `SELECT s.wallet, s.name as sloth_name, s.rarity, s.tier,
+      `SELECT s.wallet, s.name as racer_name, s.rarity, s.tier,
               COALESCE(st.total_wins, 0) as total_wins,
               COALESCE(st.total_races, 0) as total_races,
               COALESCE(SUM(rp.rp), 0) as total_rp
-       FROM sloths s
-       LEFT JOIN streaks st ON s.id = st.sloth_id
-       LEFT JOIN race_points rp ON s.id = rp.sloth_id
-       WHERE s.is_burned = 0 AND s.type = 'sloth'
+       FROM racers s
+       LEFT JOIN streaks st ON s.id = st.racer_id
+       LEFT JOIN race_points rp ON s.id = rp.racer_id
+       WHERE s.is_burned = 0 AND s.type = 'pro'
        GROUP BY s.id, s.wallet, s.name, s.rarity, s.tier, st.total_wins, st.total_races
        ORDER BY total_wins DESC, total_races DESC
        LIMIT 50`
@@ -63,7 +63,7 @@ router.get("/career", async (_req: Request, res: Response) => {
     const ranked = leaderboard.map((row: any, i: number) => ({
       rank: i + 1,
       wallet: row.wallet,
-      sloth_name: row.sloth_name,
+      racer_name: row.racer_name,
       rarity: row.rarity,
       tier: row.tier || 0,
       total_wins: parseInt(row.total_wins) || 0,
@@ -131,36 +131,36 @@ router.get("/:league", async (req: Request, res: Response) => {
       return;
     }
 
-    // bronze = players who have free_sloth, silver = players who have sloth, gold = players with tier >= 2
-    let slothTypeFilter: string;
+    // bronze = players who have free, silver = players who have racer, gold = players with tier >= 2
+    let racerTypeFilter: string;
     let extraCondition = "";
 
     if (league === "bronze") {
-      slothTypeFilter = "free_sloth";
+      racerTypeFilter = "free";
     } else if (league === "gold") {
-      slothTypeFilter = "sloth";
-      extraCondition = " AND EXISTS (SELECT 1 FROM sloths WHERE wallet = rp.wallet AND type = 'sloth' AND tier >= 2 AND is_burned = 0)";
+      racerTypeFilter = "pro";
+      extraCondition = " AND EXISTS (SELECT 1 FROM racers WHERE wallet = rp.wallet AND type = 'pro' AND tier >= 2 AND is_burned = 0)";
     } else {
-      slothTypeFilter = "sloth";
+      racerTypeFilter = "pro";
     }
 
     const leaderboard = await getAll(
-      `SELECT rp.wallet, MAX(s.name) as sloth_name, MAX(s.rarity) as rarity, SUM(rp.rp) as total_rp
+      `SELECT rp.wallet, MAX(s.name) as racer_name, MAX(s.rarity) as rarity, SUM(rp.rp) as total_rp
        FROM race_points rp
-       JOIN sloths s ON rp.sloth_id = s.id
+       JOIN racers s ON rp.racer_id = s.id
        WHERE rp.season = 1
-         AND EXISTS (SELECT 1 FROM sloths WHERE wallet = rp.wallet AND type = $1 AND is_burned = 0)
+         AND EXISTS (SELECT 1 FROM racers WHERE wallet = rp.wallet AND type = $1 AND is_burned = 0)
          ${extraCondition}
        GROUP BY rp.wallet
        ORDER BY total_rp DESC
        LIMIT 50`,
-      [slothTypeFilter]
+      [racerTypeFilter]
     );
 
     const ranked = leaderboard.map((row: any, i: number) => ({
       rank: i + 1,
       wallet: row.wallet,
-      sloth_name: row.sloth_name,
+      racer_name: row.racer_name,
       rarity: row.rarity,
       total_rp: parseInt(row.total_rp),
     }));

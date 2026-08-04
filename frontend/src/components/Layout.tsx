@@ -7,10 +7,11 @@ import { api } from '../lib/api'
 import OnboardingTutorial from './OnboardingTutorial'
 import { FEATURES } from '../config/features'
 import { getSafeAreaInsets } from '../lib/farcaster'
+import { THEME, CUR } from '../config/theme'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home' },
-  { path: '/treehouse', label: 'Treehouse' },
+  { path: '/collection', label: THEME.locations.home },
   { path: '/race', label: 'Race' },
   { path: '/spectate', label: 'Spectate' },
   { path: '/shop', label: 'Shop' },
@@ -52,7 +53,7 @@ export default function Layout() {
         paddingBottom: safeArea.bottom,
       } : undefined}
     >
-      <nav className="border-b border-sloth-border bg-sloth-card/80 backdrop-blur-sm sticky top-0 z-50">
+      <nav className="border-b border-brand-border bg-brand-surface/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
             {/* Hamburger button - mobile only */}
@@ -62,8 +63,8 @@ export default function Layout() {
             >
               {mobileMenuOpen ? '\u2715' : '\u2630'}
             </button>
-            <Link to="/" className="text-xl font-bold text-sloth-green tracking-tight">
-              SLOTH RUSH
+            <Link to="/" className="text-xl font-bold text-brand-primary tracking-tight">
+              {THEME.brand.nameUpper}
             </Link>
             <div className="hidden sm:flex items-center gap-1">
               {NAV_ITEMS.map(item => (
@@ -72,7 +73,7 @@ export default function Layout() {
                   to={item.path}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     location.pathname === item.path
-                      ? 'bg-sloth-green/20 text-sloth-green'
+                      ? 'bg-brand-primary/20 text-brand-primary'
                       : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
                 >
@@ -83,15 +84,15 @@ export default function Layout() {
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {address && balance > 0 && (
-              <div className="flex items-center gap-1 sm:gap-1.5 bg-sloth-green/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
-                <span className="text-sloth-green font-bold text-xs sm:text-sm">{balance}</span>
-                <span className="text-sloth-green/70 text-[10px] sm:text-xs hidden sm:inline">ZZZ</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-brand-primary/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
+                <span className="text-brand-primary font-bold text-xs sm:text-sm">{balance}</span>
+                <span className="text-brand-primary/70 text-[10px] sm:text-xs hidden sm:inline">{CUR}</span>
               </div>
             )}
             {address && xp > 0 && (
-              <div className="flex items-center gap-1 sm:gap-1.5 bg-sloth-purple/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
-                <span className="text-sloth-purple font-bold text-xs sm:text-sm">{xp}</span>
-                <span className="text-sloth-purple/70 text-[10px] sm:text-xs hidden sm:inline">XP</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-brand-accent/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
+                <span className="text-brand-accent font-bold text-xs sm:text-sm">{xp}</span>
+                <span className="text-brand-accent/70 text-[10px] sm:text-xs hidden sm:inline">XP</span>
               </div>
             )}
             <WalletConnect
@@ -108,7 +109,7 @@ export default function Layout() {
         <div className="sm:hidden fixed inset-0 z-50 bg-black/80" onClick={() => setMobileMenuOpen(false)}>
           <div className="bg-slate-900 w-64 h-full p-4 border-r border-slate-700" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
-              <span className="text-xl font-bold text-green-400">SLOTH RUSH</span>
+              <span className="text-xl font-bold text-green-400">{THEME.brand.nameUpper}</span>
               <button onClick={() => setMobileMenuOpen(false)} className="text-gray-400 text-xl">{'\u2715'}</button>
             </div>
             <nav className="flex flex-col gap-2">
@@ -136,14 +137,14 @@ export default function Layout() {
               <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
                 {xp > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5">
-                    <span className="text-sloth-purple font-bold text-sm">{xp}</span>
-                    <span className="text-sloth-purple/70 text-xs">XP</span>
+                    <span className="text-brand-accent font-bold text-sm">{xp}</span>
+                    <span className="text-brand-accent/70 text-xs">XP</span>
                   </div>
                 )}
                 {balance > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5">
-                    <span className="text-sloth-green font-bold text-sm">{balance}</span>
-                    <span className="text-sloth-green/70 text-xs">ZZZ</span>
+                    <span className="text-brand-primary font-bold text-sm">{balance}</span>
+                    <span className="text-brand-primary/70 text-xs">{CUR}</span>
                   </div>
                 )}
               </div>
@@ -156,15 +157,15 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-sloth-border py-4 px-4">
+      <footer className="border-t border-brand-border py-4 px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-gray-500 text-xs">
-          <span>Sloth Rush — Sloth Racing Game</span>
+          <span>{THEME.brand.name} — {THEME.brand.description}</span>
           <div className="flex items-center gap-4">
             <Link to="/mint" className="hover:text-white transition-colors">Mint</Link>
             <Link to="/guide" className="hover:text-white transition-colors">How to Play</Link>
             {FEATURES.profile && <Link to="/profile" className="hover:text-white transition-colors">Profile</Link>}
-            <a href="https://twitter.com/SlothRushGame" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a>
-            <a href="https://discord.gg/slothrush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Discord</a>
+            <a href="https://twitter.com/WindUpRush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a>
+            <a href="https://discord.gg/winduprush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Discord</a>
           </div>
         </div>
       </footer>

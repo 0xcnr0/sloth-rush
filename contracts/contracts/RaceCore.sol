@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./FreeSloth.sol";
-import "./Sloth.sol";
+import "./FreeRacer.sol";
+import "./Racer.sol";
 
 /**
- * @title SlothRush
+ * @title RaceCore
  * @notice Main game contract — upgrade, race result recording
  */
-contract SlothRush {
-    FreeSloth public freeSloth;
-    Sloth public sloth;
+contract RaceCore {
+    FreeRacer public freeRacer;
+    Racer public racer;
     address public owner;
 
     struct RaceResult {
@@ -22,7 +22,7 @@ contract SlothRush {
     mapping(bytes32 => RaceResult) public raceResults;
     bytes32[] public raceIds;
 
-    event Upgraded(address indexed player, uint256 freeSlothId, uint256 slothId, uint8 rarity);
+    event Upgraded(address indexed player, uint256 freeRacerId, uint256 racerId, uint8 rarity);
     event RaceRecorded(bytes32 indexed raceId, bytes32 resultHash, address winner);
 
     modifier onlyOwner() {
@@ -30,18 +30,18 @@ contract SlothRush {
         _;
     }
 
-    constructor(address _freeSloth, address _sloth) {
-        freeSloth = FreeSloth(_freeSloth);
-        sloth = Sloth(_sloth);
+    constructor(address _freeRacer, address _racer) {
+        freeRacer = FreeRacer(_freeRacer);
+        racer = Racer(_racer);
         owner = msg.sender;
     }
 
-    /// @notice Upgrade a Free Sloth to a Sloth
-    /// @dev Burns the Free Sloth and mints a new Sloth with given stats
-    /// @param freeSlothId The token ID of the Free Sloth to burn
+    /// @notice Upgrade a Free Racer to a Racer
+    /// @dev Burns the Free Racer and mints a new Racer with given stats
+    /// @param freeRacerId The token ID of the Free Racer to burn
     /// @param rarity Rarity level (0=Common, 4=Legendary)
     function upgrade(
-        uint256 freeSlothId,
+        uint256 freeRacerId,
         uint8 rarity,
         uint8 spd,
         uint8 acc,
@@ -51,15 +51,15 @@ contract SlothRush {
         uint8 lck
     ) external {
         // Verify ownership
-        require(freeSloth.ownerOf(freeSlothId) == msg.sender, "Not sloth owner");
+        require(freeRacer.ownerOf(freeRacerId) == msg.sender, "Not racer owner");
 
-        // Burn the Free Sloth
-        freeSloth.burn(freeSlothId);
+        // Burn the Free Racer
+        freeRacer.burn(freeRacerId);
 
-        // Mint new Sloth
-        uint256 slothId = sloth.mint(msg.sender, rarity, spd, acc, sta, agi, ref_, lck);
+        // Mint new Racer
+        uint256 racerId = racer.mint(msg.sender, rarity, spd, acc, sta, agi, ref_, lck);
 
-        emit Upgraded(msg.sender, freeSlothId, slothId, rarity);
+        emit Upgraded(msg.sender, freeRacerId, racerId, rarity);
     }
 
     /// @notice Record a race result on-chain

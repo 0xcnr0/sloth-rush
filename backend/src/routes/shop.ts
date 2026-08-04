@@ -4,11 +4,13 @@ import { isValidWallet } from "../middleware/validateWallet";
 
 const router = Router();
 
+// Package ids describe size, not branding — the display names live in the
+// frontend theme config. Prices and coin amounts are unchanged.
 const COIN_PACKAGES = [
-  { id: "starter", name: "Starter", price: 1, coins: 120, bonus: 0 },
-  { id: "popular", name: "Popular", price: 5, coins: 650, bonus: 8 },
-  { id: "pro", name: "Pro", price: 10, coins: 1400, bonus: 17 },
-  { id: "whale", name: "Whale", price: 25, coins: 4000, bonus: 25 },
+  { id: "bag", price: 1, coins: 120, bonus: 0 },
+  { id: "crate", price: 5, coins: 650, bonus: 8 },
+  { id: "pallet", price: 10, coins: 1400, bonus: 17 },
+  { id: "container", price: 25, coins: 4000, bonus: 25 },
 ] as const;
 
 // GET /api/shop/packages — List available packages
@@ -52,7 +54,7 @@ router.post("/buy-coins", async (req: Request, res: Response) => {
 
       await client.query(
         "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'shop_purchase', $2, $3)",
-        [wallet, pkg.coins, `${pkg.name} package ($${pkg.price} USDC)`]
+        [wallet, pkg.coins, `${pkg.id} package ($${pkg.price} USDC)`]
       );
     });
 
@@ -133,16 +135,16 @@ router.post("/buy-cosmetic", async (req: Request, res: Response) => {
           "SELECT balance FROM coin_balances WHERE wallet = $1 FOR UPDATE",
           [wallet]
         )).rows[0];
-        if ((balanceRow?.balance || 0) < cosmetic.sloth_price) {
+        if ((balanceRow?.balance || 0) < cosmetic.coin_price) {
           throw new Error("INSUFFICIENT_BALANCE");
         }
         await client.query(
           "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
-          [cosmetic.sloth_price, wallet]
+          [cosmetic.coin_price, wallet]
         );
         await client.query(
           "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'cosmetic_purchase', $2, $3)",
-          [wallet, -cosmetic.sloth_price, `Purchased ${cosmetic.name}`]
+          [wallet, -cosmetic.coin_price, `Purchased ${cosmetic.name}`]
         );
         await client.query(
           "INSERT INTO user_cosmetics (wallet, cosmetic_id) VALUES ($1, $2)",
@@ -151,7 +153,7 @@ router.post("/buy-cosmetic", async (req: Request, res: Response) => {
       });
     } catch (err: any) {
       if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient ZZZ balance" });
+        res.status(400).json({ error: "insufficient balance" });
         return;
       }
       throw err;
@@ -224,16 +226,16 @@ router.post("/buy-accessory", async (req: Request, res: Response) => {
           "SELECT balance FROM coin_balances WHERE wallet = $1 FOR UPDATE",
           [wallet]
         )).rows[0];
-        if ((balanceRow?.balance || 0) < accessory.sloth_price) {
+        if ((balanceRow?.balance || 0) < accessory.coin_price) {
           throw new Error("INSUFFICIENT_BALANCE");
         }
         await client.query(
           "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
-          [accessory.sloth_price, wallet]
+          [accessory.coin_price, wallet]
         );
         await client.query(
           "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'accessory_purchase', $2, $3)",
-          [wallet, -accessory.sloth_price, `Purchased ${accessory.name}`]
+          [wallet, -accessory.coin_price, `Purchased ${accessory.name}`]
         );
         await client.query(
           "INSERT INTO user_accessories (wallet, accessory_id) VALUES ($1, $2)",
@@ -242,7 +244,7 @@ router.post("/buy-accessory", async (req: Request, res: Response) => {
       });
     } catch (err: any) {
       if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient ZZZ balance" });
+        res.status(400).json({ error: "insufficient balance" });
         return;
       }
       throw err;

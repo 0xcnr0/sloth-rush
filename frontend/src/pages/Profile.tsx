@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { CUR } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 interface ProfileData {
@@ -14,8 +15,8 @@ interface ProfileData {
   totalWins: number
   totalEarnings: number
   loginDays: number
-  freeSlothCount: number
-  slothCount: number
+  freeRacerCount: number
+  racerCount: number
 }
 
 interface Transaction {
@@ -79,21 +80,21 @@ export default function Profile() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {[
-          { label: 'ZZZ Balance', value: String(profile.balance), color: 'text-sloth-green' },
+          { label: `${CUR} Balance`, value: String(profile.balance), color: 'text-brand-primary' },
           { label: 'XP', value: String(profile.xp), color: 'text-purple-400' },
           { label: 'Total Races', value: String(profile.totalRaces), color: 'text-white' },
           { label: 'Win Rate', value: `${winRate}%`, color: 'text-yellow-400' },
-          { label: 'Total Wins', value: String(profile.totalWins), color: 'text-sloth-green' },
-          { label: 'Total Earnings', value: `${profile.totalEarnings} ZZZ`, color: 'text-sloth-green' },
+          { label: 'Total Wins', value: String(profile.totalWins), color: 'text-brand-primary' },
+          { label: 'Total Earnings', value: `${profile.totalEarnings} ${CUR}`, color: 'text-brand-primary' },
           { label: 'Login Days', value: String(profile.loginDays), color: 'text-blue-400' },
-          { label: 'Creatures', value: `${profile.freeSlothCount + profile.slothCount}`, color: 'text-white' },
+          { label: 'Creatures', value: `${profile.freeRacerCount + profile.racerCount}`, color: 'text-white' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-sloth-card border border-sloth-border rounded-xl p-4 text-center"
+            className="bg-brand-surface border border-brand-border rounded-xl p-4 text-center"
           >
             <p className="text-gray-500 text-xs mb-1">{stat.label}</p>
             <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
@@ -112,7 +113,7 @@ export default function Profile() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-              tab === t.id ? 'bg-sloth-green/20 text-sloth-green' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              tab === t.id ? 'bg-brand-primary/20 text-brand-primary' : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             {t.label}
@@ -163,7 +164,7 @@ function ReferralSection({ wallet }: { wallet: string }) {
   const link = code ? `${window.location.origin}/invite/${code}` : null
 
   return (
-    <div className="mt-8 bg-sloth-card border border-sloth-border rounded-xl p-6">
+    <div className="mt-8 bg-brand-surface border border-brand-border rounded-xl p-6">
       <h3 className="text-white font-bold text-lg mb-4">Referrals</h3>
       {code ? (
         <div className="space-y-3">
@@ -174,7 +175,7 @@ function ReferralSection({ wallet }: { wallet: string }) {
                 await navigator.clipboard.writeText(link!)
                 toast.success('Link copied!')
               }}
-              className="px-4 py-2 bg-sloth-green/20 text-sloth-green rounded-lg text-sm font-medium hover:bg-sloth-green/30 transition-colors cursor-pointer"
+              className="px-4 py-2 bg-brand-primary/20 text-brand-primary rounded-lg text-sm font-medium hover:bg-brand-primary/30 transition-colors cursor-pointer"
             >
               Copy
             </button>
@@ -182,18 +183,18 @@ function ReferralSection({ wallet }: { wallet: string }) {
           {stats && (
             <div className="flex gap-4 text-sm">
               <span className="text-gray-400">Referrals: <span className="text-white font-bold">{stats.totalReferrals}</span></span>
-              <span className="text-gray-400">Earned: <span className="text-sloth-green font-bold">{stats.totalEarned} ZZZ</span></span>
+              <span className="text-gray-400">Earned: <span className="text-brand-primary font-bold">{stats.totalEarned} {CUR}</span></span>
             </div>
           )}
-          <p className="text-gray-500 text-xs">Share your link. Friends who join earn you 25 ZZZ each!</p>
+          <p className="text-gray-500 text-xs">Share your link. Friends who join earn you 25 {CUR} each!</p>
         </div>
       ) : (
         <div className="text-center">
-          <p className="text-gray-400 text-sm mb-3">Generate your referral link to invite friends and earn ZZZ</p>
+          <p className="text-gray-400 text-sm mb-3">Generate your referral link to invite friends and earn {CUR}</p>
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="px-6 py-2 bg-sloth-green text-black font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer disabled:opacity-50"
+            className="px-6 py-2 bg-brand-primary text-black font-bold rounded-lg hover:bg-brand-primary/90 transition-colors cursor-pointer disabled:opacity-50"
           >
             {generating ? 'Generating...' : 'Generate Referral Link'}
           </button>
@@ -217,7 +218,7 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
   if (loading) return <Spinner text="Loading race history..." />
 
   if (races.length === 0) return (
-    <div className="bg-sloth-card border border-sloth-border rounded-xl p-12 text-center">
+    <div className="bg-brand-surface border border-brand-border rounded-xl p-12 text-center">
       <p className="text-gray-400 text-lg mb-2">No races yet</p>
       <p className="text-gray-500 text-sm">Enter a race from the Race lobby to get started</p>
     </div>
@@ -232,14 +233,14 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
   }
 
   return (
-    <div className="bg-sloth-card border border-sloth-border rounded-xl overflow-hidden">
+    <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-sloth-border text-gray-400">
+            <tr className="border-b border-brand-border text-gray-400">
               <th className="text-left px-4 py-3 font-medium">Date</th>
               <th className="text-left px-4 py-3 font-medium">Format</th>
-              <th className="text-left px-4 py-3 font-medium">Sloth</th>
+              <th className="text-left px-4 py-3 font-medium">Racer</th>
               <th className="text-center px-4 py-3 font-medium">Position</th>
               <th className="text-right px-4 py-3 font-medium">Earnings</th>
             </tr>
@@ -248,21 +249,21 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
             {races.map((race: any, i: number) => (
               <tr
                 key={race.raceId + i}
-                className={`border-b border-sloth-border/50 hover:bg-white/5 transition-colors ${i === races.length - 1 ? 'border-b-0' : ''}`}
+                className={`border-b border-brand-border/50 hover:bg-white/5 transition-colors ${i === races.length - 1 ? 'border-b-0' : ''}`}
               >
                 <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                   {new Date(race.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </td>
                 <td className="px-4 py-3 text-gray-300">{FORMAT_LABELS[race.format] || race.format}</td>
-                <td className="px-4 py-3 text-white font-medium">{race.slothName}</td>
+                <td className="px-4 py-3 text-white font-medium">{race.racerName}</td>
                 <td className="px-4 py-3 text-center">
                   <span className={race.position === 1 ? 'text-yellow-400 font-bold' : race.position === 2 ? 'text-gray-300 font-bold' : race.position === 3 ? 'text-orange-400 font-bold' : 'text-gray-500'}>
                     {race.position === 1 ? '1st' : race.position === 2 ? '2nd' : race.position === 3 ? '3rd' : `${race.position}th`}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {race.payout > 0 ? (
-                    <span className="text-sloth-green font-bold">+{race.payout} ZZZ</span>
+                  {race.reward > 0 ? (
+                    <span className="text-brand-primary font-bold">+{race.reward} {CUR}</span>
                   ) : (
                     <span className="text-gray-500">0</span>
                   )}
@@ -279,7 +280,7 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
 function TransactionSection({ transactions }: { transactions: { type: string; amount: number; description: string; created_at: string }[] }) {
   const TYPE_LABELS: Record<string, string> = {
     race_entry: 'Race Entry',
-    race_payout: 'Race Payout',
+    race_reward: 'Race Reward',
     daily_login: 'Daily Login',
     quest_reward: 'Quest Reward',
     training: 'Training',
@@ -288,21 +289,25 @@ function TransactionSection({ transactions }: { transactions: { type: string; am
     upgrade: 'Upgrade',
     cosmetic_purchase: 'Cosmetic',
     accessory_purchase: 'Accessory',
-    prediction_reward: 'Prediction Reward',
   }
 
+  // Rows written by retired systems keep their historical `type` string.
+  // Those strings are not part of the current vocabulary, so they are shown
+  // under a single neutral label rather than echoed back to the player.
+  const typeLabel = (type: string) => TYPE_LABELS[type] || 'Archived'
+
   if (transactions.length === 0) return (
-    <div className="bg-sloth-card border border-sloth-border rounded-xl p-12 text-center">
+    <div className="bg-brand-surface border border-brand-border rounded-xl p-12 text-center">
       <p className="text-gray-400">No transactions yet</p>
     </div>
   )
 
   return (
-    <div className="bg-sloth-card border border-sloth-border rounded-xl overflow-hidden">
+    <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-sloth-border text-gray-400">
+            <tr className="border-b border-brand-border text-gray-400">
               <th className="text-left px-4 py-3 font-medium">Date</th>
               <th className="text-left px-4 py-3 font-medium">Type</th>
               <th className="text-left px-4 py-3 font-medium">Description</th>
@@ -313,16 +318,16 @@ function TransactionSection({ transactions }: { transactions: { type: string; am
             {transactions.map((tx, i) => (
               <tr
                 key={i}
-                className={`border-b border-sloth-border/50 hover:bg-white/5 transition-colors ${i === transactions.length - 1 ? 'border-b-0' : ''}`}
+                className={`border-b border-brand-border/50 hover:bg-white/5 transition-colors ${i === transactions.length - 1 ? 'border-b-0' : ''}`}
               >
                 <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                   {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </td>
-                <td className="px-4 py-3 text-gray-300">{TYPE_LABELS[tx.type] || tx.type}</td>
+                <td className="px-4 py-3 text-gray-300">{typeLabel(tx.type)}</td>
                 <td className="px-4 py-3 text-gray-400">{tx.description}</td>
                 <td className="px-4 py-3 text-right">
-                  <span className={tx.amount >= 0 ? 'text-sloth-green font-bold' : 'text-red-400 font-bold'}>
-                    {tx.amount >= 0 ? '+' : ''}{tx.amount} ZZZ
+                  <span className={tx.amount >= 0 ? 'text-brand-primary font-bold' : 'text-red-400 font-bold'}>
+                    {tx.amount >= 0 ? '+' : ''}{tx.amount} {CUR}
                   </span>
                 </td>
               </tr>
@@ -357,7 +362,7 @@ function InventorySection({ wallet }: { wallet: string }) {
   ]
 
   if (allItems.length === 0) return (
-    <div className="bg-sloth-card border border-sloth-border rounded-xl p-12 text-center">
+    <div className="bg-brand-surface border border-brand-border rounded-xl p-12 text-center">
       <p className="text-gray-400 text-lg mb-2">No items yet</p>
       <p className="text-gray-500 text-sm">Buy cosmetics and accessories from the Shop</p>
     </div>
@@ -378,7 +383,7 @@ function InventorySection({ wallet }: { wallet: string }) {
           key={`${item.itemType}-${item.id}`}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-sloth-card border border-sloth-border rounded-xl p-4"
+          className="bg-brand-surface border border-brand-border rounded-xl p-4"
         >
           <div className="text-3xl text-center mb-2">{item.icon || (item.itemType === 'cosmetic' ? '\u{1F3A8}' : '\u{2699}\uFE0F')}</div>
           <h3 className="text-white font-bold text-sm text-center">{item.name}</h3>
@@ -405,17 +410,17 @@ function InventorySection({ wallet }: { wallet: string }) {
 
 function SettingsSection() {
   const [soundEnabled, setSoundEnabled] = useState(() => {
-    return localStorage.getItem('sloth-rush-sound') !== 'off'
+    return localStorage.getItem('racer-rush-sound') !== 'off'
   })
 
   function toggleSound() {
     const newVal = !soundEnabled
     setSoundEnabled(newVal)
-    localStorage.setItem('sloth-rush-sound', newVal ? 'on' : 'off')
+    localStorage.setItem('racer-rush-sound', newVal ? 'on' : 'off')
   }
 
   return (
-    <div className="mt-8 bg-sloth-card border border-sloth-border rounded-xl p-6">
+    <div className="mt-8 bg-brand-surface border border-brand-border rounded-xl p-6">
       <h3 className="text-white font-bold text-lg mb-4">Settings</h3>
       <div className="flex items-center justify-between">
         <div>
@@ -425,7 +430,7 @@ function SettingsSection() {
         <button
           onClick={toggleSound}
           className={`w-12 h-7 rounded-full transition-colors cursor-pointer flex items-center px-0.5 ${
-            soundEnabled ? 'bg-sloth-green' : 'bg-gray-600'
+            soundEnabled ? 'bg-brand-primary' : 'bg-gray-600'
           }`}
         >
           <div className={`w-6 h-6 rounded-full bg-white transition-transform ${soundEnabled ? 'translate-x-5' : 'translate-x-0'}`} />

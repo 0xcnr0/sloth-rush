@@ -23,8 +23,8 @@ export function createWagmiConfig(isMiniApp: boolean) {
 
   // Standalone browser: RainbowKit + WalletConnect
   return getDefaultConfig({
-    appName: 'Sloth Rush',
-    projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'sloth-rush-demo',
+    appName: 'Racer Rush',
+    projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'wind-up-rush-demo',
     chains: [baseSepolia],
   })
 }
@@ -32,7 +32,7 @@ export function createWagmiConfig(isMiniApp: boolean) {
 // Default export for backward compatibility during transition
 // main.tsx will use createWagmiConfig() instead
 export const config = getDefaultConfig({
-  appName: 'Sloth Rush',
-  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'sloth-rush-demo',
+  appName: 'Racer Rush',
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'wind-up-rush-demo',
   chains: [baseSepolia],
 })

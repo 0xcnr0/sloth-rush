@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { THEME, CUR } from '../config/theme'
 import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
 import QuestPanel from '../components/QuestPanel'
@@ -14,9 +15,9 @@ import Spinner from '../components/Spinner'
 import { FEATURES } from '../config/features'
 
 const EVOLUTION_PATH_ICONS: Record<string, string> = {
-  caffeine: '\u26A1',
-  hibernate: '\u{1F6E1}\uFE0F',
-  dreamwalk: '\u{1F52E}',
+  speed: '\u26A1',
+  endurance: '\u{1F6E1}\uFE0F',
+  luck: '\u{1F52E}',
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -35,52 +36,52 @@ const RARITY_BORDER: Record<string, string> = {
   legendary: 'border-yellow-400',
 }
 
-const SLOTH_EMOJI: Record<string, string> = {
-  caffeine_junkie: '\u{1F9A5}',
-  pillow_knight: '\u{1F6E1}\uFE0F',
-  dream_weaver: '\u{2728}',
-  thunder_nap: '\u{26A1}',
+const RACER_EMOJI: Record<string, string> = {
+  speedster: '\u{1F9A5}',
+  tank: '\u{1F6E1}\uFE0F',
+  trickster: '\u{2728}',
+  burst: '\u{26A1}',
 }
 
 type UpgradeState = 'idle' | 'paying' | 'burning' | 'revealing' | 'done'
 
-export default function Treehouse() {
+export default function Collection() {
   const { address, isConnected } = useAccount()
   const navigate = useNavigate()
-  const [sloths, setSloths] = useState<any[]>([])
+  const [racers, setRacers] = useState<any[]>([])
   const [coinBalance, setCoinBalance] = useState(0)
   const [loading, setLoading] = useState(true)
   const [upgradeState, setUpgradeState] = useState<UpgradeState>('idle')
-  const [newSloth, setNewSloth] = useState<any>(null)
+  const [newRacer, setNewRacer] = useState<any>(null)
   const onchainUpgrade = useUpgrade()
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [streaks, setStreaks] = useState<Record<number, { current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }>>({})
   const [upgradeProgress, setUpgradeProgress] = useState<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean } | null>(null)
-  const [trainings, setTrainings] = useState<{ slothId: number; slothName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]>([])
+  const [trainings, setTrainings] = useState<{ racerId: number; racerName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]>([])
   const [trainingStat, setTrainingStat] = useState<Record<number, string>>({})
   const [trainingLoading, setTrainingLoading] = useState<number | null>(null)
   const [weeklyTrainingCounts, setWeeklyTrainingCounts] = useState<Record<number, number>>({})
-  const [evolveSlothId, setEvolveSlothId] = useState<number | null>(null)
-  const [evolveSlothName, setEvolveSlothName] = useState<string>('')
+  const [evolveRacerId, setEvolveRacerId] = useState<number | null>(null)
+  const [evolveRacerName, setEvolveRacerName] = useState<string>('')
   const [ownedCosmetics, setOwnedCosmetics] = useState<any[]>([])
   const [ownedAccessories, setOwnedAccessories] = useState<any[]>([])
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
   const [questsOpen, setQuestsOpen] = useState(true)
-  const [activeMiniGame, setActiveMiniGame] = useState<{ slothId: number; slothName: string } | null>(null)
+  const [activeMiniGame, setActiveMiniGame] = useState<{ racerId: number; racerName: string } | null>(null)
   const [demoLoading, setDemoLoading] = useState<number | null>(null)
   const [evoProgress, setEvoProgress] = useState<Record<number, any>>({})
 
-  async function handleQuickDemoRace(slothId: number) {
+  async function handleQuickDemoRace(racerId: number) {
     if (!address || demoLoading) return
-    setDemoLoading(slothId)
+    setDemoLoading(racerId)
     try {
-      const race = await api.createRace(address, slothId, 'exhibition')
-      await api.joinRace(race.raceId, slothId, address)
-      await api.startBidding(race.raceId)
+      const race = await api.createRace(address, racerId, 'exhibition')
+      await api.joinRace(race.raceId, racerId, address)
+      await api.startTuning(race.raceId)
       const result = await api.simulateRace(race.raceId)
       navigate(`/race/${race.raceId}`, {
-        state: { raceResult: result, format: 'exhibition', slothId, demo: true }
+        state: { raceResult: result, format: 'exhibition', racerId, demo: true }
       })
     } catch (err: any) {
       toast.error(err.message)
@@ -88,23 +89,23 @@ export default function Treehouse() {
     setDemoLoading(null)
   }
 
-  async function loadTreehouse() {
+  async function loadCollection() {
     if (!address) return
     setLoading(true)
     try {
-      const data = await api.getTreehouse(address)
-      setSloths(data.sloths)
+      const data = await api.getCollection(address)
+      setRacers(data.racers)
       setCoinBalance(data.coinBalance)
-    } catch (err) { console.error('Failed to load treehouse:', err); toast.error('Failed to load data. Please refresh.') }
+    } catch (err) { console.error('Failed to load collection:', err); toast.error('Failed to load data. Please refresh.') }
     setLoading(false)
   }
 
-  useEffect(() => { loadTreehouse() }, [address])
+  useEffect(() => { loadCollection() }, [address])
 
-  // Trigger treehouse_visit quest progress
+  // Trigger collection_visit quest progress
   useEffect(() => {
     if (!address) return
-    api.trackQuestProgress(address, 'treehouse_visit').catch((err) => { console.error('Failed to track quest:', err) })
+    api.trackQuestProgress(address, 'collection_visit').catch((err) => { console.error('Failed to track quest:', err) })
   }, [address])
 
   // Load free upgrade progress
@@ -127,7 +128,7 @@ export default function Treehouse() {
     if (!address) return
     api.getStreaks(address).then(data => {
       const map: Record<number, any> = {}
-      for (const s of data.streaks) map[s.sloth_id] = s
+      for (const s of data.streaks) map[s.racer_id] = s
       setStreaks(map)
     }).catch((err) => { console.error('Failed to load streaks:', err) })
   }, [address])
@@ -143,25 +144,25 @@ export default function Treehouse() {
       .catch((err) => { console.error('Failed to load accessories:', err) })
   }, [address])
 
-  // Load evolution progress for all sloths
+  // Load evolution progress for all racers
   useEffect(() => {
-    if (!sloths.length) return
-    const slothType = sloths.filter(s => s.type === 'sloth')
-    slothType.forEach(s => {
+    if (!racers.length) return
+    const racerType = racers.filter(s => s.type === 'pro')
+    racerType.forEach(s => {
       api.getEvolutionProgress(s.id).then(data => {
         setEvoProgress(prev => ({ ...prev, [s.id]: data }))
       }).catch(() => {})
     })
-  }, [sloths])
+  }, [racers])
 
-  const freeSloth = sloths.find(s => s.type === 'free_sloth')
-  const slothList = sloths.filter(s => s.type === 'sloth')
+  const freeRacer = racers.find(s => s.type === 'free')
+  const racerList = racers.filter(s => s.type === 'pro')
 
   // On-chain upgrade success: register in backend
   useEffect(() => {
     if (onchainUpgrade.isSuccess && address) {
-      api.upgradeSloth(address).then((data: any) => {
-        setNewSloth(data.sloth)
+      api.upgradeRacer(address).then((data: any) => {
+        setNewRacer(data.racer)
         setCoinBalance(prev => prev + data.coinBonus)
         setUpgradeState('done')
       }).catch((err: any) => { console.error('Backend upgrade failed:', err); setUpgradeState('done') })
@@ -182,10 +183,10 @@ export default function Treehouse() {
     await new Promise(r => setTimeout(r, 1200))
     setUpgradeState('burning')
 
-    if (CONTRACTS_DEPLOYED && freeSloth) {
-      // On-chain: burn Free Sloth + mint Sloth
+    if (CONTRACTS_DEPLOYED && freeRacer) {
+      // On-chain: burn Free Racer + mint Racer
       const stats = { spd: 12, acc: 11, sta: 10, agi: 11, ref: 10, lck: 12 }
-      onchainUpgrade.upgrade(BigInt(freeSloth.id), 0, stats)
+      onchainUpgrade.upgrade(BigInt(freeRacer.id), 0, stats)
       setUpgradeState('revealing')
     } else {
       // Mock fallback
@@ -193,8 +194,8 @@ export default function Treehouse() {
       setUpgradeState('revealing')
 
       try {
-        const data = await api.upgradeSloth(address)
-        setNewSloth(data.sloth)
+        const data = await api.upgradeRacer(address)
+        setNewRacer(data.racer)
         await new Promise(r => setTimeout(r, 2000))
         setUpgradeState('done')
         setCoinBalance(prev => prev + data.coinBonus)
@@ -212,7 +213,7 @@ export default function Treehouse() {
     setUpgradeState('revealing')
     try {
       const data = await api.freeUpgrade(address)
-      setNewSloth(data.sloth)
+      setNewRacer(data.racer)
       await new Promise(r => setTimeout(r, 2000))
       setUpgradeState('done')
       setCoinBalance(prev => prev + data.coinBonus)
@@ -222,50 +223,50 @@ export default function Treehouse() {
     }
   }
 
-  async function handleRename(slothId: number) {
+  async function handleRename(racerId: number) {
     if (!address || editName.trim().length < 3) return
     try {
-      await api.renameSloth(address, slothId, editName.trim())
-      setSloths(prev => prev.map(s => s.id === slothId ? { ...s, name: editName.trim() } : s))
+      await api.renameRacer(address, racerId, editName.trim())
+      setRacers(prev => prev.map(s => s.id === racerId ? { ...s, name: editName.trim() } : s))
       setEditingId(null)
     } catch (err: any) {
       toast.error(err.message)
     }
   }
 
-  async function handleStartTraining(slothId: number) {
+  async function handleStartTraining(racerId: number) {
     if (!address) return
-    const stat = trainingStat[slothId]
+    const stat = trainingStat[racerId]
     if (!stat) return
-    setTrainingLoading(slothId)
+    setTrainingLoading(racerId)
     try {
-      await api.startTraining(address, slothId, stat)
+      await api.startTraining(address, racerId, stat)
       loadTrainings()
-      loadTreehouse()
+      loadCollection()
     } catch (err: any) {
       toast.error(err.message)
     }
     setTrainingLoading(null)
   }
 
-  async function handleClaimTraining(slothId: number) {
+  async function handleClaimTraining(racerId: number) {
     if (!address) return
-    setTrainingLoading(slothId)
+    setTrainingLoading(racerId)
     try {
-      await api.claimTraining(address, slothId)
+      await api.claimTraining(address, racerId)
       loadTrainings()
-      loadTreehouse()
+      loadCollection()
     } catch (err: any) {
       toast.error(err.message)
     }
     setTrainingLoading(null)
   }
 
-  async function handleUnequipAccessory(slothId: number) {
+  async function handleUnequipAccessory(racerId: number) {
     if (!address) return
     try {
-      await api.unequipAccessory(address, slothId)
-      loadTreehouse()
+      await api.unequipAccessory(address, racerId)
+      loadCollection()
     } catch (err: any) {
       toast.error(err.message)
     }
@@ -277,21 +278,21 @@ export default function Treehouse() {
 
   function closeReveal() {
     setUpgradeState('idle')
-    setNewSloth(null)
-    loadTreehouse()
+    setNewRacer(null)
+    loadCollection()
   }
 
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Connect your wallet to view your treehouse</p>
+        <p className="text-gray-400">Connect your wallet to view your collection</p>
         <WalletConnect />
       </div>
     )
   }
 
   if (loading) {
-    return <Spinner fullPage text="Loading treehouse..." />
+    return <Spinner fullPage text="Loading collection..." />
   }
 
   return (
@@ -299,47 +300,47 @@ export default function Treehouse() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Your Treehouse</h1>
+          <h1 className="text-3xl font-bold">Your {THEME.locations.home}</h1>
           <p className="text-gray-400 mt-1">
-            {sloths.length === 0 ? 'No sloths yet' : `${sloths.length} creature${sloths.length > 1 ? 's' : ''}`}
+            {racers.length === 0 ? 'No racers yet' : `${racers.length} creature${racers.length > 1 ? 's' : ''}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-sloth-card border border-sloth-border rounded-xl px-4 py-2">
-          <span className="text-sloth-green font-bold text-lg">{coinBalance}</span>
-          <span className="text-sloth-green/70 text-sm">ZZZ</span>
+        <div className="flex items-center gap-2 bg-brand-surface border border-brand-border rounded-xl px-4 py-2">
+          <span className="text-brand-primary font-bold text-lg">{coinBalance}</span>
+          <span className="text-brand-primary/70 text-sm">{CUR}</span>
         </div>
       </div>
 
       {/* Empty state */}
-      {sloths.length === 0 && (
+      {racers.length === 0 && (
         <div className="text-center py-20">
           <div className="text-6xl mb-4">&#x1f3da;&#xfe0f;</div>
-          <p className="text-gray-400 mb-4">Your treehouse is empty</p>
+          <p className="text-gray-400 mb-4">Your collection is empty</p>
           <button
             onClick={() => navigate('/mint')}
-            className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
+            className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
           >
-            Mint Your First Sloth
+            Mint Your First Racer
           </button>
         </div>
       )}
 
-      {/* Free Sloth Card — Full Featured */}
-      {freeSloth && (
+      {/* Free Racer Card — Full Featured */}
+      {freeRacer && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-300 mb-3">Free Sloth</h2>
-          <div className="bg-sloth-card border border-sloth-border rounded-xl p-5">
+          <h2 className="text-lg font-semibold text-gray-300 mb-3">{THEME.tiers.free}</h2>
+          <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             {/* Header */}
             <div className="flex items-center gap-4 mb-4">
               <div className="text-5xl">{'\u{1F9A5}'}</div>
               <div className="flex-1">
-                <p className="text-white font-semibold text-lg">{freeSloth.name}</p>
-                <p className="text-gray-500 text-sm">Free Sloth #{freeSloth.id}</p>
+                <p className="text-white font-semibold text-lg">{freeRacer.name}</p>
+                <p className="text-gray-500 text-sm">{THEME.tiers.free} #{freeRacer.id}</p>
               </div>
               <button
                 onClick={handleUpgrade}
                 disabled={upgradeState !== 'idle'}
-                className="px-4 py-2 bg-sloth-purple text-white font-bold rounded-xl text-sm hover:bg-sloth-purple/90 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                className="px-4 py-2 bg-brand-accent text-white font-bold rounded-xl text-sm hover:bg-brand-accent/90 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
               >
                 Upgrade — $3
               </button>
@@ -348,14 +349,14 @@ export default function Treehouse() {
             {/* Stat Grid (cap: 15) */}
             <div className="grid grid-cols-3 gap-1 text-center text-xs mb-3">
               {[
-                { label: 'SPD', val: freeSloth.spd },
-                { label: 'ACC', val: freeSloth.acc },
-                { label: 'STA', val: freeSloth.sta },
-                { label: 'AGI', val: freeSloth.agi },
-                { label: 'REF', val: freeSloth.ref },
-                { label: 'LCK', val: freeSloth.lck },
+                { label: 'SPD', val: freeRacer.spd },
+                { label: 'ACC', val: freeRacer.acc },
+                { label: 'STA', val: freeRacer.sta },
+                { label: 'AGI', val: freeRacer.agi },
+                { label: 'REF', val: freeRacer.ref },
+                { label: 'LCK', val: freeRacer.lck },
               ].map(s => (
-                <div key={s.label} className="bg-sloth-dark rounded px-1 py-1">
+                <div key={s.label} className="bg-brand-bg rounded px-1 py-1">
                   <span className="text-gray-500">{s.label} </span>
                   <span className="text-white font-bold">{Number(s.val || 0) % 1 === 0 ? (s.val || 0) : Number(s.val || 0).toFixed(1)}</span>
                   <span className="text-gray-600 text-[10px]">/15</span>
@@ -366,44 +367,44 @@ export default function Treehouse() {
             {/* Training UI — Accordion */}
             {FEATURES.training && (<div className="mt-3">
               <button
-                onClick={() => toggleSection(`training-${freeSloth.id}`)}
+                onClick={() => toggleSection(`training-${freeRacer.id}`)}
                 className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
               >
-                <span className={`text-xs transition-transform ${expandedSections[`training-${freeSloth.id}`] || trainings.find(t => t.slothId === freeSloth.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                <span className={`text-xs transition-transform ${expandedSections[`training-${freeRacer.id}`] || trainings.find(t => t.racerId === freeRacer.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                 Training
-                {trainings.find(t => t.slothId === freeSloth.id) && (
-                  <span className="text-sloth-purple text-xs font-normal ml-1">(Active)</span>
+                {trainings.find(t => t.racerId === freeRacer.id) && (
+                  <span className="text-brand-accent text-xs font-normal ml-1">(Active)</span>
                 )}
               </button>
-              {(expandedSections[`training-${freeSloth.id}`] || trainings.find(t => t.slothId === freeSloth.id)) && (() => {
-                const active = trainings.find(t => t.slothId === freeSloth.id)
+              {(expandedSections[`training-${freeRacer.id}`] || trainings.find(t => t.racerId === freeRacer.id)) && (() => {
+                const active = trainings.find(t => t.racerId === freeRacer.id)
                 if (active) {
                   return (
-                    <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border">
+                    <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
                       <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
                       {active.isReady ? (
                         <button
-                          onClick={() => handleClaimTraining(freeSloth.id)}
-                          disabled={trainingLoading === freeSloth.id}
-                          className="w-full py-1.5 bg-sloth-green text-sloth-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                          onClick={() => handleClaimTraining(freeRacer.id)}
+                          disabled={trainingLoading === freeRacer.id}
+                          className="w-full py-1.5 bg-brand-primary text-brand-bg font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
                         >
-                          {trainingLoading === freeSloth.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
+                          {trainingLoading === freeRacer.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
                         </button>
                       ) : (
-                        <p className="text-xs text-sloth-purple">
+                        <p className="text-xs text-brand-accent">
                           Ready at {new Date(active.completedAt).toLocaleTimeString()}
                         </p>
                       )}
                     </div>
                   )
                 }
-                const weeklyCount = weeklyTrainingCounts[freeSloth.id] || 0
+                const weeklyCount = weeklyTrainingCounts[freeRacer.id] || 0
                 const weeklyLimit = 1
                 const limitReached = weeklyCount >= weeklyLimit
                 return (
-                  <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border">
+                  <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-gray-400">Train a stat (6h, 10 ZZZ)</p>
+                      <p className="text-xs text-gray-400">Train a stat (6h, 10 {CUR})</p>
                       <span className={`text-[10px] font-bold ${limitReached ? 'text-red-400' : 'text-gray-500'}`}>
                         {weeklyCount}/{weeklyLimit} this week
                       </span>
@@ -416,11 +417,11 @@ export default function Treehouse() {
                           {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
                             <button
                               key={stat}
-                              onClick={() => setTrainingStat(prev => ({ ...prev, [freeSloth.id]: stat }))}
+                              onClick={() => setTrainingStat(prev => ({ ...prev, [freeRacer.id]: stat }))}
                               className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
-                                trainingStat[freeSloth.id] === stat
-                                  ? 'bg-sloth-purple text-white'
-                                  : 'bg-sloth-card text-gray-400 hover:text-white'
+                                trainingStat[freeRacer.id] === stat
+                                  ? 'bg-brand-accent text-white'
+                                  : 'bg-brand-surface text-gray-400 hover:text-white'
                               }`}
                             >
                               {stat.toUpperCase()}
@@ -428,11 +429,11 @@ export default function Treehouse() {
                           ))}
                         </div>
                         <button
-                          onClick={() => handleStartTraining(freeSloth.id)}
-                          disabled={!trainingStat[freeSloth.id] || trainingLoading === freeSloth.id}
-                          className="w-full py-1.5 bg-sloth-purple/20 text-sloth-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                          onClick={() => handleStartTraining(freeRacer.id)}
+                          disabled={!trainingStat[freeRacer.id] || trainingLoading === freeRacer.id}
+                          className="w-full py-1.5 bg-brand-accent/20 text-brand-accent font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
                         >
-                          {trainingLoading === freeSloth.id ? 'Starting...' : 'Start Training'}
+                          {trainingLoading === freeRacer.id ? 'Starting...' : 'Start Training'}
                         </button>
                       </>
                     )}
@@ -445,14 +446,14 @@ export default function Treehouse() {
             {FEATURES.cosmetics && (ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
               <div className="mt-3">
                 <button
-                  onClick={() => toggleSection(`equip-${freeSloth.id}`)}
+                  onClick={() => toggleSection(`equip-${freeRacer.id}`)}
                   className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
                 >
-                  <span className={`text-xs transition-transform ${expandedSections[`equip-${freeSloth.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                  <span className={`text-xs transition-transform ${expandedSections[`equip-${freeRacer.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                   Equipment
                 </button>
-                {expandedSections[`equip-${freeSloth.id}`] && (
-                  <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border space-y-2">
+                {expandedSections[`equip-${freeRacer.id}`] && (
+                  <div className="p-3 bg-brand-bg rounded-lg border border-brand-border space-y-2">
                     {ownedCosmetics.length > 0 && (
                       <select
                         value=""
@@ -460,13 +461,13 @@ export default function Treehouse() {
                           const cosId = Number(e.target.value)
                           if (!cosId || !address) return
                           try {
-                            await api.equipCosmetic(address, freeSloth.id, cosId)
-                            loadTreehouse()
+                            await api.equipCosmetic(address, freeRacer.id, cosId)
+                            loadCollection()
                           } catch (err: any) { toast.error(err.message) }
                         }}
-                        className="w-full bg-sloth-card border border-sloth-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                        className="w-full bg-brand-surface border border-brand-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                       >
-                        <option value="">{freeSloth.cosmetic ? `Cosmetic: ${typeof freeSloth.cosmetic === 'string' ? freeSloth.cosmetic : freeSloth.cosmetic.name}` : 'Equip Cosmetic...'}</option>
+                        <option value="">{freeRacer.cosmetic ? `Cosmetic: ${typeof freeRacer.cosmetic === 'string' ? freeRacer.cosmetic : freeRacer.cosmetic.name}` : 'Equip Cosmetic...'}</option>
                         {ownedCosmetics.map((c: any) => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
@@ -479,13 +480,13 @@ export default function Treehouse() {
                           const accId = Number(e.target.value)
                           if (!accId || !address) return
                           try {
-                            await api.equipAccessory(address, freeSloth.id, accId)
-                            loadTreehouse()
+                            await api.equipAccessory(address, freeRacer.id, accId)
+                            loadCollection()
                           } catch (err: any) { toast.error(err.message) }
                         }}
-                        className="w-full bg-sloth-card border border-sloth-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                        className="w-full bg-brand-surface border border-brand-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                       >
-                        <option value="">{(freeSloth.equipped_accessory || freeSloth.accessory) ? `Accessory: ${freeSloth.equipped_accessory || (typeof freeSloth.accessory === 'string' ? freeSloth.accessory : freeSloth.accessory?.name)}` : 'Equip Accessory...'}</option>
+                        <option value="">{(freeRacer.equipped_accessory || freeRacer.accessory) ? `Accessory: ${freeRacer.equipped_accessory || (typeof freeRacer.accessory === 'string' ? freeRacer.accessory : freeRacer.accessory?.name)}` : 'Equip Accessory...'}</option>
                         {ownedAccessories.map((a: any) => (
                           <option key={a.id} value={a.id}>{a.name}</option>
                         ))}
@@ -499,7 +500,7 @@ export default function Treehouse() {
             {/* Mini Games button */}
             {FEATURES.miniGames && (
             <button
-              onClick={() => setActiveMiniGame({ slothId: freeSloth.id, slothName: freeSloth.name })}
+              onClick={() => setActiveMiniGame({ racerId: freeRacer.id, racerName: freeRacer.name })}
               className="w-full mt-3 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
             >
               Play Mini Games
@@ -507,31 +508,31 @@ export default function Treehouse() {
             )}
 
             {/* Enter Race — Exhibition only */}
-            <div className="mt-3 pt-3 border-t border-sloth-border space-y-2">
+            <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
               <button
-                onClick={() => handleQuickDemoRace(freeSloth.id)}
-                disabled={demoLoading === freeSloth.id}
-                className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-sloth-dark text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
+                onClick={() => handleQuickDemoRace(freeRacer.id)}
+                disabled={demoLoading === freeRacer.id}
+                className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-bg text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
               >
-                {demoLoading === freeSloth.id ? 'Starting Race...' : '\u26A1 Quick Race'}
+                {demoLoading === freeRacer.id ? 'Starting Race...' : '\u26A1 Quick Race'}
               </button>
               <button
                 onClick={() => navigate('/race')}
-                className="w-full py-2.5 bg-sloth-green/20 text-sloth-green font-bold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer border border-sloth-green/30"
+                className="w-full py-2.5 bg-brand-primary/20 text-brand-primary font-bold rounded-lg hover:bg-brand-primary/30 transition-colors cursor-pointer border border-brand-primary/30"
               >
                 Browse Races
               </button>
             </div>
 
             {/* Upgrade Section */}
-            <div className="mt-4 pt-4 border-t border-sloth-border">
+            <div className="mt-4 pt-4 border-t border-brand-border">
               <p className="text-gray-400 text-xs text-center mb-3">Upgrade to unlock all race formats</p>
             </div>
           </div>
 
           {/* Free Upgrade Path */}
           {upgradeProgress && (
-            <div className="mt-4 bg-sloth-dark border border-sloth-border rounded-xl p-5">
+            <div className="mt-4 bg-brand-bg border border-brand-border rounded-xl p-5">
               <p className="text-gray-400 text-sm mb-3 text-center">...or upgrade for free by completing milestones</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -544,12 +545,12 @@ export default function Treehouse() {
                   const done = item.current >= item.target
                   return (
                     <div key={item.label} className="text-center">
-                      <p className={`text-xs font-semibold mb-1 ${done ? 'text-sloth-green' : 'text-gray-400'}`}>
+                      <p className={`text-xs font-semibold mb-1 ${done ? 'text-brand-primary' : 'text-gray-400'}`}>
                         {done ? '\u2705 ' : ''}{item.label}
                       </p>
-                      <div className="w-full bg-sloth-border rounded-full h-1.5 mb-1">
+                      <div className="w-full bg-brand-border rounded-full h-1.5 mb-1">
                         <div
-                          className={`h-1.5 rounded-full transition-all ${done ? 'bg-sloth-green' : 'bg-sloth-purple'}`}
+                          className={`h-1.5 rounded-full transition-all ${done ? 'bg-brand-primary' : 'bg-brand-accent'}`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -562,7 +563,7 @@ export default function Treehouse() {
                 <button
                   onClick={handleFreeUpgrade}
                   disabled={upgradeState !== 'idle'}
-                  className="w-full mt-4 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors disabled:opacity-50 cursor-pointer"
+                  className="w-full mt-4 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   Free Upgrade!
                 </button>
@@ -586,37 +587,37 @@ export default function Treehouse() {
       </div>
       )}
 
-      {/* Sloth Cards */}
-      {slothList.length > 0 && (
+      {/* Racer Cards */}
+      {racerList.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-300 mb-3">Sloths</h2>
+          <h2 className="text-lg font-semibold text-gray-300 mb-3">Racers</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {slothList.map((sloth) => (
+            {racerList.map((racer) => (
               <div
-                key={sloth.id}
-                className={`bg-sloth-card border-2 ${RARITY_BORDER[sloth.rarity] || 'border-sloth-border'} rounded-xl p-5`}
+                key={racer.id}
+                className={`bg-brand-surface border-2 ${RARITY_BORDER[racer.rarity] || 'border-brand-border'} rounded-xl p-5`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    {editingId === sloth.id ? (
+                    {editingId === racer.id ? (
                       <div className="flex items-center gap-1">
                         <input
                           value={editName}
                           onChange={e => setEditName(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleRename(sloth.id); if (e.key === 'Escape') setEditingId(null) }}
+                          onKeyDown={e => { if (e.key === 'Enter') handleRename(racer.id); if (e.key === 'Escape') setEditingId(null) }}
                           maxLength={20}
-                          className="bg-sloth-dark border border-sloth-green rounded px-2 py-0.5 text-white text-sm w-32 outline-none"
+                          className="bg-brand-bg border border-brand-primary rounded px-2 py-0.5 text-white text-sm w-32 outline-none"
                           autoFocus
                         />
-                        <button onClick={() => handleRename(sloth.id)} className="text-sloth-green text-xs cursor-pointer">&#x2714;</button>
+                        <button onClick={() => handleRename(racer.id)} className="text-brand-primary text-xs cursor-pointer">&#x2714;</button>
                         <button onClick={() => setEditingId(null)} className="text-gray-500 text-xs cursor-pointer">&#x2716;</button>
                       </div>
                     ) : (
                       <p className="text-white font-bold text-lg flex items-center gap-1.5">
-                        {sloth.name}
+                        {racer.name}
                         <button
-                          onClick={() => { setEditingId(sloth.id); setEditName(sloth.name) }}
-                          className="text-gray-500 hover:text-sloth-green transition-colors cursor-pointer"
+                          onClick={() => { setEditingId(racer.id); setEditName(racer.name) }}
+                          className="text-gray-500 hover:text-brand-primary transition-colors cursor-pointer"
                           title="Rename"
                         >
                           &#x270F;&#xFE0F;
@@ -624,40 +625,40 @@ export default function Treehouse() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs">
-                      Sloth #{sloth.id}
-                      {sloth.tier && sloth.tier > 1 && (
-                        <span className="ml-1 text-yellow-400" title={`Tier ${sloth.tier}`}>
-                          {'\u2B50'.repeat(sloth.tier)}
+                      Racer #{racer.id}
+                      {racer.tier && racer.tier > 1 && (
+                        <span className="ml-1 text-yellow-400" title={`Tier ${racer.tier}`}>
+                          {'\u2B50'.repeat(racer.tier)}
                         </span>
                       )}
-                      {sloth.evolution_path && EVOLUTION_PATH_ICONS[sloth.evolution_path] && (
-                        <span className="ml-1" title={sloth.evolution_path}>
-                          {EVOLUTION_PATH_ICONS[sloth.evolution_path]}
+                      {racer.evolution_path && EVOLUTION_PATH_ICONS[racer.evolution_path] && (
+                        <span className="ml-1" title={racer.evolution_path}>
+                          {EVOLUTION_PATH_ICONS[racer.evolution_path]}
                         </span>
                       )}
                     </p>
-                    {sloth.passive && (
-                      <p className="text-sloth-purple text-[10px] mt-0.5">{sloth.passive}</p>
+                    {racer.passive && (
+                      <p className="text-brand-accent text-[10px] mt-0.5">{racer.passive}</p>
                     )}
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${RARITY_COLORS[sloth.rarity] || ''}`}>
-                    {sloth.rarity}
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${RARITY_COLORS[racer.rarity] || ''}`}>
+                    {racer.rarity}
                   </span>
                 </div>
 
                 {/* Streak badge */}
-                {streaks[sloth.id] && streaks[sloth.id].current_wins >= 3 && (
+                {streaks[racer.id] && streaks[racer.id].current_wins >= 3 && (
                   <div className="text-center mb-1">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
-                      streaks[sloth.id].current_wins >= 5
+                      streaks[racer.id].current_wins >= 5
                         ? 'bg-red-500/20 text-red-400 border border-red-500'
                         : 'bg-orange-500/20 text-orange-400 border border-orange-500'
                     }`}>
-                      {streaks[sloth.id].current_wins >= 5 ? 'UNSTOPPABLE!' : `${streaks[sloth.id].current_wins} Win Streak`} &#x1F525;
+                      {streaks[racer.id].current_wins >= 5 ? 'UNSTOPPABLE!' : `${streaks[racer.id].current_wins} Win Streak`} &#x1F525;
                     </span>
                   </div>
                 )}
-                {streaks[sloth.id] && streaks[sloth.id].current_losses >= 3 && (
+                {streaks[racer.id] && streaks[racer.id].current_losses >= 3 && (
                   <div className="text-center mb-1">
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-gray-700/50 text-gray-400">
                       &#x1F622; Needs some motivation!
@@ -666,23 +667,23 @@ export default function Treehouse() {
                 )}
 
                 <div className="text-4xl text-center mb-3">
-                  {SLOTH_EMOJI[sloth.race] || '\u{1F9A5}'}
+                  {RACER_EMOJI[racer.race] || '\u{1F9A5}'}
                 </div>
 
                 <p className="text-gray-400 text-xs text-center mb-3 capitalize">
-                  {sloth.race?.replace('_', ' ')}
+                  {racer.race?.replace('_', ' ')}
                 </p>
 
                 <div className="grid grid-cols-3 gap-1 mt-3 text-center text-xs">
                   {[
-                    { label: 'SPD', val: sloth.spd },
-                    { label: 'ACC', val: sloth.acc },
-                    { label: 'STA', val: sloth.sta },
-                    { label: 'AGI', val: sloth.agi },
-                    { label: 'REF', val: sloth.ref },
-                    { label: 'LCK', val: sloth.lck },
+                    { label: 'SPD', val: racer.spd },
+                    { label: 'ACC', val: racer.acc },
+                    { label: 'STA', val: racer.sta },
+                    { label: 'AGI', val: racer.agi },
+                    { label: 'REF', val: racer.ref },
+                    { label: 'LCK', val: racer.lck },
                   ].map(s => (
-                    <div key={s.label} className="bg-sloth-dark rounded px-1 py-1">
+                    <div key={s.label} className="bg-brand-bg rounded px-1 py-1">
                       <span className="text-gray-500">{s.label} </span>
                       <span className="text-white font-bold">{Number(s.val) % 1 === 0 ? s.val : Number(s.val).toFixed(1)}</span>
                     </div>
@@ -690,8 +691,8 @@ export default function Treehouse() {
                 </div>
 
                 {/* Achievement Badges */}
-                {streaks[sloth.id] && (() => {
-                  const s = streaks[sloth.id]
+                {streaks[racer.id] && (() => {
+                  const s = streaks[racer.id]
                   const badges: { icon: string; label: string; color: string }[] = []
                   if (s.total_wins >= 1) badges.push({ icon: '\u2B50', label: 'First Win', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' })
                   if (s.max_wins >= 3) badges.push({ icon: '\uD83D\uDD25', label: 'On Fire', color: 'bg-orange-500/20 text-orange-400 border-orange-500/50' })
@@ -710,55 +711,55 @@ export default function Treehouse() {
                   )
                 })()}
 
-                {streaks[sloth.id] && streaks[sloth.id].total_races > 0 && (
+                {streaks[racer.id] && streaks[racer.id].total_races > 0 && (
                   <div className="flex items-center justify-center gap-3 mt-2 text-xs text-gray-500">
-                    <span>{streaks[sloth.id].total_races} races</span>
-                    <span>{streaks[sloth.id].total_wins} wins</span>
-                    <span>Best: {streaks[sloth.id].max_wins}&#x1F525;</span>
+                    <span>{streaks[racer.id].total_races} races</span>
+                    <span>{streaks[racer.id].total_wins} wins</span>
+                    <span>Best: {streaks[racer.id].max_wins}&#x1F525;</span>
                   </div>
                 )}
 
                 {/* Training UI — Accordion */}
                 {FEATURES.training && (<div className="mt-3">
                   <button
-                    onClick={() => toggleSection(`training-${sloth.id}`)}
+                    onClick={() => toggleSection(`training-${racer.id}`)}
                     className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
                   >
-                    <span className={`text-xs transition-transform ${expandedSections[`training-${sloth.id}`] || trainings.find(t => t.slothId === sloth.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                    <span className={`text-xs transition-transform ${expandedSections[`training-${racer.id}`] || trainings.find(t => t.racerId === racer.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                     Training
-                    {trainings.find(t => t.slothId === sloth.id) && (
-                      <span className="text-sloth-purple text-xs font-normal ml-1">(Active)</span>
+                    {trainings.find(t => t.racerId === racer.id) && (
+                      <span className="text-brand-accent text-xs font-normal ml-1">(Active)</span>
                     )}
                   </button>
-                  {(expandedSections[`training-${sloth.id}`] || trainings.find(t => t.slothId === sloth.id)) && (() => {
-                    const active = trainings.find(t => t.slothId === sloth.id)
+                  {(expandedSections[`training-${racer.id}`] || trainings.find(t => t.racerId === racer.id)) && (() => {
+                    const active = trainings.find(t => t.racerId === racer.id)
                     if (active) {
                       return (
-                        <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border">
+                        <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
                           <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
                           {active.isReady ? (
                             <button
-                              onClick={() => handleClaimTraining(sloth.id)}
-                              disabled={trainingLoading === sloth.id}
-                              className="w-full py-1.5 bg-sloth-green text-sloth-dark font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                              onClick={() => handleClaimTraining(racer.id)}
+                              disabled={trainingLoading === racer.id}
+                              className="w-full py-1.5 bg-brand-primary text-brand-bg font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
                             >
-                              {trainingLoading === sloth.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
+                              {trainingLoading === racer.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
                             </button>
                           ) : (
-                            <p className="text-xs text-sloth-purple">
+                            <p className="text-xs text-brand-accent">
                               Ready at {new Date(active.completedAt).toLocaleTimeString()}
                             </p>
                           )}
                         </div>
                       )
                     }
-                    const weeklyCount = weeklyTrainingCounts[sloth.id] || 0
-                    const weeklyLimit = sloth.type === 'free_sloth' ? 1 : 2
+                    const weeklyCount = weeklyTrainingCounts[racer.id] || 0
+                    const weeklyLimit = racer.type === 'free' ? 1 : 2
                     const limitReached = weeklyCount >= weeklyLimit
                     return (
-                      <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border">
+                      <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs text-gray-400">Train a stat (6h, 10 ZZZ)</p>
+                          <p className="text-xs text-gray-400">Train a stat (6h, 10 {CUR})</p>
                           <span className={`text-[10px] font-bold ${limitReached ? 'text-red-400' : 'text-gray-500'}`}>
                             {weeklyCount}/{weeklyLimit} this week
                           </span>
@@ -771,11 +772,11 @@ export default function Treehouse() {
                               {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
                                 <button
                                   key={stat}
-                                  onClick={() => setTrainingStat(prev => ({ ...prev, [sloth.id]: stat }))}
+                                  onClick={() => setTrainingStat(prev => ({ ...prev, [racer.id]: stat }))}
                                   className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
-                                    trainingStat[sloth.id] === stat
-                                      ? 'bg-sloth-purple text-white'
-                                      : 'bg-sloth-card text-gray-400 hover:text-white'
+                                    trainingStat[racer.id] === stat
+                                      ? 'bg-brand-accent text-white'
+                                      : 'bg-brand-surface text-gray-400 hover:text-white'
                                   }`}
                                 >
                                   {stat.toUpperCase()}
@@ -783,11 +784,11 @@ export default function Treehouse() {
                               ))}
                             </div>
                             <button
-                              onClick={() => handleStartTraining(sloth.id)}
-                              disabled={!trainingStat[sloth.id] || trainingLoading === sloth.id}
-                              className="w-full py-1.5 bg-sloth-purple/20 text-sloth-purple font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                              onClick={() => handleStartTraining(racer.id)}
+                              disabled={!trainingStat[racer.id] || trainingLoading === racer.id}
+                              className="w-full py-1.5 bg-brand-accent/20 text-brand-accent font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
                             >
-                              {trainingLoading === sloth.id ? 'Starting...' : 'Start Training'}
+                              {trainingLoading === racer.id ? 'Starting...' : 'Start Training'}
                             </button>
                           </>
                         )}
@@ -797,16 +798,16 @@ export default function Treehouse() {
                 </div>)}
 
                 {/* Cosmetic / Accessory badges */}
-                {FEATURES.cosmetics && (sloth.cosmetic || sloth.equipped_accessory || sloth.accessory) && (
+                {FEATURES.cosmetics && (racer.cosmetic || racer.equipped_accessory || racer.accessory) && (
                   <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
-                    {sloth.cosmetic && (
+                    {racer.cosmetic && (
                       <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-pink-500/10 text-pink-400 border-pink-500/30">
-                        {'\u{1F3A8}'} {typeof sloth.cosmetic === 'string' ? sloth.cosmetic : sloth.cosmetic.name || 'Cosmetic'}
+                        {'\u{1F3A8}'} {typeof racer.cosmetic === 'string' ? racer.cosmetic : racer.cosmetic.name || 'Cosmetic'}
                       </span>
                     )}
-                    {(sloth.equipped_accessory || sloth.accessory) && (
+                    {(racer.equipped_accessory || racer.accessory) && (
                       <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
-                        {'\u{2699}\uFE0F'} {sloth.equipped_accessory || (typeof sloth.accessory === 'string' ? sloth.accessory : sloth.accessory?.name) || 'Accessory'}
+                        {'\u{2699}\uFE0F'} {racer.equipped_accessory || (typeof racer.accessory === 'string' ? racer.accessory : racer.accessory?.name) || 'Accessory'}
                       </span>
                     )}
                   </div>
@@ -816,14 +817,14 @@ export default function Treehouse() {
                 {FEATURES.cosmetics && (ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
                   <div className="mt-3">
                     <button
-                      onClick={() => toggleSection(`equip-${sloth.id}`)}
+                      onClick={() => toggleSection(`equip-${racer.id}`)}
                       className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
                     >
-                      <span className={`text-xs transition-transform ${expandedSections[`equip-${sloth.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                      <span className={`text-xs transition-transform ${expandedSections[`equip-${racer.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                       Equipment
                     </button>
-                    {expandedSections[`equip-${sloth.id}`] && (
-                      <div className="p-3 bg-sloth-dark rounded-lg border border-sloth-border space-y-2">
+                    {expandedSections[`equip-${racer.id}`] && (
+                      <div className="p-3 bg-brand-bg rounded-lg border border-brand-border space-y-2">
                         {ownedCosmetics.length > 0 && (
                           <select
                             value=""
@@ -831,13 +832,13 @@ export default function Treehouse() {
                               const cosId = Number(e.target.value)
                               if (!cosId || !address) return
                               try {
-                                await api.equipCosmetic(address, sloth.id, cosId)
-                                loadTreehouse()
+                                await api.equipCosmetic(address, racer.id, cosId)
+                                loadCollection()
                               } catch (err: any) { toast.error(err.message) }
                             }}
-                            className="w-full bg-sloth-card border border-sloth-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                            className="w-full bg-brand-surface border border-brand-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                           >
-                            <option value="">{sloth.cosmetic ? `Cosmetic: ${typeof sloth.cosmetic === 'string' ? sloth.cosmetic : sloth.cosmetic.name}` : 'Equip Cosmetic...'}</option>
+                            <option value="">{racer.cosmetic ? `Cosmetic: ${typeof racer.cosmetic === 'string' ? racer.cosmetic : racer.cosmetic.name}` : 'Equip Cosmetic...'}</option>
                             {ownedCosmetics.map((c: any) => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -851,20 +852,20 @@ export default function Treehouse() {
                                 const accId = Number(e.target.value)
                                 if (!accId || !address) return
                                 try {
-                                  await api.equipAccessory(address, sloth.id, accId)
-                                  loadTreehouse()
+                                  await api.equipAccessory(address, racer.id, accId)
+                                  loadCollection()
                                 } catch (err: any) { toast.error(err.message) }
                               }}
-                              className="flex-1 bg-sloth-card border border-sloth-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
+                              className="flex-1 bg-brand-surface border border-brand-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
                             >
-                              <option value="">{(sloth.equipped_accessory || sloth.accessory) ? `Accessory: ${sloth.equipped_accessory || (typeof sloth.accessory === 'string' ? sloth.accessory : sloth.accessory?.name)}` : 'Equip Accessory...'}</option>
+                              <option value="">{(racer.equipped_accessory || racer.accessory) ? `Accessory: ${racer.equipped_accessory || (typeof racer.accessory === 'string' ? racer.accessory : racer.accessory?.name)}` : 'Equip Accessory...'}</option>
                               {ownedAccessories.map((a: any) => (
                                 <option key={a.id} value={a.id}>{a.name}</option>
                               ))}
                             </select>
-                            {(sloth.equipped_accessory || sloth.accessory) && (
+                            {(racer.equipped_accessory || racer.accessory) && (
                               <button
-                                onClick={() => handleUnequipAccessory(sloth.id)}
+                                onClick={() => handleUnequipAccessory(racer.id)}
                                 className="px-3 py-2 bg-gray-500/20 text-gray-400 rounded text-xs font-bold cursor-pointer min-h-[44px]"
                               >
                                 &#x2715;
@@ -880,8 +881,8 @@ export default function Treehouse() {
                 {/* Evolve button */}
                 {FEATURES.evolution && (
                 <button
-                  onClick={() => { setEvolveSlothId(sloth.id); setEvolveSlothName(sloth.name) }}
-                  className="w-full mt-3 py-2 bg-sloth-purple/20 text-sloth-purple font-semibold rounded-lg hover:bg-sloth-purple/30 transition-colors cursor-pointer text-sm"
+                  onClick={() => { setEvolveRacerId(racer.id); setEvolveRacerName(racer.name) }}
+                  className="w-full mt-3 py-2 bg-brand-accent/20 text-brand-accent font-semibold rounded-lg hover:bg-brand-accent/30 transition-colors cursor-pointer text-sm"
                 >
                   Evolve
                 </button>
@@ -890,7 +891,7 @@ export default function Treehouse() {
                 {/* Mini Games button */}
                 {FEATURES.miniGames && (
                 <button
-                  onClick={() => setActiveMiniGame({ slothId: sloth.id, slothName: sloth.name })}
+                  onClick={() => setActiveMiniGame({ racerId: racer.id, racerName: racer.name })}
                   className="w-full mt-2 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
                 >
                   Play Mini Games
@@ -898,34 +899,34 @@ export default function Treehouse() {
                 )}
 
                 {/* Enter Race — prominent */}
-                <div className="mt-3 pt-3 border-t border-sloth-border space-y-2">
+                <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
                   <button
-                    onClick={() => handleQuickDemoRace(sloth.id)}
-                    disabled={demoLoading === sloth.id}
-                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-sloth-dark text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
+                    onClick={() => handleQuickDemoRace(racer.id)}
+                    disabled={demoLoading === racer.id}
+                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-bg text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
                   >
-                    {demoLoading === sloth.id ? 'Starting Race...' : '\u26A1 Quick Race'}
+                    {demoLoading === racer.id ? 'Starting Race...' : '\u26A1 Quick Race'}
                   </button>
                   <button
                     onClick={() => navigate('/race')}
-                    className="w-full py-2.5 bg-sloth-green/20 text-sloth-green font-bold rounded-lg hover:bg-sloth-green/30 transition-colors cursor-pointer border border-sloth-green/30"
+                    className="w-full py-2.5 bg-brand-primary/20 text-brand-primary font-bold rounded-lg hover:bg-brand-primary/30 transition-colors cursor-pointer border border-brand-primary/30"
                   >
                     Browse Races
                   </button>
                 </div>
 
                 {/* Evolution Progress */}
-                {evoProgress[sloth.id] && evoProgress[sloth.id].requirements && (
-                  <div className="mt-3 pt-3 border-t border-sloth-border">
+                {evoProgress[racer.id] && evoProgress[racer.id].requirements && (
+                  <div className="mt-3 pt-3 border-t border-brand-border">
                     {(() => {
-                      const evo = evoProgress[sloth.id]
+                      const evo = evoProgress[racer.id]
                       const reqs = evo.requirements
                       const prog = evo.progress
                       const items = [
                         { label: 'XP', current: prog.xp, target: reqs.xp },
                         { label: 'Races', current: prog.races, target: reqs.races },
                         { label: 'Wins', current: prog.wins, target: reqs.wins },
-                        { label: 'ZZZ', current: prog.zzz, target: reqs.zzz },
+                        { label: CUR, current: prog.coins, target: reqs.coins },
                         { label: 'Max Stat', current: prog.stat || prog.maxStat, target: reqs.stat },
                       ]
                       const pcts = items.map(i => Math.min(100, Math.round((i.current / i.target) * 100)))
@@ -933,7 +934,7 @@ export default function Treehouse() {
                       return (
                         <>
                           <div className="text-center mb-2">
-                            <span className={`text-lg font-black ${evo.eligible ? 'text-sloth-green' : 'text-sloth-gold'}`}>
+                            <span className={`text-lg font-black ${evo.eligible ? 'text-brand-primary' : 'text-brand-gold'}`}>
                               {evo.eligible ? 'Ready to Evolve!' : `${avgPct}% to Tier ${(evo.tier || 0) + 1}`}
                             </span>
                           </div>
@@ -943,7 +944,7 @@ export default function Treehouse() {
                                 <span className="text-gray-400 w-14 text-right">{item.label}</span>
                                 <div className="flex-1 bg-gray-800 rounded-full h-2.5 overflow-hidden">
                                   <div
-                                    className={`h-full rounded-full transition-all ${pcts[idx] >= 100 ? 'bg-sloth-green' : 'bg-sloth-purple'}`}
+                                    className={`h-full rounded-full transition-all ${pcts[idx] >= 100 ? 'bg-brand-primary' : 'bg-brand-accent'}`}
                                     style={{ width: `${pcts[idx]}%` }}
                                   />
                                 </div>
@@ -953,8 +954,8 @@ export default function Treehouse() {
                           </div>
                           {evo.eligible && (
                             <button
-                              onClick={() => { setEvolveSlothId(sloth.id); setEvolveSlothName(sloth.name) }}
-                              className="w-full mt-2 py-2 bg-sloth-green text-sloth-dark font-bold rounded-lg hover:bg-sloth-green/90 transition-colors cursor-pointer"
+                              onClick={() => { setEvolveRacerId(racer.id); setEvolveRacerName(racer.name) }}
+                              className="w-full mt-2 py-2 bg-brand-primary text-brand-bg font-bold rounded-lg hover:bg-brand-primary/90 transition-colors cursor-pointer"
                             >
                               Evolve Now
                             </button>
@@ -973,23 +974,23 @@ export default function Treehouse() {
       {/* MiniGameModal */}
       {FEATURES.miniGames && activeMiniGame && address && (
         <MiniGameModal
-          slothId={activeMiniGame.slothId}
-          slothName={activeMiniGame.slothName}
+          racerId={activeMiniGame.racerId}
+          racerName={activeMiniGame.racerName}
           wallet={address}
           playsLeft={5}
           onClose={() => setActiveMiniGame(null)}
-          onGameComplete={() => loadTreehouse()}
+          onGameComplete={() => loadCollection()}
         />
       )}
 
       {/* Evolution Modal */}
-      {FEATURES.evolution && evolveSlothId !== null && address && (
+      {FEATURES.evolution && evolveRacerId !== null && address && (
         <EvolutionModal
-          slothId={evolveSlothId}
-          slothName={evolveSlothName}
+          racerId={evolveRacerId}
+          racerName={evolveRacerName}
           wallet={address}
-          onClose={() => setEvolveSlothId(null)}
-          onEvolved={() => loadTreehouse()}
+          onClose={() => setEvolveRacerId(null)}
+          onEvolved={() => loadCollection()}
         />
       )}
 
@@ -1006,7 +1007,7 @@ export default function Treehouse() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-sloth-card border border-sloth-border rounded-2xl p-8 max-w-md w-full mx-4 text-center"
+              className="bg-brand-surface border border-brand-border rounded-2xl p-8 max-w-md w-full mx-4 text-center"
             >
               {upgradeState === 'paying' && (
                 <>
@@ -1032,8 +1033,8 @@ export default function Treehouse() {
                     transition={{ delay: 0.5, duration: 1 }}
                     className="text-4xl mb-4"
                   >&#x1f525;</motion.div>
-                  <p className="text-xl font-bold mb-2 text-orange-400">Burning Free Sloth...</p>
-                  <p className="text-gray-400">Your sloth is evolving!</p>
+                  <p className="text-xl font-bold mb-2 text-orange-400">Burning {THEME.tiers.free}...</p>
+                  <p className="text-gray-400">Your racer is evolving!</p>
                 </>
               )}
 
@@ -1046,12 +1047,12 @@ export default function Treehouse() {
                     className="text-7xl mb-4 inline-block"
                     style={{ perspective: '500px' }}
                   >&#x2753;</motion.div>
-                  <p className="text-xl font-bold mb-2 text-sloth-purple">Revealing Rarity...</p>
-                  <p className="text-gray-400">Chainlink VRF determining your sloth...</p>
+                  <p className="text-xl font-bold mb-2 text-brand-accent">Revealing Rarity...</p>
+                  <p className="text-gray-400">Chainlink VRF determining your racer...</p>
                 </>
               )}
 
-              {upgradeState === 'done' && newSloth && (
+              {upgradeState === 'done' && newRacer && (
                 <>
                   <motion.div
                     initial={{ scale: 0 }}
@@ -1059,21 +1060,21 @@ export default function Treehouse() {
                     transition={{ type: 'spring', stiffness: 200 }}
                     className="text-7xl mb-4"
                   >&#x1f389;</motion.div>
-                  <h2 className="text-2xl font-bold text-white mb-2">{newSloth.name}</h2>
-                  <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold uppercase mb-4 ${RARITY_COLORS[newSloth.rarity] || ''}`}>
-                    {newSloth.rarity}
+                  <h2 className="text-2xl font-bold text-white mb-2">{newRacer.name}</h2>
+                  <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold uppercase mb-4 ${RARITY_COLORS[newRacer.rarity] || ''}`}>
+                    {newRacer.rarity}
                   </span>
                   <p className="text-gray-400 text-sm mb-2 capitalize">
-                    Race: {newSloth.race?.replace('_', ' ')}
+                    Race: {newRacer.race?.replace('_', ' ')}
                   </p>
-                  <p className="text-sloth-green font-semibold mb-4">+500 ZZZ Coins</p>
+                  <p className="text-brand-primary font-semibold mb-4">+500 {CUR}</p>
                   {onchainUpgrade.hash && (
                     <div className="mb-4">
                       <a
                         href={`https://sepolia.basescan.org/tx/${onchainUpgrade.hash}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sloth-green/70 text-xs hover:text-sloth-green transition-colors underline"
+                        className="text-brand-primary/70 text-xs hover:text-brand-primary transition-colors underline"
                       >
                         View on BaseScan
                       </a>
@@ -1081,9 +1082,9 @@ export default function Treehouse() {
                   )}
                   <button
                     onClick={closeReveal}
-                    className="px-6 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
                   >
-                    View in Treehouse
+                    View in {THEME.locations.home}
                   </button>
                 </>
               )}

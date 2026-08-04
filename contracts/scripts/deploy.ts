@@ -4,34 +4,34 @@ async function main() {
   const connection = await hre.network.connect();
   const { viem } = connection;
 
-  console.log("Deploying Sloth Rush contracts to", connection.networkName);
+  console.log("Deploying contracts to", connection.networkName);
 
-  // Deploy FreeSloth
-  const freeSloth = await viem.deployContract("FreeSloth");
-  console.log("FreeSloth deployed to:", freeSloth.address);
+  // Deploy FreeRacer
+  const freeRacer = await viem.deployContract("FreeRacer");
+  console.log("FreeRacer deployed to:", freeRacer.address);
 
-  // Deploy Sloth
-  const sloth = await viem.deployContract("Sloth");
-  console.log("Sloth deployed to:", sloth.address);
+  // Deploy Racer
+  const racer = await viem.deployContract("Racer");
+  console.log("Racer deployed to:", racer.address);
 
-  // Deploy SlothRush (main game contract)
-  const slothRush = await viem.deployContract("SlothRush", [
-    freeSloth.address,
-    sloth.address,
+  // Deploy RaceCore (main game contract)
+  const raceCore = await viem.deployContract("RaceCore", [
+    freeRacer.address,
+    racer.address,
   ]);
-  console.log("SlothRush deployed to:", slothRush.address);
+  console.log("RaceCore deployed to:", raceCore.address);
 
   // Set permissions
-  await freeSloth.write.setUpgradeContract([slothRush.address]);
-  console.log("FreeSloth.upgradeContract set to SlothRush");
+  await freeRacer.write.setUpgradeContract([raceCore.address]);
+  console.log("FreeRacer.upgradeContract set to RaceCore");
 
-  await sloth.write.setMinter([slothRush.address]);
-  console.log("Sloth.minter set to SlothRush");
+  await racer.write.setMinter([raceCore.address]);
+  console.log("Racer.minter set to RaceCore");
 
   console.log("\n--- Deployment Complete ---");
-  console.log("FreeSloth:", freeSloth.address);
-  console.log("Sloth:    ", sloth.address);
-  console.log("SlothRush:", slothRush.address);
+  console.log("FreeRacer:", freeRacer.address);
+  console.log("Racer:    ", racer.address);
+  console.log("RaceCore:", raceCore.address);
 }
 
 main().catch((error) => {

@@ -25,14 +25,14 @@ const RARITY_TABLE = [
 ] as const;
 
 // Race types from GDD
-const RACES = ["caffeine_junkie", "pillow_knight", "dream_weaver", "thunder_nap"] as const;
+const RACES = ["speedster", "tank", "trickster", "burst"] as const;
 
 // Starting stat biases per race (small 1-2 point differences)
 const RACE_BIAS: Record<string, Partial<Record<string, number>>> = {
-  caffeine_junkie: { spd: 2, acc: 1 },
-  pillow_knight: { sta: 2, ref: 1 },
-  dream_weaver: { lck: 2, agi: 1 },
-  thunder_nap: { agi: 2, ref: 1 },
+  speedster: { spd: 2, acc: 1 },
+  tank: { sta: 2, ref: 1 },
+  trickster: { lck: 2, agi: 1 },
+  burst: { agi: 2, ref: 1 },
 };
 
 function rollRarity(): string {
@@ -45,13 +45,15 @@ function rollRarity(): string {
   return "common";
 }
 
+// Starter names are deliberately theme-neutral: they describe motion and
+// material, not any particular brand's creature. Players rename freely.
 function generateName(): string {
-  const prefixes = ["Speedy", "Sleepy", "Turbo", "Drowsy", "Shadow", "Crystal", "Thunder", "Dreamwalk", "Iron", "Golden"];
-  const suffixes = ["Napper", "Snooze", "Yawner", "Racer", "Runner", "Dasher", "Glider", "Rocket", "Bolt", "Storm"];
+  const prefixes = ["Speedy", "Turbo", "Shadow", "Crystal", "Thunder", "Copper", "Iron", "Golden", "Swift", "Scarlet"];
+  const suffixes = ["Racer", "Runner", "Dasher", "Glider", "Rocket", "Bolt", "Storm", "Spark", "Comet", "Dart"];
   return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
 }
 
-// POST /api/sloth/mint — Mint a Free Sloth
+// POST /api/racer/mint — Mint a Free Racer
 router.post("/mint", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.body;
@@ -68,26 +70,26 @@ router.post("/mint", async (req: Request, res: Response) => {
 
     // Check if wallet already has ANY active (non-burned) creature
     const existingActive = await getOne(
-      "SELECT id, type FROM sloths WHERE wallet = $1 AND is_burned = 0",
+      "SELECT id, type FROM racers WHERE wallet = $1 AND is_burned = 0",
       [wallet]
     );
 
     if (existingActive) {
-      if (existingActive.type === 'free_sloth') {
-        res.status(409).json({ error: "wallet already has a Free Sloth" });
+      if (existingActive.type === 'free') {
+        res.status(409).json({ error: "wallet already has a Free Racer" });
       } else {
-        res.status(409).json({ error: "wallet already has a Sloth. Free Sloth mint is not available after upgrade." });
+        res.status(409).json({ error: "wallet already has a Racer. Free Racer mint is not available after upgrade." });
       }
       return;
     }
 
     const name = generateName();
     const result = await getOne(
-      "INSERT INTO sloths (wallet, type, name) VALUES ($1, 'free_sloth', $2) RETURNING id",
+      "INSERT INTO racers (wallet, type, name) VALUES ($1, 'free', $2) RETURNING id",
       [wallet, name]
     );
 
-    // Welcome Bonus: 10 ZZZ for new players
+    // Welcome Bonus: 10 coins for new players
     await query(
       `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 10)
        ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 10, updated_at = NOW()`,
@@ -98,16 +100,16 @@ router.post("/mint", async (req: Request, res: Response) => {
       [wallet]
     );
 
-    const sloth = await getOne("SELECT * FROM sloths WHERE id = $1", [result.id]);
+    const racer = await getOne("SELECT * FROM racers WHERE id = $1", [result.id]);
 
-    res.status(201).json({ sloth, welcomeBonus: 10 });
+    res.status(201).json({ racer, welcomeBonus: 10 });
   } catch (err) {
     console.error("POST /mint error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST /api/sloth/upgrade — Upgrade Free Sloth to Sloth
+// POST /api/racer/upgrade — Upgrade Free Racer to Racer
 router.post("/upgrade", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.body;
@@ -122,14 +124,14 @@ router.post("/upgrade", async (req: Request, res: Response) => {
       return;
     }
 
-    // Find the free sloth
-    const freeSloth = await getOne(
-      "SELECT * FROM sloths WHERE wallet = $1 AND type = 'free_sloth' AND is_burned = 0",
+    // Find the free racer
+    const freeRacer = await getOne(
+      "SELECT * FROM racers WHERE wallet = $1 AND type = 'free' AND is_burned = 0",
       [wallet]
     );
 
-    if (!freeSloth) {
-      res.status(404).json({ error: "no Free Sloth found to upgrade" });
+    if (!freeRacer) {
+      res.status(404).json({ error: "no Free Racer found to upgrade" });
       return;
     }
 
@@ -148,20 +150,20 @@ router.post("/upgrade", async (req: Request, res: Response) => {
       lck: 10 + (bias.lck || 0),
     };
 
-    // Transaction: burn free sloth + create sloth + give 500 coins
-    const sloth = await runTransaction(async (client) => {
-      // Burn the free sloth
-      await client.query("UPDATE sloths SET is_burned = 1 WHERE id = $1", [freeSloth.id]);
+    // Transaction: burn free racer + create racer + give 500 coins
+    const racer = await runTransaction(async (client) => {
+      // Burn the free racer
+      await client.query("UPDATE racers SET is_burned = 1 WHERE id = $1", [freeRacer.id]);
 
-      // Create sloth
+      // Create racer
       const name = generateName();
-      const slothResult = await client.query(
-        `INSERT INTO sloths (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)
-         VALUES ($1, 'sloth', $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      const racerResult = await client.query(
+        `INSERT INTO racers (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)
+         VALUES ($1, 'pro', $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
         [wallet, name, rarity, race, stats.spd, stats.acc, stats.sta, stats.agi, stats.ref, stats.lck]
       );
 
-      // Give 500 ZZZ Coin
+      // Give 500 coins
       await client.query(
         `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 500)
          ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 500, updated_at = NOW()`,
@@ -170,17 +172,17 @@ router.post("/upgrade", async (req: Request, res: Response) => {
 
       // Record transaction
       await client.query(
-        "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'upgrade_bonus', 500, 'Sloth upgrade bonus')",
+        "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'upgrade_bonus', 500, 'Racer upgrade bonus')",
         [wallet]
       );
 
-      const slothRow = await client.query("SELECT * FROM sloths WHERE id = $1", [slothResult.rows[0].id]);
-      return slothRow.rows[0];
+      const racerRow = await client.query("SELECT * FROM racers WHERE id = $1", [racerResult.rows[0].id]);
+      return racerRow.rows[0];
     });
 
     res.status(201).json({
-      sloth,
-      burnedSlothId: freeSloth.id,
+      racer,
+      burnedRacerId: freeRacer.id,
       coinBonus: 500,
     });
   } catch (err) {
@@ -189,8 +191,8 @@ router.post("/upgrade", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/sloth/treehouse/:wallet — Get all sloths for a wallet
-router.get("/treehouse/:wallet", async (req: Request, res: Response) => {
+// GET /api/racer/collection/:wallet — Get all racers for a wallet
+router.get("/collection/:wallet", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.params;
 
@@ -199,8 +201,8 @@ router.get("/treehouse/:wallet", async (req: Request, res: Response) => {
       return;
     }
 
-    const sloths = await getAll(
-      "SELECT * FROM sloths WHERE wallet = $1 AND is_burned = 0 ORDER BY created_at DESC",
+    const racers = await getAll(
+      "SELECT * FROM racers WHERE wallet = $1 AND is_burned = 0 ORDER BY created_at DESC",
       [wallet]
     );
 
@@ -210,24 +212,24 @@ router.get("/treehouse/:wallet", async (req: Request, res: Response) => {
     );
 
     res.json({
-      sloths,
+      racers,
       coinBalance: balance?.balance || 0,
     });
   } catch (err) {
-    console.error("GET /treehouse/:wallet error:", err);
+    console.error("GET /collection/:wallet error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST /api/sloth/rename — Rename a sloth
+// POST /api/racer/rename — Rename a racer
 const NAME_BLACKLIST = ['fuck', 'shit', 'ass', 'dick', 'porn', 'nazi', 'sik', 'amk', 'orospu'];
 
 router.post("/rename", async (req: Request, res: Response) => {
   try {
-    const { wallet, slothId, name } = req.body;
+    const { wallet, racerId, name } = req.body;
 
-    if (!wallet || !slothId || !name) {
-      res.status(400).json({ error: "wallet, slothId, and name required" });
+    if (!wallet || !racerId || !name) {
+      res.status(400).json({ error: "wallet, racerId, and name required" });
       return;
     }
 
@@ -253,26 +255,26 @@ router.post("/rename", async (req: Request, res: Response) => {
       return;
     }
 
-    const sloth = await getOne(
-      "SELECT id FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0",
-      [slothId, wallet]
+    const racer = await getOne(
+      "SELECT id FROM racers WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+      [racerId, wallet]
     );
 
-    if (!sloth) {
-      res.status(404).json({ error: "sloth not found or not owned" });
+    if (!racer) {
+      res.status(404).json({ error: "racer not found or not owned" });
       return;
     }
 
-    await query("UPDATE sloths SET name = $1 WHERE id = $2", [trimmed, slothId]);
+    await query("UPDATE racers SET name = $1 WHERE id = $2", [trimmed, racerId]);
 
-    res.json({ renamed: true, slothId, newName: trimmed });
+    res.json({ renamed: true, racerId, newName: trimmed });
   } catch (err) {
     console.error("POST /rename error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /api/sloth/streaks/:wallet — Get streaks for a wallet's sloths
+// GET /api/racer/streaks/:wallet — Get streaks for a wallet's racers
 router.get("/streaks/:wallet", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.params;
@@ -283,9 +285,9 @@ router.get("/streaks/:wallet", async (req: Request, res: Response) => {
     }
 
     const streaks = await getAll(
-      `SELECT s.sloth_id, s.current_wins, s.max_wins, s.current_losses, s.total_races, s.total_wins
+      `SELECT s.racer_id, s.current_wins, s.max_wins, s.current_losses, s.total_races, s.total_wins
        FROM streaks s
-       JOIN sloths sl ON s.sloth_id = sl.id
+       JOIN racers sl ON s.racer_id = sl.id
        WHERE sl.wallet = $1 AND sl.is_burned = 0`,
       [wallet]
     );
@@ -297,7 +299,7 @@ router.get("/streaks/:wallet", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/coin/:wallet — Get ZZZ Coin balance
+// GET /api/coin/:wallet — Get coin balance
 router.get("/coin/:wallet", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.params;
@@ -319,7 +321,7 @@ router.get("/coin/:wallet", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/sloth/xp/:wallet — Get XP for a wallet
+// GET /api/racer/xp/:wallet — Get XP for a wallet
 router.get("/xp/:wallet", async (req: Request, res: Response) => {
   try {
     const wallet = req.params.wallet as string;
@@ -337,7 +339,7 @@ router.get("/xp/:wallet", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/sloth/daily-login — Claim daily login bonus (15 ZZZ)
+// POST /api/racer/daily-login — Claim daily login bonus (15 coins)
 router.post("/daily-login", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.body;
@@ -383,16 +385,16 @@ router.post("/daily-login", async (req: Request, res: Response) => {
 
 // Stat caps
 const STAT_CAPS: Record<string, number> = {
-  free_sloth: 15, common: 22, uncommon: 25, rare: 28, epic: 31, legendary: 35,
+  free: 15, common: 22, uncommon: 25, rare: 28, epic: 31, legendary: 35,
 };
 
 function getStatCap(type: string, rarity: string, tier: number = 0, evolutionPath?: string, stat?: string): number {
-  let cap = type === 'free_sloth' ? 15 : (STAT_CAPS[rarity] || 22);
+  let cap = type === 'free' ? 15 : (STAT_CAPS[rarity] || 22);
   if (tier >= 3 && evolutionPath && stat) {
     const pathStats: Record<string, string[]> = {
-      caffeine: ['spd', 'acc'],
-      hibernate: ['sta', 'ref'],
-      dreamwalk: ['lck', 'agi'],
+      speed: ['spd', 'acc'],
+      endurance: ['sta', 'ref'],
+      luck: ['lck', 'agi'],
     };
     if (pathStats[evolutionPath]?.includes(stat)) cap += 5;
     if (tier >= 4) cap += 3;
@@ -400,12 +402,12 @@ function getStatCap(type: string, rarity: string, tier: number = 0, evolutionPat
   return cap;
 }
 
-// POST /api/sloth/train — Start a training session (2h, 5 ZZZ cost)
+// POST /api/racer/train — Start a training session (2h, 5 coin cost)
 router.post("/train", async (req: Request, res: Response) => {
   try {
-    const { wallet, slothId, stat } = req.body;
-    if (!wallet || !slothId || !stat) {
-      res.status(400).json({ error: "wallet, slothId, and stat required" });
+    const { wallet, racerId, stat } = req.body;
+    if (!wallet || !racerId || !stat) {
+      res.status(400).json({ error: "wallet, racerId, and stat required" });
       return;
     }
 
@@ -414,9 +416,9 @@ router.post("/train", async (req: Request, res: Response) => {
       return;
     }
 
-    const parsedSlothId = parseInt(slothId);
-    if (isNaN(parsedSlothId) || parsedSlothId <= 0) {
-      res.status(400).json({ error: "Invalid slothId" });
+    const parsedRacerId = parseInt(racerId);
+    if (isNaN(parsedRacerId) || parsedRacerId <= 0) {
+      res.status(400).json({ error: "Invalid racerId" });
       return;
     }
 
@@ -428,47 +430,47 @@ router.post("/train", async (req: Request, res: Response) => {
     }
 
     // Verify ownership
-    const sloth = await getOne(
-      "SELECT * FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0",
-      [parsedSlothId, wallet]
+    const racer = await getOne(
+      "SELECT * FROM racers WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+      [parsedRacerId, wallet]
     );
-    if (!sloth) {
+    if (!racer) {
       res.status(404).json({ error: "creature not found or not owned" });
       return;
     }
 
     // Check stat cap
-    const cap = getStatCap(sloth.type, sloth.rarity, sloth.tier || 0, sloth.evolution_path, stat);
-    if (sloth[stat] >= cap) {
+    const cap = getStatCap(racer.type, racer.rarity, racer.tier || 0, racer.evolution_path, stat);
+    if (racer[stat] >= cap) {
       res.status(400).json({ error: `${stat.toUpperCase()} is already at max (${cap}) for this rarity` });
       return;
     }
 
     // Check if already in training (unclaimed)
     const activeTraining = await getOne(
-      "SELECT id FROM trainings WHERE sloth_id = $1 AND claimed = 0",
-      [parsedSlothId]
+      "SELECT id FROM trainings WHERE racer_id = $1 AND claimed = 0",
+      [parsedRacerId]
     );
     if (activeTraining) {
       res.status(400).json({ error: "This creature is already in training" });
       return;
     }
 
-    // Check weekly training limit (free_sloth: 3/week, sloth: 5/week)
-    const weeklyLimit = sloth.type === 'free_sloth' ? 3 : 5;
+    // Check weekly training limit (free: 3/week, racer: 5/week)
+    const weeklyLimit = racer.type === 'free' ? 3 : 5;
     const weekTrainings = await getOne(
-      "SELECT COUNT(*) as count FROM trainings WHERE sloth_id = $1 AND started_at >= date_trunc('week', CURRENT_TIMESTAMP)",
-      [parsedSlothId]
+      "SELECT COUNT(*) as count FROM trainings WHERE racer_id = $1 AND started_at >= date_trunc('week', CURRENT_TIMESTAMP)",
+      [parsedRacerId]
     );
     if (parseInt(weekTrainings?.count || 0) >= weeklyLimit) {
       res.status(400).json({ error: `Weekly training limit reached (${weeklyLimit}/week)` });
       return;
     }
 
-    // Check balance (5 ZZZ cost)
+    // Check balance (5 coin cost)
     const balance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
     if ((balance?.balance || 0) < 5) {
-      res.status(400).json({ error: "Need 5 ZZZ for training" });
+      res.status(400).json({ error: "Need 5 coins for training" });
       return;
     }
 
@@ -479,28 +481,28 @@ router.post("/train", async (req: Request, res: Response) => {
     );
     await query(
       "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'training_cost', -5, $2)",
-      [wallet, `Training ${stat.toUpperCase()} for sloth #${parsedSlothId}`]
+      [wallet, `Training ${stat.toUpperCase()} for racer #${parsedRacerId}`]
     );
 
     const completedAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
     await query(
-      "INSERT INTO trainings (sloth_id, wallet, stat, completed_at) VALUES ($1, $2, $3, $4)",
-      [parsedSlothId, wallet, stat, completedAt]
+      "INSERT INTO trainings (racer_id, wallet, stat, completed_at) VALUES ($1, $2, $3, $4)",
+      [parsedRacerId, wallet, stat, completedAt]
     );
 
-    res.json({ started: true, slothId: parsedSlothId, stat, completedAt });
+    res.json({ started: true, racerId: parsedRacerId, stat, completedAt });
   } catch (err) {
     console.error("POST /train error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST /api/sloth/claim-training — Claim training reward
+// POST /api/racer/claim-training — Claim training reward
 router.post("/claim-training", async (req: Request, res: Response) => {
   try {
-    const { wallet, slothId } = req.body;
-    if (!wallet || !slothId) {
-      res.status(400).json({ error: "wallet and slothId required" });
+    const { wallet, racerId } = req.body;
+    if (!wallet || !racerId) {
+      res.status(400).json({ error: "wallet and racerId required" });
       return;
     }
 
@@ -510,8 +512,8 @@ router.post("/claim-training", async (req: Request, res: Response) => {
     }
 
     const training = await getOne(
-      "SELECT * FROM trainings WHERE sloth_id = $1 AND wallet = $2 AND claimed = 0",
-      [slothId, wallet]
+      "SELECT * FROM trainings WHERE racer_id = $1 AND wallet = $2 AND claimed = 0",
+      [racerId, wallet]
     );
     if (!training) {
       res.status(404).json({ error: "No active training found" });
@@ -523,19 +525,19 @@ router.post("/claim-training", async (req: Request, res: Response) => {
       return;
     }
 
-    const sloth = await getOne("SELECT * FROM sloths WHERE id = $1", [slothId]);
-    if (!sloth) {
+    const racer = await getOne("SELECT * FROM racers WHERE id = $1", [racerId]);
+    if (!racer) {
       res.status(404).json({ error: "creature not found" });
       return;
     }
 
     const stat = training.stat;
-    const cap = getStatCap(sloth.type, sloth.rarity, sloth.tier || 0, sloth.evolution_path, stat);
-    const gain = Math.min(0.5, Math.max(0, cap - (sloth[stat] || 0)));
+    const cap = getStatCap(racer.type, racer.rarity, racer.tier || 0, racer.evolution_path, stat);
+    const gain = Math.min(0.5, Math.max(0, cap - (racer[stat] || 0)));
 
     if (gain > 0) {
       assertValidStat(stat);
-      await query(`UPDATE sloths SET ${stat} = ${stat} + $1 WHERE id = $2`, [gain, slothId]);
+      await query(`UPDATE racers SET ${stat} = ${stat} + $1 WHERE id = $2`, [gain, racerId]);
     }
     await query("UPDATE trainings SET claimed = 1 WHERE id = $1", [training.id]);
     await awardXP(wallet, 5);
@@ -543,14 +545,14 @@ router.post("/claim-training", async (req: Request, res: Response) => {
     // Trigger training_complete quest
     await triggerQuestProgress(wallet, "training_complete");
 
-    res.json({ claimed: true, slothId, stat, gain, newStatValue: (sloth[stat] || 0) + gain });
+    res.json({ claimed: true, racerId, stat, gain, newStatValue: (racer[stat] || 0) + gain });
   } catch (err) {
     console.error("POST /claim-training error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /api/sloth/training-status/:wallet — Get active trainings
+// GET /api/racer/training-status/:wallet — Get active trainings
 router.get("/training-status/:wallet", async (req: Request, res: Response) => {
   try {
     const wallet = req.params.wallet as string;
@@ -561,33 +563,33 @@ router.get("/training-status/:wallet", async (req: Request, res: Response) => {
     }
 
     const trainings = await getAll(
-      `SELECT t.*, s.name as sloth_name FROM trainings t
-       JOIN sloths s ON t.sloth_id = s.id
+      `SELECT t.*, s.name as racer_name FROM trainings t
+       JOIN racers s ON t.racer_id = s.id
        WHERE t.wallet = $1 AND t.claimed = 0
        ORDER BY t.started_at DESC`,
       [wallet]
     );
 
     const result = trainings.map((t: any) => ({
-      slothId: t.sloth_id,
-      slothName: t.sloth_name,
+      racerId: t.racer_id,
+      racerName: t.racer_name,
       stat: t.stat,
       startedAt: t.started_at,
       completedAt: t.completed_at,
       isReady: new Date(t.completed_at) <= new Date(),
     }));
 
-    // Get weekly training counts per sloth
+    // Get weekly training counts per racer
     const weeklyCounts = await getAll(
-      `SELECT s.id as sloth_id, COUNT(t.id) as count FROM sloths s
-       LEFT JOIN trainings t ON t.sloth_id = s.id AND t.started_at >= date_trunc('week', CURRENT_TIMESTAMP)
+      `SELECT s.id as racer_id, COUNT(t.id) as count FROM racers s
+       LEFT JOIN trainings t ON t.racer_id = s.id AND t.started_at >= date_trunc('week', CURRENT_TIMESTAMP)
        WHERE s.wallet = $1 AND s.is_burned = 0
        GROUP BY s.id`,
       [wallet]
     );
     const weeklyMap: Record<number, number> = {};
     for (const wc of weeklyCounts) {
-      weeklyMap[wc.sloth_id] = parseInt(wc.count) || 0;
+      weeklyMap[wc.racer_id] = parseInt(wc.count) || 0;
     }
 
     res.json({ trainings: result, weeklyCounts: weeklyMap });
@@ -597,7 +599,7 @@ router.get("/training-status/:wallet", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/sloth/upgrade-progress/:wallet — Check free upgrade eligibility
+// GET /api/racer/upgrade-progress/:wallet — Check free upgrade eligibility
 router.get("/upgrade-progress/:wallet", async (req: Request, res: Response) => {
   try {
     const wallet = req.params.wallet as string;
@@ -647,7 +649,7 @@ router.get("/upgrade-progress/:wallet", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/sloth/free-upgrade — Free upgrade path (meet all 4 requirements)
+// POST /api/racer/free-upgrade — Free upgrade path (meet all 4 requirements)
 router.post("/free-upgrade", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.body;
@@ -686,14 +688,14 @@ router.post("/free-upgrade", async (req: Request, res: Response) => {
       return;
     }
 
-    // Find the free sloth
-    const freeSloth = await getOne(
-      "SELECT * FROM sloths WHERE wallet = $1 AND type = 'free_sloth' AND is_burned = 0",
+    // Find the free racer
+    const freeRacer = await getOne(
+      "SELECT * FROM racers WHERE wallet = $1 AND type = 'free' AND is_burned = 0",
       [wallet]
     );
 
-    if (!freeSloth) {
-      res.status(404).json({ error: "no Free Sloth found to upgrade" });
+    if (!freeRacer) {
+      res.status(404).json({ error: "no Free Racer found to upgrade" });
       return;
     }
 
@@ -711,13 +713,13 @@ router.post("/free-upgrade", async (req: Request, res: Response) => {
       lck: 10 + (bias.lck || 0),
     };
 
-    const sloth = await runTransaction(async (client) => {
-      await client.query("UPDATE sloths SET is_burned = 1 WHERE id = $1", [freeSloth.id]);
+    const racer = await runTransaction(async (client) => {
+      await client.query("UPDATE racers SET is_burned = 1 WHERE id = $1", [freeRacer.id]);
 
       const name = generateName();
-      const slothResult = await client.query(
-        `INSERT INTO sloths (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)
-         VALUES ($1, 'sloth', $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      const racerResult = await client.query(
+        `INSERT INTO racers (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)
+         VALUES ($1, 'pro', $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
         [wallet, name, rarity, race, stats.spd, stats.acc, stats.sta, stats.agi, stats.ref, stats.lck]
       );
 
@@ -732,13 +734,13 @@ router.post("/free-upgrade", async (req: Request, res: Response) => {
         [wallet]
       );
 
-      const slothRow = await client.query("SELECT * FROM sloths WHERE id = $1", [slothResult.rows[0].id]);
-      return slothRow.rows[0];
+      const racerRow = await client.query("SELECT * FROM racers WHERE id = $1", [racerResult.rows[0].id]);
+      return racerRow.rows[0];
     });
 
     res.status(201).json({
-      sloth,
-      burnedSlothId: freeSloth.id,
+      racer,
+      burnedRacerId: freeRacer.id,
       coinBonus: 500,
     });
   } catch (err) {
@@ -747,13 +749,13 @@ router.post("/free-upgrade", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/sloth/mini-game — Play a mini game for stat gain
+// POST /api/racer/mini-game — Play a mini game for stat gain
 router.post("/mini-game", async (req: Request, res: Response) => {
   try {
-    const { wallet, slothId, gameType, score } = req.body;
+    const { wallet, racerId, gameType, score } = req.body;
 
-    if (!wallet || !slothId || !gameType || score === undefined) {
-      res.status(400).json({ error: "wallet, slothId, gameType, and score required" });
+    if (!wallet || !racerId || !gameType || score === undefined) {
+      res.status(400).json({ error: "wallet, racerId, gameType, and score required" });
       return;
     }
 
@@ -769,25 +771,25 @@ router.post("/mini-game", async (req: Request, res: Response) => {
     }
 
     const statMap: Record<string, string> = {
-      salt_dodge: 'agi',
-      yawn_stretch: 'spd',
-      pillow_lift: 'sta',
-      lucky_leaf: 'lck',
-      speed_tap: 'acc',
+      dodge: 'agi',
+      stretch: 'spd',
+      lift: 'sta',
+      charm: 'lck',
+      tap: 'acc',
     };
 
     const stat = statMap[gameType];
     if (!stat) {
-      res.status(400).json({ error: "Invalid gameType. Must be: salt_dodge, yawn_stretch, pillow_lift, lucky_leaf, speed_tap" });
+      res.status(400).json({ error: "Invalid gameType. Must be: dodge, stretch, lift, charm, tap" });
       return;
     }
 
     // Verify ownership
-    const sloth = await getOne(
-      "SELECT * FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0",
-      [slothId, wallet]
+    const racer = await getOne(
+      "SELECT * FROM racers WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+      [racerId, wallet]
     );
-    if (!sloth) {
+    if (!racer) {
       res.status(404).json({ error: "creature not found or not owned" });
       return;
     }
@@ -797,13 +799,13 @@ router.post("/mini-game", async (req: Request, res: Response) => {
     const dailyLimit = 5;
 
     await query(
-      "INSERT INTO daily_minigame_plays (sloth_id, play_date, count) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
-      [slothId, today]
+      "INSERT INTO daily_minigame_plays (racer_id, play_date, count) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING",
+      [racerId, today]
     );
     const walletPlays = await getOne(
       `SELECT COALESCE(SUM(dmp.count), 0) as total_count
        FROM daily_minigame_plays dmp
-       JOIN sloths s ON dmp.sloth_id = s.id
+       JOIN racers s ON dmp.racer_id = s.id
        WHERE s.wallet = $1 AND dmp.play_date = $2`,
       [wallet, today]
     );
@@ -814,22 +816,22 @@ router.post("/mini-game", async (req: Request, res: Response) => {
     }
 
     // Check stat cap
-    const cap = getStatCap(sloth.type, sloth.rarity, sloth.tier || 0, sloth.evolution_path, stat);
-    if (sloth[stat] >= cap) {
+    const cap = getStatCap(racer.type, racer.rarity, racer.tier || 0, racer.evolution_path, stat);
+    if (racer[stat] >= cap) {
       res.status(400).json({ error: `${stat.toUpperCase()} is already at max (${cap})` });
       return;
     }
 
     // Calculate gain
     const gain = Math.max(0.1, Math.min(0.5, parsedScore / 100 * 0.5));
-    const actualGain = Math.min(gain, Math.max(0, cap - (sloth[stat] || 0)));
+    const actualGain = Math.min(gain, Math.max(0, cap - (racer[stat] || 0)));
 
     // Update stat and track play
     assertValidStat(stat);
-    await query(`UPDATE sloths SET ${stat} = ${stat} + $1 WHERE id = $2`, [actualGain, slothId]);
+    await query(`UPDATE racers SET ${stat} = ${stat} + $1 WHERE id = $2`, [actualGain, racerId]);
     await query(
-      "UPDATE daily_minigame_plays SET count = count + 1 WHERE sloth_id = $1 AND play_date = $2",
-      [slothId, today]
+      "UPDATE daily_minigame_plays SET count = count + 1 WHERE racer_id = $1 AND play_date = $2",
+      [racerId, today]
     );
 
     // Award 8 XP
@@ -840,11 +842,11 @@ router.post("/mini-game", async (req: Request, res: Response) => {
 
     res.json({
       played: true,
-      slothId,
+      racerId,
       gameType,
       stat,
       gain: actualGain,
-      newStatValue: (sloth[stat] || 0) + actualGain,
+      newStatValue: (racer[stat] || 0) + actualGain,
       playsToday: (walletPlays?.total_count || 0) + 1,
       dailyLimit,
     });
@@ -854,62 +856,62 @@ router.post("/mini-game", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/sloth/evolution-progress/:slothId — Get evolution progress
-router.get("/evolution-progress/:slothId", async (req: Request, res: Response) => {
+// GET /api/racer/evolution-progress/:racerId — Get evolution progress
+router.get("/evolution-progress/:racerId", async (req: Request, res: Response) => {
   try {
-    const slothId = parseInt(req.params.slothId as string);
-    if (isNaN(slothId) || slothId <= 0) {
-      res.status(400).json({ error: "Invalid slothId" });
+    const racerId = parseInt(req.params.racerId as string);
+    if (isNaN(racerId) || racerId <= 0) {
+      res.status(400).json({ error: "Invalid racerId" });
       return;
     }
 
-    const sloth = await getOne(
-      "SELECT * FROM sloths WHERE id = $1 AND is_burned = 0",
-      [slothId]
+    const racer = await getOne(
+      "SELECT * FROM racers WHERE id = $1 AND is_burned = 0",
+      [racerId]
     );
-    if (!sloth) {
+    if (!racer) {
       res.status(404).json({ error: "creature not found" });
       return;
     }
 
-    const tier = sloth.tier ?? 0;
-    const wallet = sloth.wallet;
+    const tier = racer.tier ?? 0;
+    const wallet = racer.wallet;
 
     // Get race stats
     const totalRacesRow = await getOne(
-      "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND sloth_id = $2 AND is_bot = 0",
-      [wallet, slothId]
+      "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND racer_id = $2 AND is_bot = 0",
+      [wallet, racerId]
     );
     const totalRaces = parseInt(totalRacesRow?.count) || 0;
 
     const totalWinsRow = await getOne(
-      "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND sloth_id = $2 AND is_bot = 0 AND finish_position = 1",
-      [wallet, slothId]
+      "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND racer_id = $2 AND is_bot = 0 AND finish_position = 1",
+      [wallet, racerId]
     );
     const totalWins = parseInt(totalWinsRow?.count) || 0;
 
     const xp = await getXP(wallet);
 
     const balance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
-    const zzzBalance = balance?.balance ?? 0;
+    const coinBalance = balance?.balance ?? 0;
 
     // Get highest stat (null-safe)
     const stats = [
-      Number(sloth.spd) || 0,
-      Number(sloth.acc) || 0,
-      Number(sloth.sta) || 0,
-      Number(sloth.agi) || 0,
-      Number(sloth.ref) || 0,
-      Number(sloth.lck) || 0,
+      Number(racer.spd) || 0,
+      Number(racer.acc) || 0,
+      Number(racer.sta) || 0,
+      Number(racer.agi) || 0,
+      Number(racer.ref) || 0,
+      Number(racer.lck) || 0,
     ];
     const maxStat = Math.max(...stats);
     const totalStats = stats.reduce((a, b) => a + b, 0);
 
     // Requirements per tier
     const tierReqs: Record<number, any> = {
-      1: { xp: 2000, races: 50, wins: 18, zzz: 800, stat: 20 },
-      2: { xp: 4000, races: 150, wins: 55, zzz: 2000, stat: 24, pathRequired: true },
-      3: { xp: 6000, races: 300, wins: 120, zzz: 3500, stat: 28 },
+      1: { xp: 2000, races: 50, wins: 18, coins: 800, stat: 20 },
+      2: { xp: 4000, races: 150, wins: 55, coins: 2000, stat: 24, pathRequired: true },
+      3: { xp: 6000, races: 300, wins: 120, coins: 3500, stat: 28 },
     };
 
     const nextTier = tier + 1;
@@ -920,25 +922,25 @@ router.get("/evolution-progress/:slothId", async (req: Request, res: Response) =
       eligible = xp >= reqs.xp &&
         totalRaces >= reqs.races &&
         totalWins >= reqs.wins &&
-        zzzBalance >= reqs.zzz &&
+        coinBalance >= reqs.coins &&
         maxStat >= reqs.stat;
     }
 
     // Response uses field names matching frontend expectations
     res.json({
-      slothId,
+      racerId,
       tier,
       currentTier: tier,
-      evolutionPath: sloth.evolution_path || null,
-      passive: sloth.passive || null,
+      evolutionPath: racer.evolution_path || null,
+      passive: racer.passive || null,
       requirements: reqs,
       nextTierRequirements: reqs,
       progress: {
         xp,
         races: totalRaces,
         wins: totalWins,
-        zzz: zzzBalance,
-        zzzBalance,
+        coins: coinBalance,
+        coinBalance,
         stat: maxStat,
         maxStat,
         totalStats,
@@ -946,18 +948,18 @@ router.get("/evolution-progress/:slothId", async (req: Request, res: Response) =
       eligible,
     });
   } catch (err) {
-    console.error("GET /evolution-progress/:slothId error:", err);
+    console.error("GET /evolution-progress/:racerId error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST /api/sloth/evolve — Evolve a sloth to next tier
+// POST /api/racer/evolve — Evolve a racer to next tier
 router.post("/evolve", async (req: Request, res: Response) => {
   try {
-    const { wallet, slothId, path } = req.body;
+    const { wallet, racerId, path } = req.body;
 
-    if (!wallet || !slothId) {
-      res.status(400).json({ error: "wallet and slothId required" });
+    if (!wallet || !racerId) {
+      res.status(400).json({ error: "wallet and racerId required" });
       return;
     }
 
@@ -966,16 +968,16 @@ router.post("/evolve", async (req: Request, res: Response) => {
       return;
     }
 
-    const sloth = await getOne(
-      "SELECT * FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0 AND type = 'sloth'",
-      [slothId, wallet]
+    const racer = await getOne(
+      "SELECT * FROM racers WHERE id = $1 AND wallet = $2 AND is_burned = 0 AND type = 'pro'",
+      [racerId, wallet]
     );
-    if (!sloth) {
-      res.status(404).json({ error: "sloth not found or not owned" });
+    if (!racer) {
+      res.status(404).json({ error: "racer not found or not owned" });
       return;
     }
 
-    const tier = sloth.tier || 1;
+    const tier = racer.tier || 1;
     const nextTier = tier + 1;
 
     if (nextTier > 4) {
@@ -985,29 +987,29 @@ router.post("/evolve", async (req: Request, res: Response) => {
 
     // Get stats
     const totalRacesRow = await getOne(
-      "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND sloth_id = $2 AND is_bot = 0",
-      [wallet, slothId]
+      "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND racer_id = $2 AND is_bot = 0",
+      [wallet, racerId]
     );
     const totalRaces = parseInt(totalRacesRow?.count) || 0;
 
     const totalWinsRow = await getOne(
-      "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND sloth_id = $2 AND is_bot = 0 AND finish_position = 1",
-      [wallet, slothId]
+      "SELECT COUNT(*) as count FROM race_participants WHERE wallet = $1 AND racer_id = $2 AND is_bot = 0 AND finish_position = 1",
+      [wallet, racerId]
     );
     const totalWins = parseInt(totalWinsRow?.count) || 0;
 
     const xp = await getXP(wallet);
     const balance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
-    const zzzBalance = balance?.balance || 0;
+    const coinBalance = balance?.balance || 0;
 
-    const stats = [sloth.spd, sloth.acc, sloth.sta, sloth.agi, sloth.ref, sloth.lck];
+    const stats = [racer.spd, racer.acc, racer.sta, racer.agi, racer.ref, racer.lck];
     const maxStat = Math.max(...stats);
 
     // Requirements per tier
-    const tierReqs: Record<number, { xp: number; races: number; wins: number; zzz: number; stat: number; pathRequired?: boolean }> = {
-      2: { xp: 2000, races: 50, wins: 18, zzz: 800, stat: 20 },
-      3: { xp: 4000, races: 150, wins: 55, zzz: 2000, stat: 24, pathRequired: true },
-      4: { xp: 6000, races: 300, wins: 120, zzz: 3500, stat: 28 },
+    const tierReqs: Record<number, { xp: number; races: number; wins: number; coins: number; stat: number; pathRequired?: boolean }> = {
+      2: { xp: 2000, races: 50, wins: 18, coins: 800, stat: 20 },
+      3: { xp: 4000, races: 150, wins: 55, coins: 2000, stat: 24, pathRequired: true },
+      4: { xp: 6000, races: 300, wins: 120, coins: 3500, stat: 28 },
     };
 
     const reqs = tierReqs[nextTier];
@@ -1016,54 +1018,54 @@ router.post("/evolve", async (req: Request, res: Response) => {
       return;
     }
 
-    if (xp < reqs.xp || totalRaces < reqs.races || totalWins < reqs.wins || zzzBalance < reqs.zzz || maxStat < reqs.stat) {
-      res.status(400).json({ error: "Requirements not met", requirements: reqs, progress: { xp, races: totalRaces, wins: totalWins, zzzBalance, maxStat } });
+    if (xp < reqs.xp || totalRaces < reqs.races || totalWins < reqs.wins || coinBalance < reqs.coins || maxStat < reqs.stat) {
+      res.status(400).json({ error: "Requirements not met", requirements: reqs, progress: { xp, races: totalRaces, wins: totalWins, coinBalance, maxStat } });
       return;
     }
 
     // Tier 3 requires path selection
     if (reqs.pathRequired && !path) {
-      res.status(400).json({ error: "Evolution path required for tier 3. Choose: caffeine, hibernate, or dreamwalk" });
+      res.status(400).json({ error: "Evolution path required for tier 3. Choose: speed, endurance, or luck" });
       return;
     }
 
-    const validPaths = ['caffeine', 'hibernate', 'dreamwalk'];
+    const validPaths = ['speed', 'endurance', 'luck'];
     if (reqs.pathRequired && !validPaths.includes(path)) {
-      res.status(400).json({ error: "Invalid path. Choose: caffeine, hibernate, or dreamwalk" });
+      res.status(400).json({ error: "Invalid path. Choose: speed, endurance, or luck" });
       return;
     }
 
     // Determine passive ability based on path and tier
     const passiveMap: Record<string, Record<number, string>> = {
-      caffeine: { 3: 'caffeine_rush', 4: 'adrenaline_wake' },
-      hibernate: { 3: 'deep_sleep', 4: 'thick_fur' },
-      dreamwalk: { 3: 'dream_catcher', 4: 'lucid_dream' },
+      speed: { 3: 'late_surge', 4: 'overtake_boost' },
+      endurance: { 3: 'fatigue_resist', 4: 'impact_resist' },
+      luck: { 3: 'luck_magnet', 4: 'misfortune_flip' },
     };
 
-    const evolutionPath = path || sloth.evolution_path;
-    const passive = evolutionPath && passiveMap[evolutionPath] ? passiveMap[evolutionPath][nextTier] || sloth.passive : sloth.passive;
+    const evolutionPath = path || racer.evolution_path;
+    const passive = evolutionPath && passiveMap[evolutionPath] ? passiveMap[evolutionPath][nextTier] || racer.passive : racer.passive;
 
     await runTransaction(async (client) => {
-      // Deduct ZZZ
+      // Deduct coins
       await client.query(
         "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
-        [reqs.zzz, wallet]
+        [reqs.coins, wallet]
       );
       await client.query(
         "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'evolution_cost', $2, $3)",
-        [wallet, -reqs.zzz, `Evolution to tier ${nextTier} for sloth #${slothId}`]
+        [wallet, -reqs.coins, `Evolution to tier ${nextTier} for racer #${racerId}`]
       );
 
-      // Update sloth
+      // Update racer
       await client.query(
-        "UPDATE sloths SET tier = $1, evolution_path = COALESCE($2, evolution_path), passive = $3 WHERE id = $4",
-        [nextTier, evolutionPath || null, passive || null, slothId]
+        "UPDATE racers SET tier = $1, evolution_path = COALESCE($2, evolution_path), passive = $3 WHERE id = $4",
+        [nextTier, evolutionPath || null, passive || null, racerId]
       );
     });
 
     res.json({
       evolved: true,
-      slothId,
+      racerId,
       newTier: nextTier,
       evolutionPath: evolutionPath || null,
       passive: passive || null,
@@ -1074,13 +1076,13 @@ router.post("/evolve", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/sloth/equip-cosmetic — Equip a cosmetic to a sloth
+// POST /api/racer/equip-cosmetic — Equip a cosmetic to a racer
 router.post("/equip-cosmetic", async (req: Request, res: Response) => {
   try {
-    const { wallet, slothId, cosmeticId } = req.body;
+    const { wallet, racerId, cosmeticId } = req.body;
 
-    if (!wallet || !slothId || !cosmeticId) {
-      res.status(400).json({ error: "wallet, slothId, and cosmeticId required" });
+    if (!wallet || !racerId || !cosmeticId) {
+      res.status(400).json({ error: "wallet, racerId, and cosmeticId required" });
       return;
     }
 
@@ -1089,13 +1091,13 @@ router.post("/equip-cosmetic", async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify ownership of sloth
-    const sloth = await getOne(
-      "SELECT id FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0",
-      [slothId, wallet]
+    // Verify ownership of racer
+    const racer = await getOne(
+      "SELECT id FROM racers WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+      [racerId, wallet]
     );
-    if (!sloth) {
-      res.status(404).json({ error: "sloth not found or not owned" });
+    if (!racer) {
+      res.status(404).json({ error: "racer not found or not owned" });
       return;
     }
 
@@ -1109,26 +1111,26 @@ router.post("/equip-cosmetic", async (req: Request, res: Response) => {
       return;
     }
 
-    // Equip: set equipped_sloth_id
+    // Equip: set equipped_racer_id
     await query(
-      "UPDATE user_cosmetics SET equipped_sloth_id = $1 WHERE wallet = $2 AND cosmetic_id = $3",
-      [slothId, wallet, cosmeticId]
+      "UPDATE user_cosmetics SET equipped_racer_id = $1 WHERE wallet = $2 AND cosmetic_id = $3",
+      [racerId, wallet, cosmeticId]
     );
 
-    res.json({ equipped: true, slothId, cosmeticId });
+    res.json({ equipped: true, racerId, cosmeticId });
   } catch (err) {
     console.error("POST /equip-cosmetic error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST /api/sloth/equip-accessory — Equip an accessory to a sloth
+// POST /api/racer/equip-accessory — Equip an accessory to a racer
 router.post("/equip-accessory", async (req: Request, res: Response) => {
   try {
-    const { wallet, slothId, accessoryId } = req.body;
+    const { wallet, racerId, accessoryId } = req.body;
 
-    if (!wallet || !slothId || !accessoryId) {
-      res.status(400).json({ error: "wallet, slothId, and accessoryId required" });
+    if (!wallet || !racerId || !accessoryId) {
+      res.status(400).json({ error: "wallet, racerId, and accessoryId required" });
       return;
     }
 
@@ -1137,13 +1139,13 @@ router.post("/equip-accessory", async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify ownership of sloth
-    const sloth = await getOne(
-      "SELECT id FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0",
-      [slothId, wallet]
+    // Verify ownership of racer
+    const racer = await getOne(
+      "SELECT id FROM racers WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+      [racerId, wallet]
     );
-    if (!sloth) {
-      res.status(404).json({ error: "sloth not found or not owned" });
+    if (!racer) {
+      res.status(404).json({ error: "racer not found or not owned" });
       return;
     }
 
@@ -1157,26 +1159,26 @@ router.post("/equip-accessory", async (req: Request, res: Response) => {
       return;
     }
 
-    // Equip: upsert into sloth_equipment (1 per sloth)
+    // Equip: upsert into racer_equipment (1 per racer)
     await query(
-      "INSERT INTO sloth_equipment (sloth_id, accessory_id) VALUES ($1, $2) ON CONFLICT (sloth_id) DO UPDATE SET accessory_id = $2",
-      [slothId, accessoryId]
+      "INSERT INTO racer_equipment (racer_id, accessory_id) VALUES ($1, $2) ON CONFLICT (racer_id) DO UPDATE SET accessory_id = $2",
+      [racerId, accessoryId]
     );
 
-    res.json({ equipped: true, slothId, accessoryId });
+    res.json({ equipped: true, racerId, accessoryId });
   } catch (err) {
     console.error("POST /equip-accessory error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST /api/sloth/unequip-accessory — Unequip an accessory from a sloth
+// POST /api/racer/unequip-accessory — Unequip an accessory from a racer
 router.post("/unequip-accessory", async (req: Request, res: Response) => {
   try {
-    const { wallet, slothId } = req.body;
+    const { wallet, racerId } = req.body;
 
-    if (!wallet || !slothId) {
-      res.status(400).json({ error: "wallet and slothId required" });
+    if (!wallet || !racerId) {
+      res.status(400).json({ error: "wallet and racerId required" });
       return;
     }
 
@@ -1185,26 +1187,26 @@ router.post("/unequip-accessory", async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify ownership of sloth
-    const sloth = await getOne(
-      "SELECT id FROM sloths WHERE id = $1 AND wallet = $2 AND is_burned = 0",
-      [slothId, wallet]
+    // Verify ownership of racer
+    const racer = await getOne(
+      "SELECT id FROM racers WHERE id = $1 AND wallet = $2 AND is_burned = 0",
+      [racerId, wallet]
     );
-    if (!sloth) {
-      res.status(404).json({ error: "sloth not found or not owned" });
+    if (!racer) {
+      res.status(404).json({ error: "racer not found or not owned" });
       return;
     }
 
-    await query("DELETE FROM sloth_equipment WHERE sloth_id = $1", [slothId]);
+    await query("DELETE FROM racer_equipment WHERE racer_id = $1", [racerId]);
 
-    res.json({ unequipped: true, slothId });
+    res.json({ unequipped: true, racerId });
   } catch (err) {
     console.error("POST /unequip-accessory error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /api/sloth/profile/:wallet — Aggregated profile data
+// GET /api/racer/profile/:wallet — Aggregated profile data
 router.get("/profile/:wallet", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.params;
@@ -1214,7 +1216,7 @@ router.get("/profile/:wallet", async (req: Request, res: Response) => {
     }
 
     // Get all creatures
-    const sloths = await getAll("SELECT * FROM sloths WHERE wallet = $1 AND is_burned = 0 ORDER BY id", [wallet]);
+    const racers = await getAll("SELECT * FROM racers WHERE wallet = $1 AND is_burned = 0 ORDER BY id", [wallet]);
 
     // Get coin balance
     const balRow = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
@@ -1228,7 +1230,7 @@ router.get("/profile/:wallet", async (req: Request, res: Response) => {
     const raceStats = await getOne(
       `SELECT COUNT(*) as total_races,
        COALESCE(SUM(CASE WHEN finish_position = 1 THEN 1 ELSE 0 END), 0) as total_wins,
-       COALESCE(SUM(payout), 0) as total_earnings
+       COALESCE(SUM(reward), 0) as total_earnings
        FROM race_participants WHERE wallet = $1 AND is_bot = 0`, [wallet]
     );
 
@@ -1245,8 +1247,8 @@ router.get("/profile/:wallet", async (req: Request, res: Response) => {
       totalWins: parseInt(String(raceStats?.total_wins)) || 0,
       totalEarnings: parseInt(String(raceStats?.total_earnings)) || 0,
       loginDays: parseInt(String(loginCount?.days)) || 0,
-      freeSlothCount: sloths.filter((s: any) => s.type === 'free_sloth').length,
-      slothCount: sloths.filter((s: any) => s.type === 'sloth').length,
+      freeRacerCount: racers.filter((s: any) => s.type === 'free').length,
+      racerCount: racers.filter((s: any) => s.type === 'pro').length,
     });
   } catch (err) {
     console.error("GET /profile/:wallet error:", err);
@@ -1254,7 +1256,7 @@ router.get("/profile/:wallet", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/sloth/profile/transactions/:wallet — Recent transactions
+// GET /api/racer/profile/transactions/:wallet — Recent transactions
 router.get("/profile/transactions/:wallet", async (req: Request, res: Response) => {
   try {
     const { wallet } = req.params;
@@ -1273,21 +1275,21 @@ router.get("/profile/transactions/:wallet", async (req: Request, res: Response) 
   }
 });
 
-// GET /api/sloth/cosmetics/:slothId — Get equipped cosmetics for a sloth
-router.get("/cosmetics/:slothId", async (req: Request, res: Response) => {
+// GET /api/racer/cosmetics/:racerId — Get equipped cosmetics for a racer
+router.get("/cosmetics/:racerId", async (req: Request, res: Response) => {
   try {
-    const slothId = parseInt(req.params.slothId as string);
-    if (isNaN(slothId) || slothId <= 0) {
-      res.status(400).json({ error: "Invalid slothId" });
+    const racerId = parseInt(req.params.racerId as string);
+    if (isNaN(racerId) || racerId <= 0) {
+      res.status(400).json({ error: "Invalid racerId" });
       return;
     }
 
     const cosmetics = await getAll(
-      `SELECT c.*, uc.equipped_sloth_id
+      `SELECT c.*, uc.equipped_racer_id
        FROM user_cosmetics uc
        LEFT JOIN cosmetics c ON uc.cosmetic_id = c.id
-       WHERE uc.equipped_sloth_id = $1`,
-      [slothId]
+       WHERE uc.equipped_racer_id = $1`,
+      [racerId]
     );
 
     // Filter out rows where cosmetic was deleted (LEFT JOIN returned null)
@@ -1295,8 +1297,8 @@ router.get("/cosmetics/:slothId", async (req: Request, res: Response) => {
 
     let accessory = null;
     const equipment = await getOne(
-      `SELECT a.* FROM sloth_equipment se LEFT JOIN accessories a ON se.accessory_id = a.id WHERE se.sloth_id = $1`,
-      [slothId]
+      `SELECT a.* FROM racer_equipment se LEFT JOIN accessories a ON se.accessory_id = a.id WHERE se.racer_id = $1`,
+      [racerId]
     );
     if (equipment && equipment.id != null) {
       accessory = equipment;
@@ -1304,7 +1306,7 @@ router.get("/cosmetics/:slothId", async (req: Request, res: Response) => {
 
     res.json({ cosmetics: validCosmetics, accessory });
   } catch (err) {
-    console.error("GET /cosmetics/:slothId error:", err);
+    console.error("GET /cosmetics/:racerId error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

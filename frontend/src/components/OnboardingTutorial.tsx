@@ -1,39 +1,40 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { THEME, CUR } from '../config/theme'
 
 const STEPS = [
   {
-    title: 'Mint Your Free Sloth',
-    description: 'Connect your wallet and mint a Free Sloth to get started. It\'s gasless and completely free!',
+    title: `Mint Your ${THEME.tiers.free}`,
+    description: `Connect your wallet and mint a ${THEME.tiers.free} to get started. It's gasless and completely free!`,
     icon: '\u{1F9A5}',
     cta: 'Go to Mint',
     path: '/mint',
   },
   {
-    title: 'Visit Your Treehouse',
-    description: 'Check out your sloth\'s stats, upgrade and evolve, and manage your collection.',
+    title: `Visit Your ${THEME.locations.home}`,
+    description: `Check your racer's stats, upgrade and evolve, and manage your collection.`,
     icon: '\u{1F3DA}\uFE0F',
-    cta: 'Go to Treehouse',
-    path: '/treehouse',
+    cta: `Go to ${THEME.locations.home}`,
+    path: '/collection',
   },
   {
     title: 'Enter Your First Race',
-    description: 'Join an Exhibition race for free, or enter a Standard Race to win ZZZ Coins!',
+    description: `Join an Exhibition race for free, or enter a Standard Race to win ${CUR}!`,
     icon: '\u{1F3C1}',
     cta: 'Go to Race',
     path: '/race',
   },
   {
     title: 'Train & Evolve',
-    description: 'Train your Sloth to boost stats, play mini games, and evolve through 4 tiers! Check your Treehouse for training options.',
+    description: `Train your racer to boost stats, play mini games, and evolve through 4 tiers! Check your ${THEME.locations.home} for training options.`,
     icon: '\u{1F4AA}',
     cta: 'Start Playing!',
-    path: '/treehouse',
+    path: '/collection',
   },
 ]
 
-const STORAGE_KEY = 'sloth-rush-onboarded'
+const STORAGE_KEY = 'onboarding-complete'
 
 export default function OnboardingTutorial() {
   const navigate = useNavigate()
@@ -85,7 +86,7 @@ export default function OnboardingTutorial() {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: -20 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          className="bg-sloth-card border border-sloth-border rounded-2xl p-8 max-w-md w-full text-center"
+          className="bg-brand-surface border border-brand-border rounded-2xl p-8 max-w-md w-full text-center"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -105,7 +106,7 @@ export default function OnboardingTutorial() {
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full transition-colors ${
-                  i === step ? 'bg-sloth-green' : i < step ? 'bg-sloth-green/40' : 'bg-sloth-border'
+                  i === step ? 'bg-brand-primary' : i < step ? 'bg-brand-primary/40' : 'bg-brand-border'
                 }`}
               />
             ))}
@@ -122,13 +123,13 @@ export default function OnboardingTutorial() {
               <>
                 <button
                   onClick={handleCTA}
-                  className="flex-1 py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer text-sm"
+                  className="flex-1 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer text-sm"
                 >
                   {currentStep.cta}
                 </button>
                 <button
                   onClick={handleNext}
-                  className="flex-1 py-2.5 bg-sloth-card border border-sloth-border text-white font-semibold rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm"
+                  className="flex-1 py-2.5 bg-brand-surface border border-brand-border text-white font-semibold rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm"
                 >
                   Next
                 </button>
@@ -136,7 +137,7 @@ export default function OnboardingTutorial() {
             ) : (
               <button
                 onClick={handleSkip}
-                className="flex-[2] py-2.5 bg-sloth-green text-sloth-dark font-bold rounded-xl hover:bg-sloth-green/90 transition-colors cursor-pointer text-sm"
+                className="flex-[2] py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer text-sm"
               >
                 {currentStep.cta}
               </button>

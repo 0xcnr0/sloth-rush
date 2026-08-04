@@ -4,14 +4,15 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { CUR } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 interface RaceEntry {
   raceId: string
   format: string
   position: number
-  payout: number
-  slothName: string
+  reward: number
+  racerName: string
   createdAt: string
 }
 
@@ -69,15 +70,15 @@ export default function RaceHistory() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {[
           { label: 'Total Races', value: String(summary.totalRaces), color: 'text-white' },
-          { label: 'Win Rate', value: `${summary.winRate}%`, color: 'text-sloth-green' },
-          { label: 'Total Earnings', value: `${summary.totalEarnings} ZZZ`, color: 'text-sloth-green' },
+          { label: 'Win Rate', value: `${summary.winRate}%`, color: 'text-brand-primary' },
+          { label: 'Total Earnings', value: `${summary.totalEarnings} ${CUR}`, color: 'text-brand-primary' },
         ].map((card, i) => (
           <motion.div
             key={card.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-sloth-card border border-sloth-border rounded-xl p-5 text-center"
+            className="bg-brand-surface border border-brand-border rounded-xl p-5 text-center"
           >
             <p className="text-gray-400 text-sm mb-1">{card.label}</p>
             <p className={`text-3xl font-extrabold ${card.color}`}>{card.value}</p>
@@ -86,7 +87,7 @@ export default function RaceHistory() {
       </div>
 
       {races.length === 0 ? (
-        <div className="bg-sloth-card border border-sloth-border rounded-xl p-12 text-center">
+        <div className="bg-brand-surface border border-brand-border rounded-xl p-12 text-center">
           <p className="text-gray-400 text-lg mb-2">No races yet</p>
           <p className="text-gray-500 text-sm">Enter a race from the Race lobby to get started</p>
         </div>
@@ -95,15 +96,15 @@ export default function RaceHistory() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="bg-sloth-card border border-sloth-border rounded-xl overflow-hidden"
+          className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden"
         >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-sloth-border text-gray-400">
+                <tr className="border-b border-brand-border text-gray-400">
                   <th className="text-left px-4 py-3 font-medium">Date</th>
                   <th className="text-left px-4 py-3 font-medium">Format</th>
-                  <th className="text-left px-4 py-3 font-medium">Sloth</th>
+                  <th className="text-left px-4 py-3 font-medium">Racer</th>
                   <th className="text-center px-4 py-3 font-medium">Position</th>
                   <th className="text-right px-4 py-3 font-medium">Earnings</th>
                 </tr>
@@ -112,19 +113,19 @@ export default function RaceHistory() {
                 {races.map((race, i) => (
                   <tr
                     key={race.raceId + i}
-                    className={`border-b border-sloth-border/50 hover:bg-white/5 transition-colors ${i === races.length - 1 ? 'border-b-0' : ''}`}
+                    className={`border-b border-brand-border/50 hover:bg-white/5 transition-colors ${i === races.length - 1 ? 'border-b-0' : ''}`}
                   >
                     <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                       {new Date(race.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="px-4 py-3 text-gray-300">{FORMAT_LABELS[race.format] || race.format}</td>
-                    <td className="px-4 py-3 text-white font-medium">{race.slothName}</td>
+                    <td className="px-4 py-3 text-white font-medium">{race.racerName}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={positionColor(race.position)}>{positionBadge(race.position)}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {race.payout > 0 ? (
-                        <span className="text-sloth-green font-bold">+{race.payout} ZZZ</span>
+                      {race.reward > 0 ? (
+                        <span className="text-brand-primary font-bold">+{race.reward} {CUR}</span>
                       ) : (
                         <span className="text-gray-500">0</span>
                       )}

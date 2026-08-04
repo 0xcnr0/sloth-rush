@@ -32,7 +32,7 @@ router.post("/submit", async (req, res) => {
 
     const ratingNum = parseInt(rating);
     if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-      return res.status(400).json({ error: "Rating must be between 1 and 5" });
+      return res.status(400).json({ error: "Rating must be 1 to 5" });
     }
 
     // Quest gate: check if player has 10+ races

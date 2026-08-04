@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Sloth Rush — Standalone Race Verifier
+ * Racer Rush — Standalone Race Verifier
  *
  * Independently verify any race result using the same deterministic engine.
  * Given a seed and participant stats, this produces the exact same outcome
@@ -13,10 +13,10 @@
  *   npx tsx verify.ts \
  *     --seed "abc123" \
  *     --participants '[
- *       {"name":"Sloth1","spd":15,"acc":12,"sta":10,"agi":8,"ref":7,"lck":6},
- *       {"name":"Sloth2","spd":10,"acc":14,"sta":12,"agi":10,"ref":9,"lck":5},
- *       {"name":"Sloth3","spd":12,"acc":10,"sta":14,"agi":6,"ref":11,"lck":8},
- *       {"name":"Sloth4","spd":11,"acc":11,"sta":11,"agi":11,"ref":11,"lck":11}
+ *       {"name":"Racer1","spd":15,"acc":12,"sta":10,"agi":8,"ref":7,"lck":6},
+ *       {"name":"Racer2","spd":10,"acc":14,"sta":12,"agi":10,"ref":9,"lck":5},
+ *       {"name":"Racer3","spd":12,"acc":10,"sta":14,"agi":6,"ref":11,"lck":8},
+ *       {"name":"Racer4","spd":11,"acc":11,"sta":11,"agi":11,"ref":11,"lck":11}
  *     ]'
  *
  * Options:
@@ -29,7 +29,7 @@
  */
 
 import * as crypto from "crypto";
-import { simulateRace, getWeatherFromSeed, SlothStats, TacticAction } from "./engine";
+import { simulateRace, getWeatherFromSeed, RacerStats, TacticAction } from "./engine";
 
 interface ParticipantInput {
   name: string;
@@ -64,7 +64,7 @@ function parseArgs(args: string[]): Record<string, string> {
 
 function printUsage(): void {
   console.log(`
-Sloth Rush Race Verifier — Provably Fair Racing
+Racer Rush Race Verifier — Provably Fair Racing
 
 Usage:
   npx tsx verify.ts --seed <seed> --participants '<JSON>'
@@ -78,13 +78,13 @@ Options:
   --hash-only     Output only the result hash (optional)
 
 Participant format:
-  { "name": "SlothName", "spd": 10, "acc": 10, "sta": 10, "agi": 10, "ref": 10, "lck": 10 }
+  { "name": "RacerName", "spd": 10, "acc": 10, "sta": 10, "agi": 10, "ref": 10, "lck": 10 }
 
 Optional participant fields:
   id, wallet, isBot, gridPosition, passive
 
 Example:
-  npx tsx verify.ts --seed "abc123" --participants '[{"name":"Sloth1","spd":15,"acc":12,"sta":10,"agi":8,"ref":7,"lck":6},{"name":"Sloth2","spd":10,"acc":14,"sta":12,"agi":10,"ref":9,"lck":5}]'
+  npx tsx verify.ts --seed "abc123" --participants '[{"name":"Racer1","spd":15,"acc":12,"sta":10,"agi":8,"ref":7,"lck":6},{"name":"Racer2","spd":10,"acc":14,"sta":12,"agi":10,"ref":9,"lck":5}]'
   `);
 }
 
@@ -122,8 +122,8 @@ function main(): void {
     }
   }
 
-  // Build SlothStats array with defaults
-  const participants: SlothStats[] = participantInputs.map((p, i) => ({
+  // Build RacerStats array with defaults
+  const participants: RacerStats[] = participantInputs.map((p, i) => ({
     id: p.id ?? i + 1,
     name: p.name,
     wallet: p.wallet ?? `0x${"0".repeat(38)}${(i + 1).toString(16).padStart(2, "0")}`,
@@ -186,7 +186,7 @@ function main(): void {
   // Formatted output
   const weather = getWeatherFromSeed(seed);
   console.log("=".repeat(50));
-  console.log("  SLOTH RUSH — Race Verification Result");
+  console.log("  RACER RUSH — Race Verification Result");
   console.log("=".repeat(50));
   console.log();
   console.log(`  Seed:       ${seed}`);

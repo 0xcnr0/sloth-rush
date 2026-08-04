@@ -1,8 +1,11 @@
-// Contract addresses — update these after deployment to Base Sepolia
+// Contract addresses — update these after deployment to Base Sepolia.
+// NOTE: these point at the pre-rename deployment. The contracts were renamed
+// (FreeRacer / Racer / RaceCore) but not redeployed; the on-chain bytecode and
+// ABIs are unchanged, so these remain valid until a redeploy happens.
 export const CONTRACTS = {
-  freeSloth: '0x7dF0e4711c2A08164ea9E40834930eb8820E61f4' as `0x${string}`,
-  sloth: '0xF0CBAB2C3Ae1A0b6B1FB5dd1CF7692CaaA807c0D' as `0x${string}`,
-  slothRush: '0xda1553aDffDEf8b5fc8C9E344dFf35CC26d60141' as `0x${string}`,
+  freeRacer: '0x7dF0e4711c2A08164ea9E40834930eb8820E61f4' as `0x${string}`,
+  racer: '0xF0CBAB2C3Ae1A0b6B1FB5dd1CF7692CaaA807c0D' as `0x${string}`,
+  raceCore: '0xda1553aDffDEf8b5fc8C9E344dFf35CC26d60141' as `0x${string}`,
 } as const
 
 // Deployed to Base Sepolia on March 10, 2026
@@ -10,7 +13,7 @@ export const CONTRACTS_DEPLOYED = true
 
 // Minimal ABIs — only functions we call from frontend
 
-export const FREE_SLOTH_ABI = [
+export const FREE_RACER_ABI = [
   {
     inputs: [],
     name: 'mint',
@@ -48,7 +51,7 @@ export const FREE_SLOTH_ABI = [
   },
 ] as const
 
-export const SLOTH_ABI = [
+export const RACER_ABI = [
   {
     inputs: [{ name: 'tokenId', type: 'uint256' }],
     name: 'getStats',
@@ -80,10 +83,10 @@ export const SLOTH_ABI = [
   },
 ] as const
 
-export const SLOTH_RUSH_ABI = [
+export const RACE_CORE_ABI = [
   {
     inputs: [
-      { name: 'freeSlothId', type: 'uint256' },
+      { name: 'freeRacerId', type: 'uint256' },
       { name: 'rarity', type: 'uint8' },
       { name: 'spd', type: 'uint8' },
       { name: 'acc', type: 'uint8' },

@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
+import { THEME } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 type LeaderboardEntry = {
   rank: number
   wallet: string
-  sloth_name: string
+  racer_name: string
   rarity: string
   total_rp: number
 }
@@ -76,7 +77,7 @@ export default function Leaderboard() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-sloth-card border border-sloth-green/30 rounded-xl p-4 mb-6 flex items-center justify-between"
+          className="bg-brand-surface border border-brand-primary/30 rounded-xl p-4 mb-6 flex items-center justify-between"
         >
           <div>
             <p className="text-gray-400 text-xs">Your Ranking</p>
@@ -84,7 +85,7 @@ export default function Leaderboard() {
           </div>
           <div className="text-right">
             <p className="text-gray-400 text-xs">Race Points</p>
-            <p className="text-sloth-green font-bold text-xl">{myRank.total_rp} RP</p>
+            <p className="text-brand-primary font-bold text-xl">{myRank.total_rp} RP</p>
           </div>
         </motion.div>
       )}
@@ -100,8 +101,8 @@ export default function Leaderboard() {
             onClick={() => setMainTab(tab.id)}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors cursor-pointer ${
               mainTab === tab.id
-                ? 'bg-sloth-green/20 text-sloth-green border border-sloth-green'
-                : 'bg-sloth-card border border-sloth-border text-gray-500 hover:text-white'
+                ? 'bg-brand-primary/20 text-brand-primary border border-brand-primary'
+                : 'bg-brand-surface border border-brand-border text-gray-500 hover:text-white'
             }`}
           >
             {tab.label}
@@ -124,10 +125,10 @@ export default function Leaderboard() {
                       : l === 'silver'
                       ? 'bg-gray-400/20 text-gray-300 border border-gray-400'
                       : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500'
-                    : 'bg-sloth-card border border-sloth-border text-gray-500 hover:text-white'
+                    : 'bg-brand-surface border border-brand-border text-gray-500 hover:text-white'
                 }`}
               >
-                {l === 'bronze' ? 'Bronze (Free Sloths)' : l === 'silver' ? 'Silver (Sloths)' : 'Gold (Tier 2+)'}
+                {l === 'bronze' ? `Bronze (${THEME.tiers.free})` : l === 'silver' ? `Silver (${THEME.tiers.pro})` : 'Gold (Tier 2+)'}
               </button>
             ))}
           </div>
@@ -150,8 +151,8 @@ export default function Leaderboard() {
                   <p className="text-gray-400">No career stats yet.</p>
                 </div>
               ) : (
-                <div className="bg-sloth-card border border-sloth-border rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 border-b border-sloth-border text-xs text-gray-500 font-semibold">
+                <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
+                  <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 border-b border-brand-border text-xs text-gray-500 font-semibold">
                     <span>#</span>
                     <span>Racer</span>
                     <span className="text-right">Races</span>
@@ -165,18 +166,18 @@ export default function Leaderboard() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.03 }}
                       className={`grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-3 items-center ${
-                        i < careerEntries.length - 1 ? 'border-b border-sloth-border/50' : ''
-                      } ${entry.wallet === address ? 'bg-sloth-green/5' : ''}`}
+                        i < careerEntries.length - 1 ? 'border-b border-brand-border/50' : ''
+                      } ${entry.wallet === address ? 'bg-brand-primary/5' : ''}`}
                     >
-                      <span className={`font-bold ${i === 0 ? 'text-sloth-green' : 'text-gray-500'}`}>
+                      <span className={`font-bold ${i === 0 ? 'text-brand-primary' : 'text-gray-500'}`}>
                         {i + 1}
                       </span>
-                      <span className={`text-sm truncate ${entry.wallet === address ? 'text-sloth-green font-bold' : 'text-white'}`}>
-                        {entry.sloth_name || truncateWallet(entry.wallet)}
+                      <span className={`text-sm truncate ${entry.wallet === address ? 'text-brand-primary font-bold' : 'text-white'}`}>
+                        {entry.racer_name || truncateWallet(entry.wallet)}
                       </span>
                       <span className="text-right text-gray-300 text-sm">{entry.total_races || 0}</span>
                       <span className="text-right text-gray-300 text-sm">{entry.total_wins || 0}</span>
-                      <span className="text-right text-sloth-green font-bold text-sm">{entry.total_earnings || 0}</span>
+                      <span className="text-right text-brand-primary font-bold text-sm">{entry.total_earnings || 0}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -197,20 +198,20 @@ export default function Leaderboard() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.08 }}
-                      className="bg-sloth-card border border-sloth-border rounded-xl p-4 flex items-center gap-4"
+                      className="bg-brand-surface border border-brand-border rounded-xl p-4 flex items-center gap-4"
                     >
                       <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-2xl font-bold text-yellow-400">
                         {i + 1}
                       </div>
                       <div className="flex-1">
-                        <p className="text-white font-bold">{entry.sloth_name || entry.name || 'Unknown'}</p>
+                        <p className="text-white font-bold">{entry.racer_name || entry.name || 'Unknown'}</p>
                         <p className="text-gray-500 text-xs">
                           {entry.achievement || entry.season || 'Season Champion'}
                           {entry.wallet && <span> &middot; {truncateWallet(entry.wallet)}</span>}
                         </p>
                       </div>
                       {entry.total_rp && (
-                        <span className="text-sloth-green font-bold">{entry.total_rp} RP</span>
+                        <span className="text-brand-primary font-bold">{entry.total_rp} RP</span>
                       )}
                     </motion.div>
                   ))}
@@ -238,11 +239,11 @@ export default function Leaderboard() {
     }
 
     return (
-      <div className="bg-sloth-card border border-sloth-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[3rem_1fr_1fr_5rem] gap-2 px-4 py-2 border-b border-sloth-border text-xs text-gray-500 font-semibold">
+      <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
+        <div className="grid grid-cols-[3rem_1fr_1fr_5rem] gap-2 px-4 py-2 border-b border-brand-border text-xs text-gray-500 font-semibold">
           <span>#</span>
           <span>Racer</span>
-          <span>Sloth</span>
+          <span>Racer</span>
           <span className="text-right">RP</span>
         </div>
         {data.map((entry, i) => (
@@ -252,23 +253,23 @@ export default function Leaderboard() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.03 }}
             className={`grid grid-cols-[3rem_1fr_1fr_5rem] gap-2 px-4 py-3 items-center ${
-              i < data.length - 1 ? 'border-b border-sloth-border/50' : ''
-            } ${entry.wallet === userAddress ? 'bg-sloth-green/5' : ''}`}
+              i < data.length - 1 ? 'border-b border-brand-border/50' : ''
+            } ${entry.wallet === userAddress ? 'bg-brand-primary/5' : ''}`}
           >
             <span className={`font-bold ${
-              entry.rank === 1 ? 'text-sloth-gold' :
+              entry.rank === 1 ? 'text-brand-gold' :
               entry.rank === 2 ? 'text-gray-300' :
               entry.rank === 3 ? 'text-orange-400' : 'text-gray-500'
             }`}>
               {entry.rank <= 3 ? ['', '\u{1F947}', '\u{1F948}', '\u{1F949}'][entry.rank] : entry.rank}
             </span>
-            <span className={`text-sm truncate ${entry.wallet === userAddress ? 'text-sloth-green font-bold' : 'text-white'}`}>
+            <span className={`text-sm truncate ${entry.wallet === userAddress ? 'text-brand-primary font-bold' : 'text-white'}`}>
               {truncateWallet(entry.wallet)}
             </span>
             <span className={`text-sm truncate ${RARITY_COLORS[entry.rarity] || 'text-gray-400'}`}>
-              {entry.sloth_name}
+              {entry.racer_name}
             </span>
-            <span className="text-right text-sloth-green font-bold text-sm">{entry.total_rp}</span>
+            <span className="text-right text-brand-primary font-bold text-sm">{entry.total_rp}</span>
           </motion.div>
         ))}
       </div>
