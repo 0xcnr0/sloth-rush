@@ -13,7 +13,7 @@ Bu doküman **ne yapılacağını anlatmıyor** — onlar ayrı spec'lerde. Bu d
 
 | Kural | Neden |
 |---|---|
-| **Kendi dalında çalış** (`git checkout -b phase1-theme-decoupling`) | `main` her zaman yeşil kalmalı; sabah geri dönülecek bir nokta lazım |
+| **Kendi dalında çalış** — sıradaki iş için `git checkout -b windup-phase-server` | `main` her zaman yeşil kalmalı; geri dönülecek bir nokta lazım |
 | **Her tamamlanan adımdan sonra commit at** | Gece boyu iş kaybolmasın, sabah git geçmişi okunabilir bir ilerleme kaydı olsun |
 | **Asla `git push` yapma** | Uzak dal kullanıcının onayı olmadan değişmez |
 | **Kontratları testnet'e DEPLOY ETME** | Anahtar, gas ve adres yayılımı gerektirir; kullanıcı başındayken yapılır. Yeniden isimlendir, derle, testleri koştur, deploy'u yazılı bir TODO olarak bırak |
