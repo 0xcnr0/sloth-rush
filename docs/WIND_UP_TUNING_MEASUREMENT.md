@@ -1,7 +1,7 @@
 # Wind-Up Ayar Ölçümü — §13'ün Cevabı
 
-**Tarih:** 2026-08-06
-**Dal:** `windup-tuning-sweep`
+**Tarih:** 2026-08-06 (ilk ölçüm 08-05, motor düzeltmesinden sonra yeniden koşuldu)
+**Ölçülen commit:** `6138d9b` sonrası `main` — grid yanlılığı düzeltilmiş motor
 **Araç:** `tools/windup-tuning-sweep.ts` — `npm run sweep:windup`
 **Hiçbir sayı değiştirilmedi.** `windUp.ts` commit'li değerleriyle duruyor (`git diff` boş).
 
@@ -9,7 +9,9 @@
 
 ## Kısa cevap
 
-**Mevcut hücre (pole 0.12, ceza 0.015) beş test koşulunun hepsinde ayakta kalıyor.** Aynı istatistikli bir yarışta paylar `temiz 24 / sınırda 44 / kırmızı 33`. Hiçbiri %50'yi geçmiyor, hiçbiri %20'nin altına düşmüyor.
+**Mevcut hücre (pole 0.12, ceza 0.015) beş test koşulunun hepsinde ayakta kalıyor.** Aynı istatistikli bir yarışta paylar `temiz 25 / sınırda 43 / kırmızı 32`. Hiçbiri %50'yi geçmiyor, hiçbiri %20'nin altına düşmüyor.
+
+> **Bu rakamlar düzeltilmiş motorda yeniden ölçüldü.** İlk ölçüm (`8c8bfac`) grid yanlılığı düzeltilmeden önce koşulmuştu. Düzeltme sonrası mevcut hücre 24/44/33'ten 25/43/32'ye kaydı — ızgaranın tamamında en büyük kayma 3 puan. Sonuç değişmedi, yaşayan hücre sayısı 25'ten 29'a çıktı.
 
 Ama ölçüm §13'ün sormadığı üç şeyi de gösterdi ve ikisi karardan önce konuşulmalı — aşağıda.
 
@@ -64,7 +66,7 @@ pole \ ceza     0.000     0.005     0.010     0.015     0.020     0.030     0.04
 0.40         13/27/60  14/31/55  15/35/50  16/38/46. 18/40/42. 20/43/37* 24/48/28* 29/57/14
 ```
 
-**Beş koşulun hepsinde ayakta kalan: 64 hücrenin 25'i.** (§13'ün tek kuralıyla, açlık kuralı olmadan: 41.)
+**Beş koşulun hepsinde ayakta kalan: 64 hücrenin 29'u.** (§13'ün tek kuralıyla, açlık kuralı olmadan: 43.)
 
 ---
 
@@ -72,13 +74,13 @@ pole \ ceza     0.000     0.005     0.010     0.015     0.020     0.030     0.04
 
 | Koşul | temiz | sınırda | kırmızı | Kırmızı kopma oranı | Sonuç |
 |---|---|---|---|---|---|
-| mirror j0 | 23 | 40 | 37 | %0 | geçer |
-| mirror j3 | 24 | 44 | 33 | %17.8 | geçer |
-| mirror j6 | 27 | 45 | 29 | %32.9 | geçer |
+| mirror j0 | 24 | 40 | 36 | %0 | geçer |
+| mirror j3 | 25 | 43 | 32 | %17.8 | geçer |
+| mirror j6 | 28 | 44 | 28 | %32.9 | geçer |
 | league s2 | 30 | 37 | 32 | — | geçer |
 | wide s6 | 33 | 35 | 32 | — | geçer |
 
-Beş koşulda da geçiyor ve oyuncu hatasına karşı şaşırtıcı derecede dayanıklı: kırmızıya kuran oyuncunun kopma oranı %0'dan %33'e çıkarken payı sadece 37 → 29'a düşüyor.
+Beş koşulda da geçiyor ve oyuncu hatasına karşı şaşırtıcı derecede dayanıklı: kırmızıya kuran oyuncunun kopma oranı %0'dan %33'e çıkarken payı sadece 36 → 28'e düşüyor.
 
 ---
 
@@ -86,20 +88,20 @@ Beş koşulda da geçiyor ve oyuncu hatasına karşı şaşırtıcı derecede da
 
 Beş koşulun hepsinde ayakta kalan 25 hücrenin en dengeli 12'si (mirror j3 payları):
 
-| pole | ceza | oran | temiz/sınırda/kırmızı | en kötü koşuldaki yayılma |
+| pole | ceza | oran | temiz/sınırda/kırmızı | en kötü yayılma |
 |---|---|---|---|---|
-| 0.00 | 0.000 | — | 32/37/31 | 8.4 |
-| 0.04 | 0.005 | 8.0 | 29/41/30 | 13.7 |
-| 0.04 | 0.000 | — | 27/38/35 | 15.3 |
-| 0.00 | 0.005 | 0.0 | 35/40/25 | 16.1 |
-| 0.08 | 0.010 | 8.0 | 26/43/32 | 16.9 |
-| 0.08 | 0.015 | 5.3 | 27/44/29 | 17.8 |
-| 0.08 | 0.005 | 16.0 | 24/40/36 | 18.6 |
-| 0.04 | 0.010 | 4.0 | 31/43/26 | 19.0 |
-| 0.12 | 0.010 | 12.0 | 23/42/35 | 19.4 |
-| **0.12** | **0.015** | **8.0** | **24/44/33** | **19.7** |
-| 0.00 | 0.010 | 0.0 | 36/41/22 | 20.3 |
-| 0.12 | 0.020 | 6.0 | 25/45/30 | 20.4 |
+| 0.00 | 0.000 | — | 34/37/29 | 9.9 |
+| 0.04 | 0.000 | — | 28/38/34 | 11.6 |
+| 0.04 | 0.005 | 8.0 | 30/41/29 | 14.7 |
+| 0.00 | 0.005 | 0.0 | 37/39/24 | 16.2 |
+| 0.08 | 0.005 | 16.0 | 25/40/34 | 16.3 |
+| 0.08 | 0.010 | 8.0 | 27/43/30 | 16.3 |
+| 0.08 | 0.015 | 5.3 | 28/44/28 | 17.7 |
+| **0.12** | **0.015** | **8.0** | **25/43/32** | **18.3** |
+| 0.12 | 0.020 | 6.0 | 26/44/30 | 18.5 |
+| 0.12 | 0.010 | 12.0 | 24/42/34 | 18.6 |
+| 0.04 | 0.010 | 4.0 | 32/43/25 | 19.1 |
+| 0.16 | 0.015 | 10.7 | 23/42/34 | 19.2 |
 
 ---
 
@@ -113,27 +115,33 @@ Yani "en dengeli hücreyi seç" yanlış bir optimizasyon. Doğru soru: *kötü 
 
 | pole | ceza | en kötü stratejinin payı | %33'e göre bedel |
 |---|---|---|---|
-| 0.00 | 0.000 | 31 | 2.6 → **karar yok** |
-| 0.04 | 0.005 | 29 | 4.6 |
-| 0.08 | 0.010 | 26 | 7.5 |
-| **0.12** | **0.015** | **24** | **9.4** |
-| 0.16 | 0.020 | 23 | 10.2 |
-| 0.28 | 0.030 | 21 | 12.1 |
+| 0.00 | 0.000 | 29 | 4.5 → **karar yok** |
+| 0.04 | 0.005 | 29 | 4.4 |
+| 0.08 | 0.010 | 27 | 6.7 |
+| **0.12** | **0.015** | **25** | **8.4** |
+| 0.16 | 0.020 | 24 | 9.2 |
+| 0.28 | 0.030 | 22 | 11.3 |
 
-Mevcut hücre burada iyi bir yerde duruyor: yanlış strateji seçmek ~9 puana mal oluyor — hissedilir ama ezici değil.
+Mevcut hücre burada iyi bir yerde duruyor: yanlış strateji seçmek ~8 puana mal oluyor — hissedilir ama ezici değil.
 
-### 2. Motorda pole avantajından bağımsız bir pozisyon yanlılığı var
+(Not: `(0.00, 0.000)` satırındaki 4.5 puanlık "bedel" gerçek bir bedel değil, gürültü. O hücrede üç strateji mekanik olarak aynı; fark sadece örnekleme hatası.)
 
-Dört **birebir aynı** yarışçıyı sıfır pole bonusuyla 4000 kez koşturdum:
+### 2. Motorda bir pozisyon yanlılığı vardı — bulundu, sebebi yanlış teşhis edildi, düzeltildi
+
+İlk ölçümde dört **birebir aynı** yarışçıyı sıfır pole bonusuyla 4000 kez koşturunca P1 %26.2, P4 %23.5 çıkmıştı — sıfır olması gereken yerde ~4 standart hatalık gerçek bir fark.
+
+**Belirti doğruydu, sebep teşhisim yanlıştı.** `engine.ts`'te her tick'te hız varyansının paylaşılan RNG'den grid sırasında çekilmesini suçlamıştım. Gerçek sebep `6138d9b`'de bulundu: yarışçı bitişte `distance` değeri `TRACK_LENGTH`'e sıkıştırılıyor, `finalOrder` sıralaması ise aynı tick'te bitenleri `b.distance - a.distance` ile ayırıyordu — yani her foto-finiş 0'da eşitleniyor ve stabil sıralama ekleme sırasına, o da grid sırasına düşüyordu. **Her foto-finişi bitiş çizgisine daha yakın başlayan kazanıyordu.**
+
+Düzeltmeden sonra aynı ölçüm:
 
 ```
-poleBonus=0.00  ->  P1 26.2%   P2 26.0%   P3 24.3%   P4 23.5%
-poleBonus=0.12  ->  P1 40.6%   P2 26.7%   P3 18.6%   P4 14.2%
+düzeltme öncesi  poleBonus=0.00  ->  P1 26.2   P2 26.0   P3 24.3   P4 23.5
+düzeltme sonrası poleBonus=0.00  ->  P1 25.0   P2 25.8   P3 24.6   P4 24.6
 ```
 
-Sıfır bonusta bile P1 ile P4 arasında **2.7 puan** fark var. Sebep `engine.ts:388`: her tick'te hız varyansı `rng()` ile çekiliyor ve `state` dizisi grid sırasında kurulu, yani öndeki yarışçı akıştan hep önce çekiyor. Küçük ama gerçek ve istatistiksel olarak anlamlı (4000 yarışta ~4 standart hata).
+1.2 puanlık yayılma ≈ 1.8 standart hata, yani gürültü. Izgaranın en üst satırı artık gerçek bir kontrol grubu.
 
-Sonucu: "pole avantajı sıfır" aslında sıfır değil. Izgaranın en üst satırı temiz bir kontrol grubu değil. Ayrı bir iş kalemi — kararı etkilemiyor ama bilinmeli.
+Bu düzeltmenin ızgaraya etkisi küçük oldu (hücre başına en fazla 3 puan) çünkü foto-finiş yarışların azınlığı ve çoğu hücrede pole bonusu zaten sıralamayı belirliyordu. Ama düzeltme öncesi "sıfır pole avantajı" satırı yanıltıcıydı.
 
 ### 3. İstatistik farkı mekaniği yutuyor
 
@@ -155,6 +163,8 @@ Ayar kararı ayna eşleşmesi verisine göre verilmeli — kontrollü deney o.
 ---
 
 ## Yeniden üretmek için
+
+Aşağıdakiler `6138d9b` sonrası `main` üzerinde koşuldu.
 
 ```bash
 npm run sweep:windup -- --races 2000 --jitter 3
