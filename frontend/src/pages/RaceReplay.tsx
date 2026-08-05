@@ -149,7 +149,7 @@ export default function RaceReplay() {
                     className="absolute top-0 h-full flex items-center"
                     style={{ left: `${Math.max(1, pct - 3)}%` }}
                   >
-                    <span className="text-sm">{'\u{1F9A5}'}</span>
+                    <span className="text-sm">{THEME.brand.mark}</span>
                   </div>
                 </div>
               </div>

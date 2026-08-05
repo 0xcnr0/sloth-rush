@@ -36,12 +36,10 @@ const RARITY_BORDER: Record<string, string> = {
   legendary: 'border-yellow-400',
 }
 
-const RACER_EMOJI: Record<string, string> = {
-  speedster: '\u{1F9A5}',
-  tank: '\u{1F6E1}\uFE0F',
-  trickster: '\u{2728}',
-  burst: '\u{26A1}',
-}
+// Arketip simgeleri tema içeriğidir, kodda sabitlenmez (CLAUDE.md §0).
+const RACER_EMOJI: Record<string, string> = Object.fromEntries(
+  Object.entries(THEME.archetypes).map(([code, a]) => [code, a.emoji]),
+)
 
 type UpgradeState = 'idle' | 'paying' | 'burning' | 'revealing' | 'done'
 
@@ -332,7 +330,7 @@ export default function Collection() {
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             {/* Header */}
             <div className="flex items-center gap-4 mb-4">
-              <div className="text-5xl">{'\u{1F9A5}'}</div>
+              <div className="text-5xl">{THEME.brand.mark}</div>
               <div className="flex-1">
                 <p className="text-white font-semibold text-lg">{freeRacer.name}</p>
                 <p className="text-gray-500 text-sm">{THEME.tiers.free} #{freeRacer.id}</p>
@@ -667,7 +665,7 @@ export default function Collection() {
                 )}
 
                 <div className="text-4xl text-center mb-3">
-                  {RACER_EMOJI[racer.race] || '\u{1F9A5}'}
+                  {RACER_EMOJI[racer.race] || THEME.brand.mark}
                 </div>
 
                 <p className="text-gray-400 text-xs text-center mb-3 capitalize">
@@ -1027,7 +1025,7 @@ export default function Collection() {
                     animate={{ scale: [1, 1.3, 0], opacity: [1, 1, 0] }}
                     transition={{ duration: 1.5 }}
                     className="text-6xl mb-4 inline-block"
-                  >&#x1f9a5;</motion.div>
+                  >{THEME.brand.mark}</motion.div>
                   <motion.div
                     animate={{ scale: [0, 1.5, 1] }}
                     transition={{ delay: 0.5, duration: 1 }}

@@ -341,7 +341,7 @@ export default function RaceBroadcast() {
         ctx.font = `${Math.round(RACER_SIZE * 0.7)}px sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText('\u{1F9A5}', cx, cy)
+        ctx.fillText(THEME.brand.mark, cx, cy)
 
         // Rank badge (small circle above racer)
         ctx.fillStyle = rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : '#78716c'
@@ -695,7 +695,7 @@ export default function RaceBroadcast() {
                   transition={{ delay: i * 1.0 }}
                   className="text-center"
                 >
-                  <div className="text-5xl mb-2">{'\u{1F9A5}'}</div>
+                  <div className="text-5xl mb-2">{THEME.brand.mark}</div>
                   <p className="text-white font-bold text-sm mb-1">{gp.name}</p>
                   <p className="text-gray-500 text-xs mb-2">P{gp.position}</p>
                   <motion.div
@@ -1208,7 +1208,7 @@ export default function RaceBroadcast() {
                         .map((fo: FinalOrder, i: number) => `${i + 1}. ${fo.name}${fo.reward > 0 ? ` (+${fo.reward} ${CUR})` : ''}`)
                         .join('\n')
                       const frameUrl = `https://app.winduprush.xyz/api/social/frame/${id}`
-                      const text = `\u{1F9A5} Racer Rush Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\n${frameUrl}`
+                      const text = `${THEME.brand.mark} ${THEME.brand.name} Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\n${frameUrl}`
                       if (navigator.share) {
                         try {
                           await navigator.share({ title: 'Racer Rush Race Result', text })

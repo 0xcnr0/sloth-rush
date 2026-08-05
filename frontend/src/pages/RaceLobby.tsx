@@ -238,7 +238,7 @@ export default function RaceLobby() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
-                      <span className="text-xl">{'\u{1F9A5}'}</span>
+                      <span className="text-xl">{THEME.brand.mark}</span>
                     </div>
                     <div>
                       <p className="text-white font-semibold">
@@ -323,7 +323,7 @@ export default function RaceLobby() {
 
             {racers.length === 0 ? (
               <div className="text-center py-16">
-                <div className="text-6xl mb-4">&#x1f9a5;</div>
+                <div className="text-6xl mb-4">{THEME.brand.mark}</div>
                 <p className="text-gray-400 mb-4">You need a Racer to race</p>
                 <button
                   onClick={() => navigate('/collection')}
@@ -381,7 +381,7 @@ export default function RaceLobby() {
                           : 'border-brand-border bg-brand-surface hover:border-gray-500'
                       }`}
                     >
-                      <span className="text-3xl">&#x1f9a5;</span>
+                      <span className="text-3xl">{THEME.brand.mark}</span>
                       <div className="text-left">
                         <p className="text-white font-semibold flex items-center gap-2">
                           {racer.name}
@@ -431,7 +431,7 @@ export default function RaceLobby() {
             <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
               {/* Player slot */}
               <div className="bg-brand-surface border-2 border-brand-primary rounded-xl p-4 text-center">
-                <div className="text-3xl mb-2">&#x1f9a5;</div>
+                <div className="text-3xl mb-2">{THEME.brand.mark}</div>
                 <p className="text-white font-semibold text-sm">{selectedRacer?.name}</p>
                 <p className="text-brand-primary text-xs">YOU</p>
               </div>
@@ -488,7 +488,7 @@ export default function RaceLobby() {
                   <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-brand-gold' : 'text-gray-500'}`}>
                     P{gp.position}
                   </span>
-                  <span className="text-2xl">&#x1f9a5;</span>
+                  <span className="text-2xl">{THEME.brand.mark}</span>
                   <div className="flex-1 text-left">
                     <p className="text-white font-semibold">{gp.name}</p>
                   </div>

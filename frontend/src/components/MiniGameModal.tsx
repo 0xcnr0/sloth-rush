@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { THEME } from '../../config/theme'
 
 type GameType = 'dodge' | 'stretch' | 'lift' | 'charm' | 'tap'
 
@@ -111,7 +112,7 @@ function SaltDodgeGame({ onComplete }: { onComplete: (score: number) => void }) 
       {salts.map(s => (
         <div key={s.id} className="absolute w-4 h-4 bg-white rounded-full opacity-80" style={{ left: `${s.x}%`, top: `${s.y}%`, transform: 'translate(-50%, -50%)' }} />
       ))}
-      <div className="absolute bottom-4 text-3xl transition-all duration-75" style={{ left: `${racerX}%`, transform: 'translateX(-50%)' }}>{'\u{1F9A5}'}</div>
+      <div className="absolute bottom-4 text-3xl transition-all duration-75" style={{ left: `${racerX}%`, transform: 'translateX(-50%)' }}>{THEME.brand.mark}</div>
       {gameOver && (
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
           <p className="text-2xl font-bold text-brand-primary">Dodged {score} salts!</p>
@@ -419,7 +420,7 @@ export default function MiniGameModal({ racerId, racerName, wallet, playsLeft, o
 
             {submitting && (
               <div className="py-12 text-center">
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="text-4xl inline-block mb-4">{'\u{1F9A5}'}</motion.div>
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="text-4xl inline-block mb-4">{THEME.brand.mark}</motion.div>
                 <p className="text-gray-400">Submitting result...</p>
               </div>
             )}

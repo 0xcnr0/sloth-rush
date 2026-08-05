@@ -17,7 +17,7 @@ export default function Landing() {
       >
         {/* Logo / Hero */}
         <div className="text-8xl mb-6">
-          <span role="img" aria-label="pro">&#x1f9a5;</span>
+          <span role="img" aria-label="pro">{THEME.brand.mark}</span>
         </div>
 
         <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-4">

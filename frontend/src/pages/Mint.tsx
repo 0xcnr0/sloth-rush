@@ -85,7 +85,7 @@ export default function Mint() {
             exit={{ opacity: 0, y: -20 }}
             className="text-center"
           >
-            <div className="text-7xl mb-6">&#x1f9a5;</div>
+            <div className="text-7xl mb-6">{THEME.brand.mark}</div>
             <h1 className="text-3xl font-bold mb-2">Mint Your {THEME.tiers.free}</h1>
             <p className="text-gray-400 mb-8 max-w-md">
               Every wallet gets one {THEME.tiers.free}. Mint yours and upgrade it to a {THEME.tiers.pro} to start racing!
@@ -112,7 +112,7 @@ export default function Mint() {
               transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
               className="text-7xl mb-6 inline-block"
             >
-              &#x1f9a5;
+              {THEME.brand.mark}
             </motion.div>
             <p className="text-xl text-gray-300">Minting your racer...</p>
           </motion.div>
@@ -140,7 +140,7 @@ export default function Mint() {
             <p className="text-gray-400 mb-6">Your {THEME.tiers.free} has been minted!</p>
 
             <div className="bg-brand-surface border border-brand-border rounded-xl p-6 mb-6 inline-block">
-              <div className="text-6xl mb-3">&#x1f9a5;</div>
+              <div className="text-6xl mb-3">{THEME.brand.mark}</div>
               <p className="text-white font-semibold">{racer.name}</p>
               <p className="text-gray-500 text-sm">{THEME.tiers.free} #{racer.id}</p>
             </div>

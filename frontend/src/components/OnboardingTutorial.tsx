@@ -7,7 +7,7 @@ const STEPS = [
   {
     title: `Mint Your ${THEME.tiers.free}`,
     description: `Connect your wallet and mint a ${THEME.tiers.free} to get started. It's gasless and completely free!`,
-    icon: '\u{1F9A5}',
+    icon: THEME.brand.mark,
     cta: 'Go to Mint',
     path: '/mint',
   },

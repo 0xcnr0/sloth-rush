@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { THEME } from '../../config/theme'
 
 interface SpinnerProps {
   text?: string
@@ -16,7 +17,7 @@ export default function Spinner({ text = 'Loading...', size = 'md', fullPage = f
         transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
         className={sizeMap[size]}
       >
-        {'\u{1F9A5}'}
+        {THEME.brand.mark}
       </motion.div>
       {text && <p className="text-gray-400 text-sm">{text}</p>}
     </div>

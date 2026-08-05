@@ -27,6 +27,12 @@ export const THEME = {
   currency: {
     /** Short form used inline next to a number. */
     symbol: 'SPRING',
+    /**
+     * Tek jenerik marka işareti: yükleme, cüzdan ekranı, onboarding, paylaşım
+     * metni. Kurma anahtarı oyunun merkezî simgesi (ART_DIRECTION §7.2) — bir
+     * hayvan maskotu değil, çünkü tema değişince maskot da değişir.
+     */
+    mark: '\u{1F511}',
     /** Long form used in prose. */
     name: 'SPRING',
     plural: 'SPRING',
@@ -59,11 +65,11 @@ export const THEME = {
 
   /** Archetypes. Code says `speedster` / `tank` / `trickster` / `burst`. */
   archetypes: {
-    speedster: { label: 'Jetster', role: 'Speed', accent: '#E63946' },
-    tank: { label: 'Tinbot', role: 'Tank', accent: '#2A6FDB' },
-    trickster: { label: 'Waddler', role: 'Trickster', accent: '#FFC93C' },
-    burst: { label: 'Chomper', role: 'Burst', accent: '#4CAF6D' },
-  } as Record<string, { label: string; role: string; accent: string }>,
+    speedster: { label: 'Jetster', role: 'Speed', accent: '#E63946', emoji: '\u{1F680}' },
+    tank: { label: 'Tinbot', role: 'Tank', accent: '#2A6FDB', emoji: '\u{1F916}' },
+    trickster: { label: 'Waddler', role: 'Trickster', accent: '#FFC93C', emoji: '\u{1F986}' },
+    burst: { label: 'Chomper', role: 'Burst', accent: '#4CAF6D', emoji: '\u{1F996}' },
+  } as Record<string, { label: string; role: string; accent: string; emoji: string }>,
 
   /** Evolution paths. Code says `speed` / `endurance` / `luck`. */
   paths: {
