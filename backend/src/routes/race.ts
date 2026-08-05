@@ -6,6 +6,7 @@ import {
   WIND_UP_TUNING,
   botSigmaForSkill,
   botTension,
+  boundHold,
   orderGrid,
   overwindDrainMultiplier,
   resolveWind,
@@ -553,10 +554,18 @@ router.post("/wind/release", async (req: Request, res: Response) => {
       return;
     }
 
-    // Hold is server-measured, and capped at the window: a request that arrives
-    // late (or never, until the finalizer runs) cannot buy extra tension.
-    const rawHoldMs = Date.now() - new Date(participant.wind_pressed_at).getTime();
-    const holdMs = Math.max(0, Math.min(rawHoldMs, WIND_UP_TUNING.phaseDurationMs));
+    // The client sends how long it held (a duration from performance.now(), not a
+    // timestamp — monotonic, no clock sync, immune to the user's system clock).
+    // The server bounds it by the window it observed between press and release.
+    //
+    // Stamping both ends server-side instead would close forgery but tax latency:
+    // a player on a slow connection would lose tension they actually earned, in a
+    // mechanic sold as purely skill-based. Bounding keeps the honest player whole
+    // while making invented time impossible. Claiming LESS than you held stays
+    // possible; what defends against that is the Safe Wind threshold being
+    // jittered per race and shown only approximately. See docs/WIND_UP_PHASE.md §9.
+    const observedMs = Date.now() - new Date(participant.wind_pressed_at).getTime();
+    const holdMs = boundHold(Number(req.body?.heldMs), observedMs);
 
     const racer = await getOne("SELECT sta FROM racers WHERE id = $1", [participant.racer_id]);
     const safeWind = safeWindThreshold(Number(racer?.sta) || 10, race.seed, participant.racer_id);

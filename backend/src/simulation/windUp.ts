@@ -22,6 +22,14 @@ export const WIND_UP_TUNING = {
   /** How long the phase window stays open, in milliseconds. */
   phaseDurationMs: 10_000,
 
+  // The client measures its own hold with performance.now() and sends the
+  // duration; the server bounds it by the window it actually observed. This
+  // slack absorbs one round trip plus scheduling jitter, so an honest player on
+  // a slow connection is not taxed for their latency. Claiming MORE than the
+  // observed window plus this is refused — you cannot invent time that never
+  // elapsed. See docs/WIND_UP_PHASE.md §9.
+  holdToleranceMs: 400,
+
   /** Hold time that takes tension from 0 to the snap point. */
   fullWindMs: 3_500,
 
@@ -183,6 +191,37 @@ export function rawTensionFromHold(holdMs: number): number {
  * A player who never touches the screen holds for 0ms and gets minimum tension
  * with no penalty — not touching is a valid, if weak, strategy (spec §4).
  */
+/**
+ * Decide how long the player actually held, from their own claim and the window
+ * the server observed between the press and release requests.
+ *
+ * The client measures with performance.now() and sends a duration, not a
+ * timestamp: monotonic, no clock sync, unaffected by the user's system clock.
+ *
+ * Stamping both ends server-side would close forgery but tax latency — a player
+ * on a slow connection would lose tension they earned, in a mechanic sold as
+ * purely skill-based. Bounding keeps the honest player whole while making
+ * invented time impossible.
+ *
+ * Claiming LESS than you held stays possible. What defends against that is the
+ * Safe Wind threshold being jittered per race and shown only approximately;
+ * this bound sits on top of that, it does not replace it.
+ *
+ * @param claimedMs what the client says it held; NaN/undefined for old clients
+ * @param observedMs server-side elapsed time between the press and release
+ */
+export function boundHold(claimedMs: number, observedMs: number): number {
+  const ceiling = Math.min(
+    Math.max(0, observedMs) + WIND_UP_TUNING.holdToleranceMs,
+    WIND_UP_TUNING.phaseDurationMs
+  );
+  if (!Number.isFinite(claimedMs) || claimedMs < 0) {
+    // No usable claim: fall back to what we saw. The safe reading, not a free max.
+    return clamp(observedMs, 0, WIND_UP_TUNING.phaseDurationMs);
+  }
+  return clamp(claimedMs, 0, ceiling);
+}
+
 export function resolveWind(holdMs: number, safeWind: number): WindOutcome {
   const raw = rawTensionFromHold(holdMs);
   const snapped = raw > WIND_UP_TUNING.snapPoint;

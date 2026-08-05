@@ -17,6 +17,7 @@ import {
   WIND_UP_TUNING,
   botSigmaForSkill,
   botTension,
+  boundHold,
   orderGrid,
   overwindDrainMultiplier,
   poleAccelerationBonus,
@@ -426,5 +427,40 @@ describe("the mechanic as a whole", () => {
     );
     assert.equal(ordered[0].racerId, 1, "snapping should not win the grid");
     assert.ok(snapped.startStaminaFactor < edge.startStaminaFactor);
+  });
+});
+
+describe("boundHold — client claims the duration, server bounds it", () => {
+  const { phaseDurationMs, holdToleranceMs } = WIND_UP_TUNING;
+
+  it("takes the client's own measurement when it fits the observed window", () => {
+    // Honest player on a slow link: they held 3000ms, the round trip made the
+    // server see 3180ms. They must get their 3000, not be taxed for latency.
+    assert.equal(boundHold(3000, 3180), 3000);
+  });
+
+  it("refuses time that never elapsed", () => {
+    // Server saw 2000ms; a claim of 9000ms is invented and gets cut to the ceiling.
+    assert.equal(boundHold(9000, 2000), 2000 + holdToleranceMs);
+  });
+
+  it("allows tolerance for one round trip, but no more", () => {
+    assert.equal(boundHold(2000 + holdToleranceMs, 2000), 2000 + holdToleranceMs);
+    assert.equal(boundHold(2000 + holdToleranceMs + 1, 2000), 2000 + holdToleranceMs);
+  });
+
+  it("never exceeds the phase, however long the window was", () => {
+    assert.equal(boundHold(999_999, 999_999), phaseDurationMs);
+  });
+
+  it("falls back to the observed window when the claim is unusable", () => {
+    // An old client sends nothing. That reads as the window we saw — the safe
+    // reading — rather than handing out a free maximum.
+    assert.equal(boundHold(NaN, 2500), 2500);
+    assert.equal(boundHold(-1, 2500), 2500);
+  });
+
+  it("clamps a negative observed window to zero rather than going negative", () => {
+    assert.equal(boundHold(NaN, -50), 0);
   });
 });
