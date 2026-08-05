@@ -32,17 +32,23 @@ type Stage = 'ready' | 'winding' | 'locked'
 
 interface Outcome {
   tension: number
-  band: 'clean' | 'overwound' | 'snapped'
+  /**
+   * These are the server's own strings, not ours. It answers `under` / `over` /
+   * `snapped`; an earlier version of this file assumed `clean` / `overwound` and
+   * would have rendered a blank result panel, because the lookup below misses
+   * silently. Typechecking cannot catch that — only calling the endpoint does.
+   */
+  band: 'under' | 'over' | 'snapped'
   snapped: boolean
 }
 
 const BAND_COPY: Record<Outcome['band'], { label: string; tone: string; note: string }> = {
-  clean: {
+  under: {
     label: 'Clean wind',
     tone: 'text-brand-primary',
     note: 'Full stamina. A safe grid slot.',
   },
-  overwound: {
+  over: {
     label: 'Overwound',
     tone: 'text-brand-gold',
     note: 'Better grid — but stamina burns faster all race.',

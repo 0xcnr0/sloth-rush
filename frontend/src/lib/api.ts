@@ -92,7 +92,8 @@ export const api = {
     request<{
       raceId: string
       tension: number
-      band: 'clean' | 'overwound' | 'snapped'
+      /** Server values, verified end to end: under / over / snapped. */
+      band: 'under' | 'over' | 'snapped'
       snapped: boolean
       holdMs: number
       locked: boolean
