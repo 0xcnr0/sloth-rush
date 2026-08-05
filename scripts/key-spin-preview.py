@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """
-Kurma anahtarinin PERVANE donusunu dogrular.
+Kurma anahtarinin donusunu dogrular — tarayiciya gecmeden once.
 
-Sorun: anahtarin tamami (mil dahil) ekran duzleminde dondurulunce akrep gibi
-geziyor. Gercekte mil sabittir ve sadece kelebek kanatlar mil ekseni etrafinda
-doner — govdeye dik duran, sirta paralel bir pervane gibi.
+MODEL: mil YATAY, govdenin yanindan disari cikar. Kanatlar o milin etrafinda
+doner, yani ustten asirip alttan gecerler — oyuncagi kurarken elinin yaptigi
+hareketin ta kendisi.
 
-Cozum: sprite'i kaynak dikdortgeniyle ikiye ayir. Mil sabit cizilir. Kanatlar
-donerken donus duzlemi 3/4 goruste egik oldugu icin yatayda kisaltilir; boylece
-tur basina iki kez ince bir cizgiye iner — pervanenin okunmasini saglayan sey bu.
+Ekranda bu, kanatlarin DIKEYDE kisalmasi demek: tam acikken kelebek gorunur,
+ceyrek turda yatay ince bir seride iner, sonra TERS YUZU gorunerek acilir.
+
+Denenip elenen iki model:
+  - Anahtarin tamamini ekran duzleminde dondurmek → govdenin etrafinda gezen
+    bir akrep. Mil de dondugu icin eksen diye bir sey kalmiyor.
+  - Kanatlari YATAYDA kisaltmak → dikey bir eksende yalpalama. Kapi gibi
+    aciliyor, cark gibi donmuyor.
 
   python3 scripts/key-spin-preview.py
 """
@@ -21,36 +26,37 @@ from PIL import Image
 KEY = Path("scripts/generated/parts/tinbot/part-05.png")
 OUT = Path("scripts/generated/parts/tinbot/key-spin-preview.png")
 
-# Sprite olculeri olculdu, tahmin degil (bkz. alfa sutun profili):
-SHAFT_BOX = (0, 38, 26, 84)      # mil: ince yatay cubuk
+# Sprite olculeri alfa profilinden okundu, goz karariyla degil.
+SHAFT_BOX = (0, 38, 26, 84)      # mil: ince yatay cubuk, x<26
 WINGS_BOX = (24, 0, 87, 121)     # kelebek kanatlar
 HUB = (38, 60)                   # mil ekseninin kanatlardan gectigi nokta
-FORESHORTEN = 0.45               # donus duzlemi 3/4 goruste egik
+
+# Gercek bir sacin kalinligi var: tam kenardan bakista yok olmasin, ince bir
+# serit kalsin. Sifira inmesine izin vermek kareyi bosaltip titreme yaratiyor.
+MIN_EDGE = 0.09
 
 
-def frame(angle_deg: float, size=(200, 200)) -> Image.Image:
+def frame(angle_deg: float, size=(170, 170)) -> Image.Image:
     src = Image.open(KEY).convert("RGBA")
     canvas = Image.new("RGBA", size, (201, 223, 245, 255))
     cx, cy = size[0] // 2, size[1] // 2
 
     wings = src.crop(WINGS_BOX)
-    hub_in_wings = (HUB[0] - WINGS_BOX[0], HUB[1] - WINGS_BOX[1])
+    hub = (HUB[0] - WINGS_BOX[0], HUB[1] - WINGS_BOX[1])
 
-    # Kanatlari, hub'i TAM ORTAYA alan kare bir tuvale yerlestir. Donerken hicbir
-    # kose disari tasip kirpilmasin diye yaricap kosegen kadar buyuk secilir.
-    radius = math.ceil(math.hypot(wings.width, wings.height))
-    pad = Image.new("RGBA", (radius * 2, radius * 2), (0, 0, 0, 0))
-    pad.alpha_composite(wings, (radius - hub_in_wings[0], radius - hub_in_wings[1]))
+    cos = math.cos(math.radians(angle_deg))
+    squash = max(MIN_EDGE, abs(cos))
+    # Turun ikinci yarisinda sacin ARKA yuzunu goruyoruz — dikeyde aynalanir.
+    flipped = cos < 0
+    plate = wings.transpose(Image.FLIP_TOP_BOTTOM) if flipped else wings
+    hub_y = plate.height - hub[1] if flipped else hub[1]
 
-    rot = pad.rotate(angle_deg, resample=Image.BICUBIC)   # merkez = tuval merkezi = hub
-    # Donus duzlemi egik: yatayda kisalt. Hub tuvalin merkezinde oldugu icin
-    # kisaltma da merkez etrafinda simetrik kaliyor.
-    squashed = rot.resize((max(1, round(rot.width * FORESHORTEN)), rot.height), Image.LANCZOS)
-    canvas.alpha_composite(squashed, (cx - squashed.width // 2, cy - squashed.height // 2))
+    squashed = plate.resize((plate.width, max(1, round(plate.height * squash))), Image.LANCZOS)
+    canvas.alpha_composite(squashed, (cx - hub[0], round(cy - hub_y * squash)))
 
-    # Mil en uste, sabit — donmuyor, kisalmiyor.
+    # Mil en uste, sabit — donmez, kisalmaz. Donusu okutan sabit eksen bu.
     shaft = src.crop(SHAFT_BOX)
-    canvas.alpha_composite(shaft, (round(cx - (HUB[0] - SHAFT_BOX[0])), round(cy - (HUB[1] - SHAFT_BOX[1]))))
+    canvas.alpha_composite(shaft, (cx - (HUB[0] - SHAFT_BOX[0]), cy - (HUB[1] - SHAFT_BOX[1])))
     return canvas
 
 
@@ -59,8 +65,8 @@ def main() -> None:
     shots = [frame(i / n * 360) for i in range(n)]
     w, h = shots[0].size
     strip = Image.new("RGBA", (w * n, h), (255, 253, 247, 255))
-    for i, s in enumerate(shots):
-        strip.alpha_composite(s, (i * w, 0))
+    for i, shot in enumerate(shots):
+        strip.alpha_composite(shot, (i * w, 0))
     strip.save(OUT)
     print(f"Tamamlandı: {OUT}  ({n} kare, tam tur)")
 
