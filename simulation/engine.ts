@@ -1,9 +1,11 @@
 /**
- * Racer Rush — Deterministic Race Simulation Engine
+ * Deterministic Race Simulation Engine
  *
  * Given a seed and participant stats, produces identical results every time.
  * This engine will be open-sourced for anyone-can-verify.
  */
+
+import { WIND_UP_TUNING, poleAccelerationBonus } from "./windUp";
 
 // Seeded PRNG (mulberry32) — deterministic random from seed
 function mulberry32(seed: number): () => number {
@@ -38,6 +40,17 @@ export interface RacerStats {
   lck: number;
   gridPosition: number; // 1 = pole, 4 = last
   passive?: string;
+
+  // --- Wind-Up phase results (see simulation/windUp.ts) ---
+  // Optional so an older caller, a replay or the standalone verifier can leave
+  // them out and get the pre-Wind-Up behaviour.
+
+  /** Locked spring tension, 0-100. Informational; the grid is already ordered. */
+  windTension?: number;
+  /** >1 when the racer wound past its Safe Wind and drains stamina faster. */
+  staminaDrainMultiplier?: number;
+  /** <1 when the spring snapped and the racer starts partly unwound. */
+  startStaminaFactor?: number;
 }
 
 export interface RaceFrame {
@@ -96,7 +109,7 @@ export interface GDAState {
 export function createGDAState(): GDAState {
   return {
     boostBasePrice: 60,   // lowered from 100 — makes tactic mode viable
-    projectileBasePrice: 150, // lowered from 250 — now ~50% of the prize pool, not 100%
+    projectileBasePrice: 150,  // lowered from 250 — now ~50% of the prize pool, not 100%
     boostPurchases: 0,
     projectilePurchases: 0,
     lastBoostTick: 0,
@@ -140,10 +153,10 @@ const MAX_TICKS = 1500; // 150 seconds max
 
 // Random events from GDD
 const RANDOM_EVENTS = [
-  { type: "mass_slow", chance: 0.003, description: "Yawn Wave! Leader spread drowsiness!", stat: "agi" as const },
+  { type: "mass_slow", chance: 0.003, description: "The leader's wind-down is spreading!", stat: "agi" as const },
   { type: "rain", chance: 0.002, description: "Sudden Rain! All speeds dropping!", stat: "sta" as const },
   { type: "luck_orb", chance: 0.0025, description: "Luck Orb appeared!", stat: "lck" as const },
-  { type: "collision", chance: 0.0015, description: "Projectile Fight! Two racers collided!", stat: "ref" as const },
+  { type: "collision", chance: 0.0015, description: "Collision! Two racers tangled up!", stat: "ref" as const },
 ];
 
 export function simulateRace(participants: RacerStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false): RaceResult {
@@ -171,11 +184,14 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     speed: 0,
     maxSpeed: (3 + p.spd * 0.15) * weatherMods.speedMul,
     acceleration: 0.3 + p.acc * 0.06,
-    stamina: p.sta,
+    // A snapped spring starts the race partly unwound.
+    stamina: p.sta * (p.startStaminaFactor ?? 1),
     agility: p.agi,
     reflex: p.ref,
     luck: p.lck,
     gridPosition: p.gridPosition,
+    // Overwinding past Safe Wind burns stamina faster for the whole race.
+    staminaDrainMultiplier: p.staminaDrainMultiplier ?? 1,
     finished: false,
     finishTick: MAX_TICKS,
     slowdown: 0,
@@ -184,10 +200,11 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     prevPosition: p.gridPosition,
   }));
 
-  // Grid position affects starting delay (pole = no delay, 4th = small delay)
-  state.forEach((s) => {
-    s.distance = (4 - s.gridPosition) * 0.5; // pole position gets 1.5 unit head start (reduced from 6)
-  });
+  // Grid advantage is acceleration, not a head start (WIND_UP_PHASE.md §8).
+  // All four lanes must stay level at the start line so the broadcast reads as
+  // a photo finish; the pole racer instead pulls away harder over the opening
+  // ticks. Everyone therefore starts at distance 0.
+  const fieldSize = state.length;
 
   for (let tick = 0; tick < MAX_TICKS; tick++) {
     // Check for random events — chaos mode + weather affect frequency
@@ -203,7 +220,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
           const affectedIds: number[] = [];
 
           if (event.type === "mass_slow") {
-            // Leader spreads yawn, others behind get drowsy
+            // Leader's wind-down slows everyone behind
             const leader = activeRacers.reduce((a, b) => (a.distance > b.distance ? a : b));
             const others = activeRacers.filter((s) => s.id !== leader.id);
             for (const other of others) {
@@ -241,7 +258,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
               }
             }
           } else if (event.type === "collision") {
-            // Two closest racers clash, REF determines recovery
+            // Two closest racers clash; REF determines recovery
             const sorted = [...activeRacers].sort((a, b) => a.distance - b.distance);
             for (let i = 0; i < sorted.length - 1; i++) {
               if (Math.abs(sorted[i].distance - sorted[i + 1].distance) < 15) {
@@ -330,9 +347,13 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     for (const s of state) {
       if (s.finished) continue;
 
-      // Stamina degradation (after 60% of race) — tripled STA impact, weather affects decay
+      // Stamina degradation (after 60% of race) — tripled STA impact, weather affects decay.
+      // The Wind-Up multiplier is applied last so overwinding always costs
+      // something even for a racer whose decay already floored out.
       const fatigueMul = s.passive === 'fatigue_resist' ? 0.5 : 1;
-      const staDecay = Math.max(0.05, (0.35 - s.stamina * 0.015 * weatherMods.staMul) * fatigueMul);
+      const staDecay =
+        Math.max(0.05, (0.35 - s.stamina * 0.015 * weatherMods.staMul) * fatigueMul) *
+        s.staminaDrainMultiplier;
       const staminaFactor = s.distance > TRACK_LENGTH * 0.6
         ? 1 - ((s.distance - TRACK_LENGTH * 0.6) / (TRACK_LENGTH * 0.4)) * staDecay
         : 1;
@@ -350,10 +371,15 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
         passiveSpeedMul *= 1.15;
       }
 
-      // Acceleration toward max speed
+      // Acceleration toward max speed. Grid slot adds a short opening burst
+      // rather than a distance head start, so the lanes stay visually level.
+      const gridAccelBonus =
+        tick < WIND_UP_TUNING.poleAccelerationTicks
+          ? poleAccelerationBonus(s.gridPosition, fieldSize)
+          : 0;
       const targetSpeed = s.maxSpeed * staminaFactor * passiveSpeedMul;
       if (s.speed < targetSpeed) {
-        s.speed = Math.min(targetSpeed, s.speed + s.acceleration * 0.1);
+        s.speed = Math.min(targetSpeed, s.speed + (s.acceleration + gridAccelBonus) * 0.1);
       } else {
         s.speed = Math.max(targetSpeed, s.speed - 0.05);
       }
