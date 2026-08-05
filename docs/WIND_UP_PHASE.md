@@ -172,10 +172,23 @@ CLAUDE.md'deki ekonomi tablosu bu yüzden geçici işaretli. Sprint 9'un "Number
 3. **Az kurmanın bir ödülü olmalı mı?** Şu an sadece "ceza yok". Uzun yarışlarda gerçek bir avantaja dönüşüyor mu, playtest gösterecek.
 4. ~~**Exhibition (ücretsiz) yarışta faz olmalı mı?**~~ **Karar: evet, her yarışta.** Faz aynı zamanda anahtar/stamina göstergesinin öğreticisi (§5); Exhibition yeni oyuncunun öğrendiği yer. Oradan çıkarmak, oyuncuya oyunu merkezî yarış öncesi mekaniği olmadan öğretmek olurdu.
 
-## 13. Ölçülmemiş: risk almak gerçekten kazandırıyor mu (S4)
+## 13. Ölçüldü: risk almak kazandırıyor — ayar kilitli (2026-08-06)
 
-§6 şunu kritik ayar noktası olarak işaretledi: *"pole avantajı, aşırı kurmanın stamina maliyetini biraz aşmalı ki risk almak mantıklı olsun — ama herkesin kırmızıya kadar kurmasını sağlayacak kadar değil."*
+**Karar: pole avantajı 0.12, aşırı kurma cezası 0.015.** Değiştirme; değiştirmek istersen önce aşağıdaki taramayı yeniden koştur.
 
-Uygulamadaki sayılar **tahmin**, ölçüm değil. Doğru ayarda üç strateji de yaşayabilir olmalı: temiz kur, sınırda kur, kırmızıya kur.
+§6 şunu kritik ayar noktası olarak işaretlemişti: *"pole avantajı, aşırı kurmanın stamina maliyetini biraz aşmalı ki risk almak mantıklı olsun — ama herkesin kırmızıya kadar kurmasını sağlayacak kadar değil."* Bu tartışmayla değil ölçümle kapandı.
 
-Bu tartışmayla değil **simülasyonla** çözülür: pole avantajı × aşırı kurma cezası ızgarası üzerinde N yarış koştur, her hücrede üç stratejinin kazanma oranını ölç. Hiçbiri baskın değilse ayar doğrudur. Bir strateji %50'yi geçiyorsa o hücre elenir.
+**Yöntem:** pole × ceza ızgarasında N yarış, her hücrede üç stratejinin (temiz / sınırda / kırmızı) **oyuncu kazançlarındaki payı**. Ham kazanma oranı kullanılamaz — dördüncü koltuktaki bot herkesin oranını yapısal olarak %40 civarına sıkıştırıyor, o yüzden %50 eşiği erişilemez oluyor. Üç eşit strateji %33'te oturur. Bir strateji %50'yi geçerse hücre elenir; %20'nin altına düşerse aç sayılır.
+
+**Sonuç:** committed hücre beş koşulun hepsinde ayakta — `20/46/34`, hiçbiri baskın değil, hiçbiri aç değil.
+
+Üç bağımsız ölçüm aynı sonuca vardı: `tools/windup-tuning-sweep.ts` (ana harness), `backend/src/simulation/tuningSweep.ts` (ayrı yazım, doğrulama için), ve düzeltilmiş motorda ikisinin yeniden koşturulması.
+
+**İki bulgu kayda değer:**
+
+- **Uygulama hatası arttıkça temiz strateji yükseliyor** (26→35), kırmızı düşüyor (34→26). Faz cesareti değil beceriyi ödüllendiriyor — §2'nin fazdan beklediği şey buydu.
+- **En "dengeli" hücre bir tuzak.** `(0.00, 0.000)` en dar dağılımı veriyor çünkü orada gerilim hiçbir şey yapmıyor: üç strateji mükemmel dengeli, çünkü üçü aynı strateji. Dengeyi tek başına optimize etmek, içinde karar olmayan tek hücreyi seçiyor. Doğru metrik "kötü seçmenin maliyeti" — committed hücrede 9.4 puan, o hücrede 2.6.
+
+**Ölçüm sırası önemliydi:** ilk tarama, foto-finiş beraberliklerini grid sırasına düşüren motor hatasından (`6138d9b`) önce koşmuştu. O hata sayılmamış fazladan bir pole avantajıydı, yani tam da ölçülen büyüklüğü kirletiyordu. Düzeltmeden sonra sayılar 0-3 puan kaydı, karar değişmedi — ama bu ancak yeniden koşturulduğu için bilinebilirdi.
+
+**Açık kalan:** faz karışık kadroda belirgin biçimde zayıflıyor (~33/35/31). Stat farkı mekaniği bastırıyor. Ayar aynasal maç verisinden okunmalı, ve fazın canlı oyunda ızgaranın ima ettiğinden daha az fark yaratması beklenmeli.
