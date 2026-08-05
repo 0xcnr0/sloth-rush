@@ -3,12 +3,23 @@ import assert from "node:assert/strict";
 import hre from "hardhat";
 
 describe("Race contracts", function () {
+  /**
+   * Hardhat 3 removed the `hre.viem` global. A network connection is opened
+   * explicitly and carries its own viem helpers — the same shape
+   * scripts/deploy.ts uses, so tests and deployment exercise one code path.
+   *
+   * Each test opens its own connection and deploys fresh contracts, so no
+   * state (minted tokens, recorded races) leaks between them.
+   */
   async function deployFixture() {
-    const [owner, player1, player2] = await hre.viem.getWalletClients();
+    const connection = await hre.network.connect();
+    const { viem } = connection;
 
-    const freeRacer = await hre.viem.deployContract("FreeRacer");
-    const racer = await hre.viem.deployContract("Racer");
-    const raceCore = await hre.viem.deployContract("RaceCore", [
+    const [owner, player1, player2] = await viem.getWalletClients();
+
+    const freeRacer = await viem.deployContract("FreeRacer");
+    const racer = await viem.deployContract("Racer");
+    const raceCore = await viem.deployContract("RaceCore", [
       freeRacer.address,
       racer.address,
     ]);
@@ -16,14 +27,14 @@ describe("Race contracts", function () {
     await freeRacer.write.setUpgradeContract([raceCore.address]);
     await racer.write.setMinter([raceCore.address]);
 
-    return { freeRacer, racer, raceCore, owner, player1, player2 };
+    return { viem, freeRacer, racer, raceCore, owner, player1, player2 };
   }
 
   describe("FreeRacer", function () {
     it("should mint one Free Racer per wallet", async function () {
-      const { freeRacer, player1 } = await deployFixture();
+      const { viem, freeRacer, player1 } = await deployFixture();
 
-      const freeRacerAsPlayer = await hre.viem.getContractAt(
+      const freeRacerAsPlayer = await viem.getContractAt(
         "FreeRacer",
         freeRacer.address,
         { client: { wallet: player1 } }
@@ -39,9 +50,9 @@ describe("Race contracts", function () {
     });
 
     it("should reject second mint from same wallet", async function () {
-      const { freeRacer, player1 } = await deployFixture();
+      const { viem, freeRacer, player1 } = await deployFixture();
 
-      const freeRacerAsPlayer = await hre.viem.getContractAt(
+      const freeRacerAsPlayer = await viem.getContractAt(
         "FreeRacer",
         freeRacer.address,
         { client: { wallet: player1 } }
@@ -58,9 +69,9 @@ describe("Race contracts", function () {
 
   describe("Upgrade Flow", function () {
     it("should burn Free Racer and mint Racer", async function () {
-      const { freeRacer, racer, raceCore, player1 } = await deployFixture();
+      const { viem, freeRacer, racer, raceCore, player1 } = await deployFixture();
 
-      const freeRacerAsPlayer = await hre.viem.getContractAt(
+      const freeRacerAsPlayer = await viem.getContractAt(
         "FreeRacer",
         freeRacer.address,
         { client: { wallet: player1 } }
@@ -68,7 +79,7 @@ describe("Race contracts", function () {
       await freeRacerAsPlayer.write.mint();
       await freeRacerAsPlayer.write.approve([raceCore.address, 0n]);
 
-      const raceCoreAsPlayer = await hre.viem.getContractAt(
+      const raceCoreAsPlayer = await viem.getContractAt(
         "RaceCore",
         raceCore.address,
         { client: { wallet: player1 } }
@@ -99,7 +110,7 @@ describe("Race contracts", function () {
 
   describe("Race Result Recording", function () {
     it("should record and retrieve race results", async function () {
-      const { raceCore, player1 } = await deployFixture();
+      const { viem, raceCore, player1 } = await deployFixture();
 
       const raceId =
         "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" as `0x${string}`;
