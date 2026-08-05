@@ -21,6 +21,17 @@ import {
   safeWindThreshold,
 } from "./windUp";
 
+// WIND_UP_TUNING `as const` ile dondurulmuş: üretimde yanlışlıkla değiştirilmesin
+// diye doğru bir karar. Tarama tam olarak bu iki sayıyı süpürmek zorunda, o yüzden
+// burada — SADECE burada — yazılabilir bir görünüm alıyoruz. Tarama bitince ikisi
+// de eski değerine geri konuyor.
+const TUNING = WIND_UP_TUNING as unknown as {
+  poleAccelerationBonus: number;
+  overwindDrainPerPoint: number;
+  snapPoint: number;
+  snapStaminaFactor: number;
+};
+
 const arg = (name: string, fallback: number): number => {
   const at = process.argv.indexOf(name);
   return at >= 0 ? Number(process.argv[at + 1]) : fallback;
@@ -53,8 +64,8 @@ interface Cell {
 }
 
 function runCell(pole: number, penalty: number, jitter: number, staSpread: number): Cell {
-  WIND_UP_TUNING.poleAccelerationBonus = pole;
-  WIND_UP_TUNING.overwindDrainPerPoint = penalty;
+  TUNING.poleAccelerationBonus = pole;
+  TUNING.overwindDrainPerPoint = penalty;
 
   const wins: Record<string, number> = { clean: 0, edge: 0, red: 0 };
   let snapped = 0;
@@ -69,14 +80,16 @@ function runCell(pole: number, penalty: number, jitter: number, staSpread: numbe
       const safeWind = safeWindThreshold(sta, seed, i + 1);
       const raw = jittered(safeWind + s.offset, jitter, race * 31 + i);
       const tension = Math.max(0, Math.min(120, raw));
-      const didSnap = tension >= WIND_UP_TUNING.snapPoint;
+      const didSnap = tension >= TUNING.snapPoint;
       if (s.key === "red" && didSnap) snapped++;
       return { id: i + 1, key: s.key, sta, safeWind, tension, snapped: didSnap };
     });
 
     // Kopan yay grid'in sonuna düşer; kalanlar gerilime göre sıralanır.
+    // orderGrid GridEntry ister: racerId / tension / snapped. Kopan yayı burada
+    // ayrıca sona itmiyoruz — orderGrid zaten snapped'i en arkaya koyuyor.
     const ordered = orderGrid(
-      entries.map((e) => ({ ...e, windTension: e.snapped ? -1 : e.tension })),
+      entries.map((e) => ({ ...e, racerId: e.id })),
       seed,
     );
 
@@ -88,7 +101,7 @@ function runCell(pole: number, penalty: number, jitter: number, staSpread: numbe
       spd: 50, acc: 50, sta: e.sta, agi: 50, ref: 50, lck: 50,
       gridPosition: slot + 1,
       staminaDrainMultiplier: e.snapped
-        ? 1 / WIND_UP_TUNING.snapStaminaFactor
+        ? 1 / TUNING.snapStaminaFactor
         : overwindDrainMultiplier(e.tension, e.safeWind),
     })) as RacerStats[];
 
@@ -114,7 +127,7 @@ const FLOOR = 20;   // bu payın altı "aç" sayılır (§13'ün kendi kuralı d
 const DOMINANT = 50;
 
 function main(): void {
-  const baseline = { pole: WIND_UP_TUNING.poleAccelerationBonus, penalty: WIND_UP_TUNING.overwindDrainPerPoint };
+  const baseline = { pole: TUNING.poleAccelerationBonus, penalty: TUNING.overwindDrainPerPoint };
   console.log(`§13 taraması — ${RACES} yarış/hücre, ${POLE_STEPS.length}×${PENALTY_STEPS.length} ızgara`);
   console.log(`committed hücre: pole ${baseline.pole}, ceza ${baseline.penalty}\n`);
 
@@ -153,8 +166,8 @@ function main(): void {
       : `committed hücre (${baseline.pole}, ${baseline.penalty}) — ${survives.get(committed) ?? 0}/${CONDITIONS.length} koşulda ayakta`,
   );
 
-  WIND_UP_TUNING.poleAccelerationBonus = baseline.pole;
-  WIND_UP_TUNING.overwindDrainPerPoint = baseline.penalty;
+  TUNING.poleAccelerationBonus = baseline.pole;
+  TUNING.overwindDrainPerPoint = baseline.penalty;
 }
 
 main();
