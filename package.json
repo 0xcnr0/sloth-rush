@@ -15,6 +15,7 @@
     "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
     "qa": "tsx qa-agent.ts",
     "test:unit": "tsx --test backend/src/simulation/*.test.ts",
+    "sweep:windup": "tsx tools/windup-tuning-sweep.ts",
     "lint:vocab": "bash tools/check-vocabulary.sh"
   },
   "devDependencies": {
