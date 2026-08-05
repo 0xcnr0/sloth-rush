@@ -408,34 +408,38 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 
 ## Şu An Neredeyiz
 
-Tema kilitli, **Faz 1 tamamlandı ve `main`'e birleştirildi** (2026-08-05). Kod artık tema-nötr: tema ve bahis dili grep'leri sıfır, iki `tsc` temiz, QA 89/89 (birleştirme öncesi 72/92 idi). Kalıcı kontrol: `npm run lint:vocab`.
+Tema kilitli, Faz 1 `main`'de, Wind-Up fazı uçtan uca çalışıyor, dört arketip üretildi ve yarış görünümünde çiziliyor.
+
+Kapılar tek komut: **`npm run verify`** (typecheck + `lint:vocab` + 53 birim testi). Kontrat testleri ayrı: `cd contracts && npx hardhat test` → 4/4.
 
 ### Kontrat redeploy'u — bilinçli olarak bekletiliyor
 
-Kontratlar yeniden adlandırıldı (`FreeRacer` / `Racer` / `RaceCore`) ve derlendi ama **deploy edilmedi.** Bu bir eksik değil, karar:
+Kontratlar yeniden adlandırıldı (`FreeRacer` / `Racer` / `RaceCore`), derlendi, testleri geçiyor ve deploy'u yerel bir node'a karşı prova edildi — ama **testnet'e atılmadı.** Bu bir eksik değil, karar:
 
-- **Kırık bir şey yok.** ABI fonksiyon imzalarından üretilir, kontrat adından değil — yeniden adlandırma hiçbir selector'ı değiştirmiyor. Frontend zincirdeki kontratlarla konuşmaya devam ediyor, `contracts.ts` eski adresleri bilerek koruyor.
-- **Rarity kontrata dokunmuyor.** Zincirdeki enum `Common…Legendary` — tema-nötr. Fair→Mint sadece `theme.ts`'teki etiket.
-- **Bayat olan tek şey ERC-721 name/symbol.** Constructor'da sabitlenir, sonradan değişmez; zincirdeki NFT hâlâ eski markayı taşıyor. Cüzdanda ve OpenSea'de böyle görünür.
+- **Kırık bir şey yok.** ABI fonksiyon imzalarından üretilir, kontrat adından değil. Frontend zincirdeki kontratlarla konuşmaya devam ediyor.
+- **Rarity kontrata dokunmuyor.** Zincirdeki enum `Common…Legendary` — tema-nötr. Fair→Mint sadece `theme.ts` etiketi.
+- **Bayat olan tek şey ERC-721 name/symbol.** Constructor'da sabitlenir; cüzdanda ve OpenSea'de NFT hâlâ eski markayı taşıyor.
 
-**Redeploy tetikleyicisi** — şu ikisinden hangisi önce gelirse:
-1. Kontrat **mantığı** gerçekten değişince (bekleyen onchain pivot)
-2. Demo öncesi, marka cüzdanda doğru görünsün diye
-
-Erken deploy etmek çift iş demek, ve her redeploy testnet'teki mevcut durumu (mint edilmiş NFT'ler, kayıtlı yarışlar) sahipsiz bırakıyor. Bir kez, doğru zamanda yapılacak.
+**Tetikleyici:** kontrat *mantığı* değişince, ya da **başvurudan önce** — hangisi önce gelirse. `DEVFOLIO_ANSWERS.md` başvuruda kullanılacak üç adresi listeliyor ve üstünde "NOTE BEFORE SUBMITTING" uyarısı duruyor: o adresler redeploy öncesi bytecode'a ait. Deploy sonrası `contracts/scripts/verify-deployment.ts` dört bağlantıyı geri okuyup doğruluyor.
 
 ### Sıradaki iş kalemleri
 
-1. ~~**Faz 1 — tema decoupling**~~ ✅ bitti (`d18ab4c`)
-2. **Wind-Up fazını uygula** — mekanik tasarlandı ([docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md)), sayılar denenmedi. Sunucu tarafı sıradaki iş; istemci UI'ı görsel karar gerektiriyor.
-3. **Ekonomi yeniden dengeleme** (Sprint 9) — yukarıdaki açık kalem
-4. ~~**Sanat: golden sample**~~ ✅ uçtan uca kanıtlandı (2026-08-06). Tinbot T1 Excellent üretildi, 7 parçaya ayrıldı, rig edildi ve yarış görünümünde çalışıyor — **editör olmadan, yeni bağımlılık olmadan.** ART_DIRECTION §14'ün "atlanamaz" kapısı geçildi, diğer 15 forma geçilebilir.
-   - Stil: [docs/art/tinbot-t1-excellent-golden-sample.png](docs/art/tinbot-t1-excellent-golden-sample.png)
-   - Rig sabitleri: `scripts/rig-preview.py` (kafa, anahtar, uzuv aralıkları — canlı kaydırıcıyla seçildi)
-   - Araçlar: `scripts/extract-parts.py` (parça ayıklama), `scripts/key-spin-preview.py` (anahtar dönüşü)
-   - **Kalan üç arketip için yöntem:** kilitli parça sayfasını `scripts/meshy.ts image --ref` ile referans ver, prompt'ta sadece değişecek şeyi iste. Metinden tarif etmek üç turda başarısız oldu; referansla tek turda tuttu.
-5. **Faz 0 artıkları** — `winduprush.xyz` al, `.mcp.json` yolları kırık, projeyi `_arsiv`'den ana dizine taşı
-6. **Pitch dokümanları** — LIGHT_PAPER ve DEVFOLIO_ANSWERS "Built-in Prediction Market"i ana farklılaştırıcı olarak sunuyor, o sistem kaldırıldı. Yerine "Base App native, mobil-öncelikli mini app" konacak.
+1. **Ekonomi yeniden dengeleme** (Sprint 9) — aşağıdaki açık kalem. Karar gerektiriyor.
+2. **Wind-Up fazını gerçek oyuncuyla dene** — API ve UI ayrı ayrı doğrulandı, ama cüzdan bağlı tam akış (lobi → faz → grid → yarış) elle oynanmadı.
+3. **Faz 0 artıkları** — `winduprush.xyz` al, `.mcp.json` yolları kırık, projeyi `_arsiv`'den ana dizine taşı.
+4. **Kontrat redeploy'u** — yukarıdaki tetikleyiciye bağlı.
+
+### Sanat hattı — kanıtlanmış ve tekrarlanabilir
+
+Dört arketip de üretildi (`frontend/public/art/{tinbot,jetster,waddler,chomper}/`). Yöntem:
+
+1. **Üret:** `scripts/meshy.ts image --ref <kilitli sayfa>` — kilitli parça sayfasını referans ver, prompt'ta **sadece değişecek şeyi** iste. Metinden tarif etmek üç turda battı; referansla tek turda tutuyor. **Parça sayısını açıkça yaz** ("exactly seven pieces"), yoksa üç kol bir bacak geliyor.
+2. **Ayıkla:** `scripts/extract-parts.py` — sayfayı parçalara böler. Zemin "kenara bağlı olan bölge"dir, "zemin rengine yakın" değil; aksi halde sanattaki beyazlar delik olur.
+3. **Doğrula:** `scripts/silhouette-test.py` (§4.1 şeridi), `scripts/rig-preview.py` (pivotlar), `tools/screenshot.mjs` (gerçek ekran).
+
+Rig geometrisi arketip başına, eklem noktaları gövdenin oranı olarak: `frontend/src/lib/racerRig.ts`. Parça boyutları arketipler arasında çok değiştiği için (gövde 138–214 geniş) tek bir sabit set çalışmıyor.
+
+**Bilinen boşluk:** ücretsiz (`free`) yarışçılara arketip atanmıyor — sadece upgrade'de atanıyor. O yüzden her ücretsiz yarışçı Tinbot çiziliyor. Tema açısından savunulabilir (Wind-Up = kutusu açılmamış temel oyuncak, arketip upgrade'de belli oluyor) ama **bilinçli bir karar değil, veri sonucu.** Ayrı bir "sade ücretsiz oyuncak" asset'i mi üretilsin, karar verilmedi.
 
 ### İlgili dokümanlar
 
