@@ -5,7 +5,7 @@ import WalletConnect from '../components/WalletConnect'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { loadRacerRig, drawRacer, cadence } from '../lib/racerRig'
+import { rigFor, drawRacer, cadence } from '../lib/racerRig'
 import { THEME, CUR } from '../config/theme'
 import { getCommentary } from '../data/commentary'
 import { getDialogue, getEmote, getTrashTalk, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
@@ -52,8 +52,9 @@ export default function RaceBroadcast() {
   const navigate = useNavigate()
   const { address, isConnected } = useAccount()
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  // The rig loads its seven PNGs once and draws nothing until they are all in.
-  const rigRef = useRef(loadRacerRig())
+  // Each archetype's art loads once and is shared; the rig draws nothing until
+  // all seven of its PNGs are in.
+  const archetypeRef = useRef<Record<number, string>>({})
   // Walk phase and key angle accumulate per racer across frames; keeping them in
   // refs means playback scrubbing does not reset the animation mid-race.
   const phaseRef = useRef<Record<number, number>>({})
@@ -206,7 +207,16 @@ export default function RaceBroadcast() {
     const bots = new Set<number>(
       (raceData.finalOrder ?? []).filter((f: any) => f.isBot).map((f: any) => f.id)
     )
-    gridPositions.forEach((gp: any) => names.set(gp.id, gp.name))
+    gridPositions.forEach((gp: any) => {
+      names.set(gp.id, gp.name)
+      // `race` is the archetype code on the racer row — speedster / tank /
+      // trickster / burst. Bots carry it too, so a lane of four reads as four
+      // different toys rather than four Tinbots.
+      if (gp.race) archetypeRef.current[gp.id] = gp.race
+    })
+    raceData.finalOrder?.forEach((fo: any) => {
+      if (fo.race && !archetypeRef.current[fo.id]) archetypeRef.current[fo.id] = fo.race
+    })
     raceData.finalOrder?.forEach((fo: any) => {
       if (!names.has(fo.id)) names.set(fo.id, fo.name)
     })
@@ -301,7 +311,7 @@ export default function RaceBroadcast() {
         const phase = phaseRef.current[pos.id] ?? 0
         const stamina = Math.max(0, Math.min(1, pos.speed / 12))
         keyRef.current[pos.id] = (keyRef.current[pos.id] ?? 0) + stamina * 14
-        drawRacer(ctx, rigRef.current, {
+        drawRacer(ctx, rigFor(archetypeRef.current[pos.id] ?? 'tank'), {
           x: cx,
           y: ground + 2,
           height: RACER_HEIGHT,
@@ -963,7 +973,16 @@ export default function RaceBroadcast() {
           const gridPositions = raceData.gridPositions || []
           const finalOrder: FinalOrder[] = raceData.finalOrder || []
           const names = new Map<number, string>()
-          gridPositions.forEach((gp: any) => names.set(gp.id, gp.name))
+          gridPositions.forEach((gp: any) => {
+      names.set(gp.id, gp.name)
+      // `race` is the archetype code on the racer row — speedster / tank /
+      // trickster / burst. Bots carry it too, so a lane of four reads as four
+      // different toys rather than four Tinbots.
+      if (gp.race) archetypeRef.current[gp.id] = gp.race
+    })
+    raceData.finalOrder?.forEach((fo: any) => {
+      if (fo.race && !archetypeRef.current[fo.id]) archetypeRef.current[fo.id] = fo.race
+    })
           finalOrder.forEach((fo: FinalOrder) => { if (!names.has(fo.id)) names.set(fo.id, fo.name) })
 
           // MVP 1: "Best Overtake" — Most positions gained (grid start → final)

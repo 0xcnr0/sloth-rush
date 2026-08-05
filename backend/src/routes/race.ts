@@ -729,7 +729,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
     // Grid order was decided by the Wind-Up phase; read it back rather than
     // re-deriving it, so the reveal the player saw is the grid that races.
     const participants = await getAll(
-      `SELECT rp.*, s.name, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
+      `SELECT rp.*, s.name, s.race, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
        FROM race_participants rp
        JOIN racers s ON rp.racer_id = s.id
        WHERE rp.race_id = $1
@@ -776,6 +776,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
       const snapped = p.wind_snapped === 1;
       const staminaDrainMultiplier = overwindDrainMultiplier(p.wind_tension || 0, safeWind);
       return {
+        archetype: p.race,
         id: p.racer_id,
         name: p.name,
         wallet: p.wallet,
@@ -1098,6 +1099,10 @@ router.post("/simulate", async (req: Request, res: Response) => {
       gridPositions: gridded.map((g) => ({
         id: g.id,
         name: g.name,
+        // Archetype CODE (speedster / tank / trickster / burst). The client
+        // picks the art folder from it; without it every racer draws as the
+        // same toy. Display labels stay in theme.ts.
+        race: g.archetype,
         position: g.gridPosition,
         tension: g.windTension ?? 0,
         snapped: (g.startStaminaFactor ?? 1) < 1,

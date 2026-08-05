@@ -40,6 +40,12 @@ export interface RacerStats {
   lck: number;
   gridPosition: number; // 1 = pole, 4 = last
   passive?: string;
+  /**
+   * Archetype CODE — speedster / tank / trickster / burst. Never a display
+   * name: the label lives in theme.ts (CLAUDE.md §0). The client picks which
+   * art folder to draw from this.
+   */
+  archetype?: string;
 
   // --- Wind-Up phase results (see simulation/windUp.ts) ---
   // Optional so an older caller, a replay or the standalone verifier can leave

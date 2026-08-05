@@ -22,24 +22,115 @@ type PartName = (typeof PART_NAMES)[number]
  * 50%, hence the ×2 when drawing. Keeping the numbers in source space means the
  * art can be re-exported at another resolution without touching the rig.
  */
-const RIG: Record<PartName, { scale: number; pivot: [number, number]; anchor?: [number, number] }> = {
-  torso: { scale: 1.0, pivot: [0, 0] },
-  head: { scale: 1.0, pivot: [153, 200], anchor: [140, -4] },
-  arm: { scale: 0.78, pivot: [52, 30] },
-  leg: { scale: 0.62, pivot: [100, 40] },
-  // One piece, drawn behind the torso so the shaft reads as entering the body
-  // while the wings stay clear of the silhouette.
-  key: { scale: 1.5, pivot: [90, 60], anchor: [437, 101] },
+/**
+ * Rig geometry, per archetype.
+ *
+ * The first version hardcoded Tinbot's numbers and every archetype drew with
+ * them, which left Jetster's cone head floating over a torso twice as tall as
+ * the anchors expected. ART_DIRECTION §12 wants one rig and four skins, but that
+ * only holds if the art is drawn to a shared part architecture — these sheets
+ * are not, so the geometry is derived from each sheet's own part sizes instead.
+ *
+ * Sizes are in SHIPPED pixels (the PNGs are exported at 50% of the source
+ * sheet), so everything below is measured from the files rather than guessed.
+ */
+interface Geometry {
+  /** Torso size, which everything else is positioned against. */
+  torso: [number, number]
+  /** Per-part scale, to keep limbs in proportion to the torso. */
+  scale: Record<Exclude<PartName, 'torso'>, number>
+  /** Neck attachment as a fraction of torso width/height. */
+  neck: [number, number]
+  /** Shoulder and hip height as a fraction of torso height. */
+  shoulderY: number
+  hipY: number
+  /** How far shoulders and hips sit from the torso centre, as a fraction of width. */
+  armSpread: number
+  legSpread: number
+  /** Winding key attachment, as a fraction of torso width/height. */
+  key: [number, number]
+  keyScale: number
+  /** Total rig height in the same pixel space, used to scale to the lane. */
+  height: number
 }
 
-const CENTER = 163
-const ARM_SPREAD = 27
-const LEG_SPREAD = 10
-const SHOULDER_Y = 56
-const HIP_Y = 316
-const TORSO_W = 325
-const FEET_Y = 630
-const RIG_H = 800
+const GEOMETRY: Record<string, Geometry> = {
+  // Boxy robot: wide flat torso, square head sitting straight on top.
+  tinbot: {
+    torso: [162, 172],
+    scale: { head: 0.95, arm: 0.42, leg: 0.46, key: 0.75 },
+    neck: [0.46, 0.0], shoulderY: 0.2, hipY: 0.95,
+    armSpread: 0.2, legSpread: 0.08,
+    key: [1.3, 0.35], keyScale: 0.75, height: 330,
+  },
+  // Rocket: tall narrow capsule, wide cone head, blade limbs.
+  jetster: {
+    torso: [138, 284],
+    scale: { head: 0.8, arm: 0.4, leg: 0.4, key: 0.7 },
+    neck: [0.55, 0.06], shoulderY: 0.2, hipY: 0.95,
+    armSpread: 0.34, legSpread: 0.16,
+    key: [1.2, 0.4], keyScale: 0.7, height: 420,
+  },
+  // Duck: round head and fat egg body, short webbed legs.
+  waddler: {
+    torso: [198, 176],
+    scale: { head: 0.9, arm: 0.55, leg: 0.8, key: 0.75 },
+    neck: [0.46, 0.0], shoulderY: 0.22, hipY: 0.94,
+    armSpread: 0.42, legSpread: 0.16,
+    key: [1.2, 0.34], keyScale: 0.75, height: 380,
+  },
+  // Dinosaur: long snout, spined body, thick legs.
+  chomper: {
+    torso: [214, 172],
+    scale: { head: 0.9, arm: 0.52, leg: 0.85, key: 0.75 },
+    neck: [0.44, 0.02], shoulderY: 0.2, hipY: 0.94,
+    armSpread: 0.4, legSpread: 0.16,
+    key: [1.18, 0.32], keyScale: 0.75, height: 380,
+  },
+}
+
+export interface RacerRig {
+  ready: boolean
+  images: Partial<Record<PartName, HTMLImageElement>>
+  geo: Geometry
+}
+
+/**
+ * Art folders are keyed by archetype CODE, not by display name — `tank`, not
+ * "Tinbot" — so a rebrand renames labels in theme.ts and leaves this alone.
+ */
+const ART_FOLDER: Record<string, string> = {
+  speedster: 'jetster',
+  tank: 'tinbot',
+  trickster: 'waddler',
+  burst: 'chomper',
+}
+
+export function loadRacerRig(archetype = 'tank'): RacerRig {
+  const folder = ART_FOLDER[archetype] ?? ART_FOLDER.tank
+  const rig: RacerRig = { ready: false, images: {}, geo: GEOMETRY[folder] ?? GEOMETRY.tinbot }
+  let pending = PART_NAMES.length
+  for (const name of PART_NAMES) {
+    const img = new Image()
+    img.onload = () => {
+      rig.images[name] = img
+      if (--pending === 0) rig.ready = true
+    }
+    img.src = `${THEME.art.basePath}${folder}/${name}.png`
+  }
+  return rig
+}
+
+/** One rig per archetype, loaded once and shared across every racer using it. */
+const cache = new Map<string, RacerRig>()
+export function rigFor(archetype: string): RacerRig {
+  let rig = cache.get(archetype)
+  if (!rig) {
+    rig = loadRacerRig(archetype)
+    cache.set(archetype, rig)
+  }
+  return rig
+}
 
 /**
  * The source art faces left; the track runs left to right. Declared once so a
@@ -57,30 +148,10 @@ const KEY_MIN_EDGE = 0.09
 
 /** Walk cycle, from WIND_UP_PHASE §3's stance/swing split. */
 const SWING_MAX = 24
-const LEG_LEN = 501 * RIG.leg.scale
+const LEG_LEN = 155
 const STEP = 2 * LEG_LEN * Math.sin((SWING_MAX * Math.PI) / 180)
-
-export interface RacerRig {
-  ready: boolean
-  images: Partial<Record<PartName, HTMLImageElement>>
-}
-
-export function loadRacerRig(archetype = 'tank'): RacerRig {
-  const rig: RacerRig = { ready: false, images: {} }
-  let pending = PART_NAMES.length
-  for (const name of PART_NAMES) {
-    const img = new Image()
-    img.onload = () => {
-      rig.images[name] = img
-      if (--pending === 0) rig.ready = true
-    }
-    // Only Tinbot exists so far; the other three archetypes fall back to it
-    // rather than rendering nothing.
-    img.src = `${THEME.art.basePath}tinbot/${name}.png`
-    void archetype
-  }
-  return rig
-}
+/** Height the stride was measured against; cadence scales from it. */
+const REF_HEIGHT = 400
 
 /**
  * Stance sweeps the leg linearly so the planted foot tracks the ground, then
@@ -95,26 +166,30 @@ function legAngle(phase: number): number {
 
 /** Cadence derived from ground speed, so stride length and distance agree. */
 export function cadence(speedPx: number, heightPx: number): number {
-  const stepPx = STEP * (heightPx / RIG_H)
+  const stepPx = STEP * (heightPx / REF_HEIGHT)
   return stepPx > 0 ? (Math.PI * Math.abs(speedPx)) / stepPx : 0
 }
 
 function part(
   ctx: CanvasRenderingContext2D,
   rig: RacerRig,
-  name: PartName,
+  name: Exclude<PartName, 'torso'>,
   ax: number,
   ay: number,
   deg: number,
 ): void {
-  const p = RIG[name]
   const im = rig.images[name]
   if (!im) return
+  const k = rig.geo.scale[name]
+  // Pivots are expressed against the part's own size, so a wider head or a
+  // longer leg lands on the same joint without a new constant.
+  const px = name === 'head' ? im.width * k * 0.5 : im.width * k * 0.5
+  const py = name === 'head' ? im.height * k * 0.94 : im.height * k * 0.12
   ctx.save()
   ctx.translate(ax, ay)
   if (COUNTER_FLIP.has(name)) ctx.scale(-1, 1)
   ctx.rotate((deg * Math.PI) / 180)
-  ctx.drawImage(im, -p.pivot[0] * p.scale, -p.pivot[1] * p.scale, im.width * 2 * p.scale, im.height * 2 * p.scale)
+  ctx.drawImage(im, -px, -py, im.width * k, im.height * k)
   ctx.restore()
 }
 
@@ -129,13 +204,14 @@ function part(
 function drawKey(ctx: CanvasRenderingContext2D, rig: RacerRig, angleDeg: number): void {
   const im = rig.images.key
   if (!im) return
-  const p = RIG.key
+  const g = rig.geo
+  const k = g.keyScale
   const c = Math.cos((angleDeg * Math.PI) / 180)
   const squash = Math.sign(c || 1) * Math.max(KEY_MIN_EDGE, Math.abs(c))
   ctx.save()
-  ctx.translate(p.anchor![0], p.anchor![1])
+  ctx.translate(g.torso[0] * g.key[0], g.torso[1] * g.key[1])
   ctx.scale(1, squash)
-  ctx.drawImage(im, -p.pivot[0] * p.scale, -p.pivot[1] * p.scale, im.width * 2 * p.scale, im.height * 2 * p.scale)
+  ctx.drawImage(im, -im.width * k * 0.25, -im.height * k * 0.5, im.width * k, im.height * k)
   ctx.restore()
 }
 
@@ -157,9 +233,11 @@ export interface DrawOptions {
 
 export function drawRacer(ctx: CanvasRenderingContext2D, rig: RacerRig, o: DrawOptions): void {
   if (!rig.ready) return
+  const g = rig.geo
   const facing = o.facing ?? 1
-  const k = o.height / RIG_H
+  const k = o.height / g.height
   const swing = Math.sin(o.phase)
+  const [tw, th] = g.torso
 
   ctx.save()
   if (o.dimmed) ctx.filter = 'saturate(0.15) brightness(1.1)'
@@ -168,19 +246,25 @@ export function drawRacer(ctx: CanvasRenderingContext2D, rig: RacerRig, o: DrawO
   // always tips forwards rather than back.
   ctx.rotate((facing * 4 * Math.PI) / 180)
   ctx.scale(k * facing * ART_FACING, k)
-  ctx.translate(-TORSO_W / 2, -FEET_Y)
-  ctx.translate(0, -Math.abs(swing) * 10)
+  // Origin at the torso's top-left, with the feet landing on y = 0.
+  ctx.translate(-tw / 2, -th * g.hipY - g.scale.leg * (rig.images.leg?.height ?? 0))
+  ctx.translate(0, -Math.abs(swing) * th * 0.05)
 
-  part(ctx, rig, 'leg', CENTER - LEG_SPREAD, HIP_Y, legAngle(o.phase + Math.PI))
-  part(ctx, rig, 'arm', CENTER - ARM_SPREAD, SHOULDER_Y, -swing * 22)
+  const shoulderY = th * g.shoulderY
+  const hipY = th * g.hipY
+  const armX = tw * g.armSpread
+  const legX = tw * g.legSpread
+
+  part(ctx, rig, 'leg', tw / 2 - legX, hipY, legAngle(o.phase + Math.PI))
+  part(ctx, rig, 'arm', tw / 2 - armX, shoulderY, -swing * 22)
 
   drawKey(ctx, rig, o.keyAngle)
 
   const torso = rig.images.torso
-  if (torso) ctx.drawImage(torso, 0, 0, torso.width * 2, torso.height * 2)
+  if (torso) ctx.drawImage(torso, 0, 0, tw, th)
 
-  part(ctx, rig, 'head', RIG.head.anchor![0], RIG.head.anchor![1], swing * 3)
-  part(ctx, rig, 'leg', CENTER + LEG_SPREAD, HIP_Y, legAngle(o.phase))
-  part(ctx, rig, 'arm', CENTER + ARM_SPREAD, SHOULDER_Y, swing * 22)
+  part(ctx, rig, 'head', tw * g.neck[0], th * g.neck[1], swing * 3)
+  part(ctx, rig, 'leg', tw / 2 + legX, hipY, legAngle(o.phase))
+  part(ctx, rig, 'arm', tw / 2 + armX, shoulderY, swing * 22)
   ctx.restore()
 }
