@@ -137,6 +137,7 @@ const ENDPOINT = {
   text: '/openapi/v2/text-to-3d',
   rig: '/openapi/v1/rigging',
   image: '/openapi/v1/text-to-image',
+  image2image: '/openapi/v1/image-to-image',
   multi: '/openapi/v1/multi-image-to-3d',
 } as const;
 
@@ -439,9 +440,21 @@ async function cmdImage(): Promise<void> {
   const model = value('--model') ?? 'nano-banana-pro';
   const aspect = value('--aspect') ?? '1:1';
 
+  // --ref ile var olan bir asset referans verilir. Aynı karakterin başka bir
+  // açısını ya da kademesini üretirken şart: metinden üretmek stili, oranı ve
+  // paleti her seferinde yeniden zar atıyor. Golden sample'ı referans vermek
+  // tutarlılığı sağlayan tek yol (REBRAND_AND_VISUAL_PLAN §4, Adım 2).
+  const refs = argv.flatMap((a, i) => (a === '--ref' ? [argv[i + 1]] : []));
+  for (const ref of refs) if (!existsSync(ref)) die(`referans görsel yok: ${ref}`);
+  const refData = refs.map((ref) => {
+    const ext = ref.toLowerCase().endsWith('.jpg') || ref.toLowerCase().endsWith('.jpeg') ? 'jpeg' : 'png';
+    return `data:image/${ext};base64,${readFileSync(ref).toString('base64')}`;
+  });
+
   checkBudget(['image'], value('--budget'));
   console.log(`model      ${model}`);
   console.log(`oran       ${aspect}`);
+  if (refs.length > 0) console.log(`referans   ${refs.join(', ')}`);
   console.log('');
   console.log(`--- prompt (${value('--prompt-file')}) ---`);
   console.log(prompt);
@@ -454,12 +467,17 @@ async function cmdImage(): Promise<void> {
   }
 
   const before = await balance();
-  const task = await meshy<{ result: string }>(ENDPOINT.image, {
-    ai_model: model,
-    prompt,
-    generate_multi_view: false,
-    aspect_ratio: aspect,
-  });
+  const task = await meshy<{ result: string }>(
+    refs.length > 0 ? ENDPOINT.image2image : ENDPOINT.image,
+    {
+      ai_model: model,
+      prompt,
+      generate_multi_view: false,
+      ...(refs.length > 0
+        ? { reference_image_urls: refData }
+        : { aspect_ratio: aspect }),
+    },
+  );
   console.log(`task: ${task.result}`);
   const done = await waitFor('image', task.result, 'görsel ');
   const files = await download(done, name, 'img');
