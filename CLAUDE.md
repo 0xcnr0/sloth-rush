@@ -58,7 +58,15 @@ Görünen her metin `frontend/src/config/theme.ts` üzerinden okunur (backend ay
 - Tema: kodda hiç `sloth` / `zzz` / `scrap` kalmamalı — sadece `theme.ts` içinde
 - Bahis dili: `bid` · `bet` · `pot` · `wager` · `stake` · `odds` · `raise` · `payout` · `predict` · `whale` **hiçbiri** kalmamalı
 
-Tek bir `bid` kelimesi tüm çabayı boşa çıkarır.
+Tek bir `bid` kelimesi tüm çabayı boşa çıkarır. Kalıcı kontrol: `npm run lint:vocab`.
+
+**Grep'ten muaf iki dosya var, üçüncüsü olmamalı:** `config/theme.ts` (tema etiketlerinin yaşadığı yer) ve `backend/src/migrations/legacyNames.ts` (eski isimleri emekliye ayıran migration onları anmak zorunda — `status = 'bidding'`, `DROP TABLE predictions`).
+
+### Migration tuzağı — bir kez yakalandı, tekrar yakalanır
+
+**Postgres'te tabloyu yeniden adlandırmak CHECK constraint'lerini ve sequence'lerini yeniden adlandırmaz.** `sloths` → `racers` yapıldığında hayatta kalan `sloths_type_check`, `'sloth'` → `'pro'` güncellemesini sessizce reddetti. Migration try-catch içinde olduğu için **log başarılı göründü ama satırlar taşınmamıştı.**
+
+Kural: migration'dan sonra log'a değil **şemaya** bak. Yeniden adlandırılan her tablo için constraint ve sequence isimlerini de kontrol et.
 
 ---
 
@@ -330,8 +338,8 @@ wind-up-rush/
 │   │   ├── config/theme.ts   # TEK tema kaynağı
 │   │   ├── components/
 │   │   │   ├── Race/         # Yarış animasyonu (Rive)
-│   │   │   ├── WindUp/       # Yarış öncesi beceri fazı
-│   │   │   ├── Toybox/       # Ana sayfa / koleksiyon
+│   │   │   ├── PreRace/      # Yarış öncesi beceri fazı (etiket: Wind-Up)
+│   │   │   ├── Collection/    # Ana sayfa / koleksiyon (etiket: Toybox)
 │   │   │   └── Shop/
 │   │   ├── hooks/
 │   │   └── pages/
