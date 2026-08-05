@@ -28,10 +28,15 @@ RIG = {
     "head":  {"file": "part-01.png", "scale": 1.0,  "pivot": (124, 200), "anchor": (162, 30)},
     "arm":   {"file": "part-03.png", "scale": 0.78, "pivot": (52, 30)},
     "leg":   {"file": "part-07.png", "scale": 0.62, "pivot": (100, 40)},
-    "key":   {"file": "part-05.png", "scale": 1.0,  "pivot": (14, 52), "anchor": (306, 120)},
+    # Anahtar TEK PARCA doner: dikeyde kisalir, yatay mil ekseni etrafinda.
+    # Hub 341 secildi ki milin dibi govdenin arka sinirinin icine gomulsun.
+    "key":   {"file": "part-05.png", "scale": 1.45, "pivot": (38, 60), "anchor": (341, 172)},
 }
-SHOULDER = {"near": (268, 56), "far": (56, 56)}
-HIP = {"near": (202, 316), "far": (122, 316)}
+# Uzuv araliklari govde merkezine (x=162) gore simetrik. Deger 2026-08-05'te
+# canli kaydiricilarla secildi: dar durus bilincli bir tercih, tesadufi degil.
+CENTER, ARM_SPREAD, LEG_SPREAD = 162, 20, 10
+SHOULDER = {"near": (CENTER + ARM_SPREAD, 56), "far": (CENTER - ARM_SPREAD, 56)}
+HIP = {"near": (CENTER + LEG_SPREAD, 316), "far": (CENTER - LEG_SPREAD, 316)}
 
 
 def load(name: str) -> Image.Image:
