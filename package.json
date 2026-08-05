@@ -14,6 +14,7 @@
     "contracts": "npx hardhat compile --config contracts/hardhat.config.ts",
     "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
     "qa": "tsx qa-agent.ts",
+    "test:unit": "tsx --test backend/src/simulation/*.test.ts",
     "lint:vocab": "bash tools/check-vocabulary.sh"
   },
   "devDependencies": {
