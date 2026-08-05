@@ -84,6 +84,22 @@ export async function initDB() {
     // Restate the rating bound as an explicit range comparison.
     `ALTER TABLE feedback DROP CONSTRAINT IF EXISTS feedback_rating_check`,
     `ALTER TABLE feedback ADD CONSTRAINT feedback_rating_check CHECK(rating >= 1 AND rating <= 5)`,
+
+    // --- Wind-Up phase state (docs/WIND_UP_PHASE.md) ---
+    // `wind_tension` already exists from the Phase 1 migration. These carry the
+    // rest of the phase: when its window opened, when each player started
+    // winding, and whether their spring broke.
+    //
+    // The press timestamp is server-written, never client-supplied: the hold
+    // duration is measured entirely from the server clock so a client cannot
+    // claim a hold it did not perform (§9).
+    `ALTER TABLE races ADD COLUMN IF NOT EXISTS tuning_opened_at TIMESTAMP`,
+    `ALTER TABLE race_participants ADD COLUMN IF NOT EXISTS wind_pressed_at TIMESTAMP`,
+    // A snapped spring clamps to a tension of 100, so "did it snap" cannot be
+    // read back off the tension alone and needs its own flag.
+    `ALTER TABLE race_participants ADD COLUMN IF NOT EXISTS wind_snapped INTEGER DEFAULT 0`,
+    // Set once the phase resolves, so re-running the finalizer is a no-op.
+    `ALTER TABLE race_participants ADD COLUMN IF NOT EXISTS wind_locked INTEGER DEFAULT 0`,
   ];
 
   for (const sql of migrations) {
@@ -128,7 +144,12 @@ export async function initDB() {
       format TEXT NOT NULL DEFAULT 'standard' CHECK(format IN ('exhibition', 'standard', 'grand_prix', 'tactic', 'gp_qualify', 'gp_final')),
       entry_fee INTEGER NOT NULL DEFAULT 50,
       max_tune INTEGER NOT NULL DEFAULT 100,
+      -- Generated when the Wind-Up window opens, not at simulate time: the
+      -- Safe Wind jitter is derived from it, so it has to exist before anyone
+      -- winds. Reused by the simulation so the whole race is one seed.
       seed TEXT,
+      -- Server clock at the moment the Wind-Up window opened.
+      tuning_opened_at TIMESTAMP,
       result_hash TEXT,
       winner_wallet TEXT,
       created_at TIMESTAMP DEFAULT NOW(),
@@ -142,8 +163,14 @@ export async function initDB() {
       wallet TEXT NOT NULL,
       is_bot INTEGER DEFAULT 0,
       -- Skill-derived spring tension from the pre-race Wind-Up phase (0-100).
-      -- Nothing writes it yet; the phase itself is a separate work item.
       wind_tension INTEGER DEFAULT 0 CHECK(wind_tension >= 0 AND wind_tension <= 100),
+      -- When the player began winding. Written by the server on press, never
+      -- supplied by the client — the hold is measured from the server clock.
+      wind_pressed_at TIMESTAMP,
+      -- A snapped spring clamps to tension 100, so it needs its own flag.
+      wind_snapped INTEGER DEFAULT 0,
+      -- Set when the phase resolves, so finalizing twice is a no-op.
+      wind_locked INTEGER DEFAULT 0,
       grid_position INTEGER,
       finish_position INTEGER,
       reward INTEGER DEFAULT 0,

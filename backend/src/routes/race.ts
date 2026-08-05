@@ -2,6 +2,16 @@ import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { query, getOne, getAll, runTransaction } from "../db";
 import { simulateRace, calculatePrizePool, RacerStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
+import {
+  WIND_UP_TUNING,
+  botSigmaForSkill,
+  botTension,
+  orderGrid,
+  overwindDrainMultiplier,
+  resolveWind,
+  safeWindDisplayBand,
+  safeWindThreshold,
+} from "../simulation/windUp";
 import { awardXP, XP_AMOUNTS } from "../xp";
 import { isValidWallet } from "../middleware/validateWallet";
 import { recordRaceResultOnchain } from "../lib/onchain";
@@ -112,15 +122,18 @@ const POSITION_STAT: Record<number, string> = {
 // Bot templates with diverse stat distributions (total ~60 each).
 // Names are archetype + slot number so nothing here is theme-bound; the
 // frontend renders the archetype's display label from the theme config.
+// `skill` drives how tightly the bot winds to its own Safe Wind: 1 rides the
+// line, 0 misses wide and sometimes snaps. Mixing them gives the player a
+// readable signal about who they are up against (WIND_UP_PHASE.md §7).
 const BOT_TEMPLATES = [
-  { name: "Speedster-01",  race: "speedster", spd: 14, acc: 8,  sta: 10, agi: 10, ref: 10, lck: 8  },
-  { name: "Tank-02",       race: "tank",      spd: 8,  acc: 14, sta: 12, agi: 8,  ref: 10, lck: 8  },
-  { name: "Trickster-03",  race: "trickster", spd: 10, acc: 10, sta: 14, agi: 8,  ref: 10, lck: 8  },
-  { name: "Burst-04",      race: "burst",     spd: 10, acc: 10, sta: 8,  agi: 14, ref: 10, lck: 8  },
-  { name: "Tank-05",       race: "tank",      spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 14, lck: 10 },
-  { name: "Trickster-06",  race: "trickster", spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 8,  lck: 16 },
-  { name: "Speedster-07",  race: "speedster", spd: 12, acc: 12, sta: 10, agi: 10, ref: 8,  lck: 8  },
-  { name: "Burst-08",      race: "burst",     spd: 10, acc: 10, sta: 12, agi: 10, ref: 10, lck: 8  },
+  { name: "Speedster-01",  race: "speedster", spd: 14, acc: 8,  sta: 10, agi: 10, ref: 10, lck: 8,  skill: 0.8 },
+  { name: "Tank-02",       race: "tank",      spd: 8,  acc: 14, sta: 12, agi: 8,  ref: 10, lck: 8,  skill: 0.6 },
+  { name: "Trickster-03",  race: "trickster", spd: 10, acc: 10, sta: 14, agi: 8,  ref: 10, lck: 8,  skill: 0.4 },
+  { name: "Burst-04",      race: "burst",     spd: 10, acc: 10, sta: 8,  agi: 14, ref: 10, lck: 8,  skill: 0.2 },
+  { name: "Tank-05",       race: "tank",      spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 14, lck: 10, skill: 0.7 },
+  { name: "Trickster-06",  race: "trickster", spd: 10, acc: 10, sta: 8,  agi: 8,  ref: 8,  lck: 16, skill: 0.3 },
+  { name: "Speedster-07",  race: "speedster", spd: 12, acc: 12, sta: 10, agi: 10, ref: 8,  lck: 8,  skill: 0.9 },
+  { name: "Burst-08",      race: "burst",     spd: 10, acc: 10, sta: 12, agi: 10, ref: 10, lck: 8,  skill: 0.5 },
 ];
 
 function generateRaceId(): string {
@@ -334,9 +347,13 @@ router.post("/join", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/race/start-tuning — Close the lobby, fill with bots, move to the
-// pre-race tuning phase. The Wind-Up phase that fills `wind_tension` is a
-// separate work item; for now this is just the gate from lobby into racing.
+// POST /api/race/start-tuning — Close the lobby, fill with bots, and open the
+// Wind-Up window. See docs/WIND_UP_PHASE.md.
+//
+// The race seed is generated HERE rather than at simulate time, because each
+// racer's Safe Wind threshold is jittered from it (§9). The threshold has to
+// exist before anyone can wind, and the simulation later reuses the same seed
+// so the whole race — grid and result — verifies from one value.
 router.post("/start-tuning", async (req: Request, res: Response) => {
   try {
     const { raceId } = req.body;
@@ -355,6 +372,7 @@ router.post("/start-tuning", async (req: Request, res: Response) => {
     // Fill remaining slots with bots (4 for all races including GP qualifying)
     const maxSlots = 4;
     const botsNeeded = maxSlots - participants.length;
+    const botSkills: Record<number, number> = {};
     if (botsNeeded > 0) {
       // Shuffle templates for variety
       const shuffled = [...BOT_TEMPLATES].sort(() => Math.random() - 0.5);
@@ -367,6 +385,8 @@ router.post("/start-tuning", async (req: Request, res: Response) => {
           [`bot_${i}`, template.name, template.race, template.spd, template.acc, template.sta, template.agi, template.ref, template.lck]
         );
 
+        botSkills[botRacer.id] = template.skill;
+
         await query(
           "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot) VALUES ($1, $2, $3, 1)",
           [raceId, botRacer.id, `bot_${i}`]
@@ -374,11 +394,309 @@ router.post("/start-tuning", async (req: Request, res: Response) => {
       }
     }
 
-    await query("UPDATE races SET status = 'tuning' WHERE id = $1", [raceId]);
+    const seed = race.seed || generateSeed();
 
-    res.json({ raceId, status: "tuning", botsAdded: botsNeeded });
+    await query(
+      "UPDATE races SET status = 'tuning', seed = $1, tuning_opened_at = NOW() WHERE id = $2",
+      [seed, raceId]
+    );
+
+    // Bots wind immediately — they have no window to wait through. Their
+    // tension is sampled from the race seed, so it is fixed the moment the
+    // window opens and cannot drift with when the finalizer happens to run.
+    const botRows = await getAll(
+      `SELECT rp.racer_id, r.sta
+       FROM race_participants rp JOIN racers r ON rp.racer_id = r.id
+       WHERE rp.race_id = $1 AND rp.is_bot = 1`,
+      [raceId]
+    );
+    for (const bot of botRows) {
+      const safeWind = safeWindThreshold(Number(bot.sta) || 10, seed, bot.racer_id);
+      const sigma = botSigmaForSkill(botSkills[bot.racer_id] ?? 0.5);
+      const tension = botTension(safeWind, sigma, seed, bot.racer_id);
+      // A bot at the clamp ceiling has effectively overwound to breaking point.
+      const snapped = tension >= WIND_UP_TUNING.botMaxTension;
+      await query(
+        `UPDATE race_participants
+         SET wind_tension = $1, wind_snapped = $2, wind_locked = 1
+         WHERE race_id = $3 AND racer_id = $4`,
+        [tension, snapped ? 1 : 0, raceId, bot.racer_id]
+      );
+    }
+
+    res.json({
+      raceId,
+      status: "tuning",
+      botsAdded: botsNeeded,
+      phaseDurationMs: WIND_UP_TUNING.phaseDurationMs,
+      fullWindMs: WIND_UP_TUNING.fullWindMs,
+      opensAt: new Date().toISOString(),
+    });
   } catch (err) {
     console.error("POST /start-tuning error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+type WindContext =
+  | { ok: false; error: string; status: number }
+  | { ok: true; race: any; participant: any };
+
+/** Loads a race plus the caller's participant row, or explains why not. */
+async function loadWindContext(raceId: string, wallet: string): Promise<WindContext> {
+  const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
+  if (!race) return { ok: false, error: "race not found", status: 404 };
+  if (race.status !== "tuning") {
+    return { ok: false, error: "race is not in the wind-up phase", status: 400 };
+  }
+  const participant = await getOne(
+    "SELECT * FROM race_participants WHERE race_id = $1 AND wallet = $2",
+    [raceId, wallet]
+  );
+  if (!participant) return { ok: false, error: "not a participant in this race", status: 403 };
+  return { ok: true, race, participant };
+}
+
+/** Milliseconds the wind-up window has been open. */
+function windowElapsedMs(race: any): number {
+  if (!race.tuning_opened_at) return 0;
+  return Date.now() - new Date(race.tuning_opened_at).getTime();
+}
+
+// POST /api/race/wind/start — The player pressed and began winding.
+//
+// The server timestamps the press itself. The client never sends a tension or a
+// duration: an input mechanic scored from client-reported numbers is trivially
+// forged, so the hold is measured entirely between this call and the release
+// (§9). Network latency makes it slightly imprecise, never exploitable.
+router.post("/wind/start", async (req: Request, res: Response) => {
+  try {
+    const { raceId, wallet } = req.body;
+    if (!raceId || !wallet) {
+      res.status(400).json({ error: "raceId and wallet required" });
+      return;
+    }
+    if (!isValidWallet(wallet as string)) {
+      res.status(400).json({ error: "Invalid wallet address format" });
+      return;
+    }
+
+    const ctx = await loadWindContext(raceId, wallet);
+    if (!ctx.ok) {
+      res.status(ctx.status).json({ error: ctx.error });
+      return;
+    }
+    const { race, participant } = ctx;
+
+    if (participant.wind_locked) {
+      res.status(409).json({ error: "already locked in for this race" });
+      return;
+    }
+    if (windowElapsedMs(race) > WIND_UP_TUNING.phaseDurationMs) {
+      res.status(400).json({ error: "the wind-up window has closed" });
+      return;
+    }
+    // Re-pressing without releasing would otherwise restart the hold and hand
+    // out free tension; the first press is the one that counts.
+    if (participant.wind_pressed_at) {
+      res.json({ raceId, alreadyWinding: true });
+      return;
+    }
+
+    await query(
+      "UPDATE race_participants SET wind_pressed_at = NOW() WHERE id = $1",
+      [participant.id]
+    );
+
+    const racer = await getOne("SELECT sta FROM racers WHERE id = $1", [participant.racer_id]);
+    res.json({
+      raceId,
+      winding: true,
+      // The player sees an approximate band, never the exact line (§9).
+      safeWindBand: safeWindDisplayBand(Number(racer?.sta) || 10),
+      fullWindMs: WIND_UP_TUNING.fullWindMs,
+      windowRemainingMs: Math.max(0, WIND_UP_TUNING.phaseDurationMs - windowElapsedMs(race)),
+    });
+  } catch (err) {
+    console.error("POST /wind/start error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/race/wind/release — The player let go. The server computes the
+// tension from its own two timestamps and locks it in.
+router.post("/wind/release", async (req: Request, res: Response) => {
+  try {
+    const { raceId, wallet } = req.body;
+    if (!raceId || !wallet) {
+      res.status(400).json({ error: "raceId and wallet required" });
+      return;
+    }
+    if (!isValidWallet(wallet as string)) {
+      res.status(400).json({ error: "Invalid wallet address format" });
+      return;
+    }
+
+    const ctx = await loadWindContext(raceId, wallet);
+    if (!ctx.ok) {
+      res.status(ctx.status).json({ error: ctx.error });
+      return;
+    }
+    const { race, participant } = ctx;
+
+    if (participant.wind_locked) {
+      res.status(409).json({ error: "already locked in for this race" });
+      return;
+    }
+    if (!participant.wind_pressed_at) {
+      res.status(400).json({ error: "not winding — press before releasing" });
+      return;
+    }
+
+    // Hold is server-measured, and capped at the window: a request that arrives
+    // late (or never, until the finalizer runs) cannot buy extra tension.
+    const rawHoldMs = Date.now() - new Date(participant.wind_pressed_at).getTime();
+    const holdMs = Math.max(0, Math.min(rawHoldMs, WIND_UP_TUNING.phaseDurationMs));
+
+    const racer = await getOne("SELECT sta FROM racers WHERE id = $1", [participant.racer_id]);
+    const safeWind = safeWindThreshold(Number(racer?.sta) || 10, race.seed, participant.racer_id);
+    const outcome = resolveWind(holdMs, safeWind);
+
+    await query(
+      `UPDATE race_participants
+       SET wind_tension = $1, wind_snapped = $2, wind_locked = 1
+       WHERE id = $3`,
+      [outcome.tension, outcome.snapped ? 1 : 0, participant.id]
+    );
+
+    res.json({
+      raceId,
+      tension: outcome.tension,
+      band: outcome.band,
+      snapped: outcome.snapped,
+      holdMs,
+      locked: true,
+    });
+  } catch (err) {
+    console.error("POST /wind/release error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * Resolve everyone who has not locked in, order the grid and move the race to
+ * 'racing'. Idempotent: a race already past 'tuning' is left alone.
+ *
+ * Called explicitly by the client when the countdown ends, and defensively by
+ * /simulate so a race can never reach the starting line with an unresolved grid.
+ */
+async function finalizeWindUp(raceId: string): Promise<void> {
+  const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
+  if (!race || race.status !== "tuning") return;
+
+  const seed: string = race.seed || generateSeed();
+  if (!race.seed) {
+    await query("UPDATE races SET seed = $1 WHERE id = $2", [seed, raceId]);
+  }
+
+  const participants = await getAll(
+    `SELECT rp.*, r.sta
+     FROM race_participants rp JOIN racers r ON rp.racer_id = r.id
+     WHERE rp.race_id = $1`,
+    [raceId]
+  );
+
+  for (const p of participants) {
+    if (p.wind_locked) continue;
+
+    // Someone who pressed and never released is treated as holding until the
+    // window shut. Someone who never touched the screen gets zero tension and
+    // no penalty — declining to wind is a weak but legitimate play (§4).
+    let holdMs = 0;
+    if (p.wind_pressed_at) {
+      const pressedAt = new Date(p.wind_pressed_at).getTime();
+      const windowClosesAt = race.tuning_opened_at
+        ? new Date(race.tuning_opened_at).getTime() + WIND_UP_TUNING.phaseDurationMs
+        : Date.now();
+      holdMs = Math.max(0, Math.min(Date.now(), windowClosesAt) - pressedAt);
+    }
+
+    const safeWind = safeWindThreshold(Number(p.sta) || 10, seed, p.racer_id);
+    const outcome = resolveWind(holdMs, safeWind);
+    await query(
+      `UPDATE race_participants
+       SET wind_tension = $1, wind_snapped = $2, wind_locked = 1
+       WHERE id = $3`,
+      [outcome.tension, outcome.snapped ? 1 : 0, p.id]
+    );
+    p.wind_tension = outcome.tension;
+    p.wind_snapped = outcome.snapped ? 1 : 0;
+  }
+
+  // Highest tension takes pole; snapped springs go to the back; ties break on
+  // the seed so the order is reproducible rather than dependent on row order.
+  const ordered = orderGrid(
+    participants.map((p: any) => ({
+      racerId: p.racer_id,
+      tension: p.wind_tension || 0,
+      snapped: p.wind_snapped === 1,
+      rowId: p.id,
+    })),
+    seed
+  );
+
+  for (let i = 0; i < ordered.length; i++) {
+    await query("UPDATE race_participants SET grid_position = $1 WHERE id = $2", [
+      i + 1,
+      ordered[i].rowId,
+    ]);
+  }
+
+  await query("UPDATE races SET status = 'racing' WHERE id = $1", [raceId]);
+}
+
+// POST /api/race/close-tuning — Shut the window and reveal the grid.
+router.post("/close-tuning", async (req: Request, res: Response) => {
+  try {
+    const { raceId } = req.body;
+    if (!raceId) {
+      res.status(400).json({ error: "raceId required" });
+      return;
+    }
+
+    const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
+    if (!race) {
+      res.status(404).json({ error: "race not found" });
+      return;
+    }
+
+    await finalizeWindUp(raceId);
+
+    // The reveal: all four tensions become visible at once, never before.
+    const grid = await getAll(
+      `SELECT rp.racer_id, rp.grid_position, rp.wind_tension, rp.wind_snapped,
+              rp.is_bot, rp.wallet, r.name
+       FROM race_participants rp JOIN racers r ON rp.racer_id = r.id
+       WHERE rp.race_id = $1
+       ORDER BY rp.grid_position ASC`,
+      [raceId]
+    );
+
+    res.json({
+      raceId,
+      status: "racing",
+      grid: grid.map((g: any) => ({
+        racerId: g.racer_id,
+        name: g.name,
+        wallet: g.wallet,
+        isBot: g.is_bot === 1,
+        position: g.grid_position,
+        tension: g.wind_tension,
+        snapped: g.wind_snapped === 1,
+      })),
+    });
+  } catch (err) {
+    console.error("POST /close-tuning error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -388,18 +706,25 @@ router.post("/simulate", async (req: Request, res: Response) => {
   try {
     const { raceId } = req.body;
 
-    const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
-    if (!race) {
+    const raceBefore = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
+    if (!raceBefore) {
       res.status(404).json({ error: "race not found" });
       return;
     }
 
+    // A race must never reach the starting line with an unresolved grid. If the
+    // client never called close-tuning (or crashed mid-phase), resolve it here.
+    await finalizeWindUp(raceId);
+    const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
+
+    // Grid order was decided by the Wind-Up phase; read it back rather than
+    // re-deriving it, so the reveal the player saw is the grid that races.
     const participants = await getAll(
       `SELECT rp.*, s.name, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
        FROM race_participants rp
        JOIN racers s ON rp.racer_id = s.id
        WHERE rp.race_id = $1
-       ORDER BY rp.wind_tension DESC, rp.id ASC`,
+       ORDER BY COALESCE(rp.grid_position, 99) ASC, rp.id ASC`,
       [raceId]
     );
 
@@ -424,16 +749,23 @@ router.post("/simulate", async (req: Request, res: Response) => {
       }
     }
 
-    // Assign grid positions from spring tension (highest tension = pole).
-    // Until the Wind-Up phase lands every tension is 0, so the tiebreak on
-    // join order decides the grid — deterministic, and free of any spend.
+    // Grid positions are already persisted by the Wind-Up finalizer; backfill
+    // only if something upstream left them null.
     for (let index = 0; index < participants.length; index++) {
       const p = participants[index];
-      await query("UPDATE race_participants SET grid_position = $1 WHERE id = $2", [index + 1, p.id]);
+      if (p.grid_position == null) {
+        await query("UPDATE race_participants SET grid_position = $1 WHERE id = $2", [index + 1, p.id]);
+      }
     }
 
     const gridded: RacerStats[] = participants.map((p: any, index: number) => {
       const bonus = accessoryBonuses[p.racer_id] || {};
+      // Recompute the wind-up consequences from the locked tension and the
+      // race seed. Nothing is trusted from the client and nothing extra is
+      // stored: the same seed always reproduces the same penalties.
+      const safeWind = safeWindThreshold(Number(p.sta) || 10, race.seed || "", p.racer_id);
+      const snapped = p.wind_snapped === 1;
+      const staminaDrainMultiplier = overwindDrainMultiplier(p.wind_tension || 0, safeWind);
       return {
         id: p.racer_id,
         name: p.name,
@@ -445,8 +777,11 @@ router.post("/simulate", async (req: Request, res: Response) => {
         agi: p.agi + (bonus.agi || 0),
         ref: p.ref + (bonus.ref || 0),
         lck: p.lck + (bonus.lck || 0),
-        gridPosition: index + 1,
+        gridPosition: p.grid_position ?? index + 1,
         passive: p.passive || undefined,
+        windTension: p.wind_tension || 0,
+        staminaDrainMultiplier,
+        startStaminaFactor: snapped ? WIND_UP_TUNING.snapStaminaFactor : 1,
       };
     });
 
@@ -491,8 +826,10 @@ router.post("/simulate", async (req: Request, res: Response) => {
       }
     }
 
-    // Generate seed and simulate (chaos mode for GP finals)
-    const seed = generateSeed();
+    // Reuse the seed generated when the Wind-Up window opened, so the Safe Wind
+    // thresholds the players wound against and the race they produce verify
+    // from a single value. Only fall back if the phase was somehow skipped.
+    const seed = race.seed || generateSeed();
     const isChaosMode = race.format === "gp_final";
     const result = simulateRace(gridded, seed, tacticActions, isChaosMode);
 
@@ -749,7 +1086,13 @@ router.post("/simulate", async (req: Request, res: Response) => {
       raceId,
       seed,
       resultHash,
-      gridPositions: gridded.map((g) => ({ id: g.id, name: g.name, position: g.gridPosition })),
+      gridPositions: gridded.map((g) => ({
+        id: g.id,
+        name: g.name,
+        position: g.gridPosition,
+        tension: g.windTension ?? 0,
+        snapped: (g.startStaminaFactor ?? 1) < 1,
+      })),
       frames: animFrames,
       events: result.events,
       finalOrder: result.finalOrder.map((o: any, i: number) => ({
