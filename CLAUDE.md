@@ -429,7 +429,11 @@ Erken deploy etmek çift iş demek, ve her redeploy testnet'teki mevcut durumu (
 1. ~~**Faz 1 — tema decoupling**~~ ✅ bitti (`d18ab4c`)
 2. **Wind-Up fazını uygula** — mekanik tasarlandı ([docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md)), sayılar denenmedi. Sunucu tarafı sıradaki iş; istemci UI'ı görsel karar gerektiriyor.
 3. **Ekonomi yeniden dengeleme** (Sprint 9) — yukarıdaki açık kalem
-4. **Sanat: golden sample** — Tinbot T1 Excellent. Stil kilitlendi ([docs/art/tinbot-t1-excellent-golden-sample.png](docs/art/tinbot-t1-excellent-golden-sample.png)). Parça üretimi ve rig kod tarafında çalışıyor (`scripts/extract-parts.py`, `scripts/rig-preview.py`). **Kalan:** parçaların sağa bakan bir sayfadan yeniden üretilmesi, sonra diğer üç arketip.
+4. ~~**Sanat: golden sample**~~ ✅ uçtan uca kanıtlandı (2026-08-06). Tinbot T1 Excellent üretildi, 7 parçaya ayrıldı, rig edildi ve yarış görünümünde çalışıyor — **editör olmadan, yeni bağımlılık olmadan.** ART_DIRECTION §14'ün "atlanamaz" kapısı geçildi, diğer 15 forma geçilebilir.
+   - Stil: [docs/art/tinbot-t1-excellent-golden-sample.png](docs/art/tinbot-t1-excellent-golden-sample.png)
+   - Rig sabitleri: `scripts/rig-preview.py` (kafa, anahtar, uzuv aralıkları — canlı kaydırıcıyla seçildi)
+   - Araçlar: `scripts/extract-parts.py` (parça ayıklama), `scripts/key-spin-preview.py` (anahtar dönüşü)
+   - **Kalan üç arketip için yöntem:** kilitli parça sayfasını `scripts/meshy.ts image --ref` ile referans ver, prompt'ta sadece değişecek şeyi iste. Metinden tarif etmek üç turda başarısız oldu; referansla tek turda tuttu.
 5. **Faz 0 artıkları** — `winduprush.xyz` al, `.mcp.json` yolları kırık, projeyi `_arsiv`'den ana dizine taşı
 6. **Pitch dokümanları** — LIGHT_PAPER ve DEVFOLIO_ANSWERS "Built-in Prediction Market"i ana farklılaştırıcı olarak sunuyor, o sistem kaldırıldı. Yerine "Base App native, mobil-öncelikli mini app" konacak.
 
