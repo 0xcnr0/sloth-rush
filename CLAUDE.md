@@ -174,10 +174,21 @@ T0 → T3 arası siluet alanı yaklaşık **%60 büyür.** Bir T3 Tinbot hâlâ 
 > **Evrim = ne kadar büyüdün. Rarity = ne kadar bakımlısın.** İkisi ayrı eksendir, oyuncu karıştırmamalı.
 
 ### Training
-- Haftada 2 kez / yarışçı
-- 4 saat %60 başarı / 12 saat %80 / 24 saat %95
-- Başarılı → +1 hedef istatistik (onchain metadata güncellenir)
+
+Aşağıdaki değerler **koddan okundu** (`backend/src/routes/racer.ts`), tasarım notundan değil — Sprint 8 training'i yeniden dengeledi ve eski GDD rakamları geçersiz:
+
+| | Değer |
+|---|---|
+| Süre | **2 saat** (eski: 6 saat) |
+| Ücret | **5 SPRING** (eski: 10) |
+| Kazanç | **+0.5 istatistik puanı** (eski: +0.3), stat tavanına kadar |
+| Haftalık limit | **Showcase 5 / Wind-Up 3** (eski: 2 / 1) |
+
+- Başarılı training onchain metadata'yı günceller
 - Training süresinde yarışçı yarışa giremez
+- İlk mint'te **10 SPRING hoşgeldin bonusu** verilir (`welcome_bonus` transaction'ı)
+
+> Bu rakamlar bir kez zaten soruna yol açtı: Sprint 8 dengeyi değiştirdi ama `qa-agent.ts` eski değerleri beklemeye devam etti ve 5 test aylarca kırmızı kaldı. Denge değişikliği yaparken **kod, testler ve bu tablo birlikte** güncellenir.
 
 ---
 
