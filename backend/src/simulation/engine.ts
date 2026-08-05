@@ -194,6 +194,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     staminaDrainMultiplier: p.staminaDrainMultiplier ?? 1,
     finished: false,
     finishTick: MAX_TICKS,
+    finishOvershoot: 0,
     slowdown: 0,
     boost: 0,
     overtakeBoostEnd: 0,
@@ -405,6 +406,14 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
       if (s.distance >= TRACK_LENGTH) {
         s.finished = true;
         s.finishTick = tick;
+        // Record how far PAST the line this racer went before clamping. Ticks are
+        // discrete, so photo finishes land on the same tick constantly — and once
+        // distance is clamped to TRACK_LENGTH the tie-break below compares two
+        // identical numbers, returns 0, and a stable sort silently falls back to
+        // state order, which is grid order. That handed every same-tick finish to
+        // whoever started further forward. Overshoot is the real signal: the racer
+        // who travelled further past the line crossed it earlier within the tick.
+        s.finishOvershoot = s.distance - TRACK_LENGTH;
         s.distance = TRACK_LENGTH;
       }
     }
@@ -441,7 +450,10 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
   const finalOrder = [...state]
     .sort((a, b) => {
       if (a.finishTick !== b.finishTick) return a.finishTick - b.finishTick;
-      return b.distance - a.distance; // if same tick, further distance wins
+      // Same tick: whoever went further past the line crossed it first. Comparing
+      // `distance` here does not work — it is clamped to TRACK_LENGTH on finish,
+      // so every photo finish tied at 0 and fell through to grid order.
+      return b.finishOvershoot - a.finishOvershoot;
     })
     .map((s, i) => ({
       id: s.id,
