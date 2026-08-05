@@ -1,6 +1,6 @@
 import { useAccount } from 'wagmi'
 import WalletConnect from './WalletConnect'
-import { THEME } from '../../config/theme'
+import { THEME } from '../config/theme'
 
 interface WalletGuardProps {
   children: React.ReactNode

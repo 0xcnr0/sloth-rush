@@ -22,17 +22,17 @@ export const THEME = {
     tagline: 'Wind up. Race hard. Rewind later.',
     domain: 'winduprush.xyz',
     description: 'Wind-Up Toy Racing on Base',
+    /**
+     * The one generic brand symbol: loading, wallet screen, onboarding, share
+     * text. It is the winding key, not an animal — the key is the game's central
+     * symbol (ART_DIRECTION §7.2), so a fourth rebrand does not invalidate it.
+     */
+    mark: '\u{1F511}',
   },
 
   currency: {
     /** Short form used inline next to a number. */
     symbol: 'SPRING',
-    /**
-     * Tek jenerik marka işareti: yükleme, cüzdan ekranı, onboarding, paylaşım
-     * metni. Kurma anahtarı oyunun merkezî simgesi (ART_DIRECTION §7.2) — bir
-     * hayvan maskotu değil, çünkü tema değişince maskot da değişir.
-     */
-    mark: '\u{1F511}',
     /** Long form used in prose. */
     name: 'SPRING',
     plural: 'SPRING',

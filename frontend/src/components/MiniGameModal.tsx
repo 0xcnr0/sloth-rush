@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { THEME } from '../../config/theme'
+import { THEME } from '../config/theme'
 
 type GameType = 'dodge' | 'stretch' | 'lift' | 'charm' | 'tap'
 

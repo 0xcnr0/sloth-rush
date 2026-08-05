@@ -48,7 +48,7 @@ Kalan iki bilinen açık, ikisi de bilinçli:
 
 | Kapı | Durum |
 |---|---|
-| `tsc --noEmit -p frontend` | ✅ temiz |
+| `tsc -b frontend` | ✅ temiz |
 | `tsc --noEmit -p backend` | ✅ kendi kodumuzda 0 hata (15 hata `node_modules/ox` içinde, önceden var) |
 | Tema grep'i | ✅ temiz |
 | Bahis dili grep'i | ✅ temiz |

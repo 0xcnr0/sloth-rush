@@ -66,6 +66,41 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ raceId }) }
     ),
 
+  // --- Wind-Up phase (docs/WIND_UP_PHASE.md) -------------------------------
+  // Two calls, one per end of the hold. The server stamps its own arrival times
+  // and uses them as a ceiling; see releaseWind for why the client sends a
+  // duration rather than a timestamp.
+  startWind: (raceId: string, wallet: string) =>
+    request<{
+      raceId: string
+      winding?: boolean
+      alreadyWinding?: boolean
+      /** Approximate band only — the exact Safe Wind line is never sent (§9). */
+      safeWindBand?: { low: number; high: number }
+      fullWindMs?: number
+      windowRemainingMs?: number
+    }>('/race/wind/start', { method: 'POST', body: JSON.stringify({ raceId, wallet }) }),
+
+  /**
+   * `heldMs` is a duration measured with performance.now(), NOT a timestamp:
+   * monotonic, needs no clock sync, and unaffected by the user's system clock.
+   * The server caps it at the window it observed plus one round trip, so time
+   * that never elapsed cannot be claimed while an honest slow connection keeps
+   * the tension it earned (§9).
+   */
+  releaseWind: (raceId: string, wallet: string, heldMs: number) =>
+    request<{
+      raceId: string
+      tension: number
+      band: 'clean' | 'overwound' | 'snapped'
+      snapped: boolean
+      holdMs: number
+      locked: boolean
+    }>('/race/wind/release', {
+      method: 'POST',
+      body: JSON.stringify({ raceId, wallet, heldMs: Math.round(heldMs) }),
+    }),
+
   simulateRace: (raceId: string) =>
     request<{
       raceId: string

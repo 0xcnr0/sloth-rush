@@ -81,7 +81,12 @@ CSS değişkenleri `--color-brand-*`, `frontend/src/config/theme.ts` oluştur, *
 
 ```bash
 # 1. tip kontrolü, iki projede de sıfır hata
-npx tsc --noEmit -p frontend
+#
+# DİKKAT: frontend için `-p` DEĞİL `-b` kullan. frontend/tsconfig.json bir
+# "solution" config'i — `"files": []` ve sadece proje referansları içeriyor.
+# `tsc --noEmit -p frontend` hiçbir dosyayı kontrol etmeden exit 0 döner, yani
+# kapı boştur. Bu şekilde aylarca yeşil göründü ve bozuk import'lar geçti.
+npx tsc -b frontend
 npx tsc --noEmit -p backend
 
 # 2. testler

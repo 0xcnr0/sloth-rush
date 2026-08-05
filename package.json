@@ -16,7 +16,9 @@
     "qa": "tsx qa-agent.ts",
     "test:unit": "tsx --test backend/src/simulation/*.test.ts",
     "sweep:windup": "tsx tools/windup-tuning-sweep.ts",
-    "lint:vocab": "bash tools/check-vocabulary.sh"
+    "lint:vocab": "bash tools/check-vocabulary.sh",
+    "typecheck": "bash tools/typecheck.sh",
+    "verify": "npm run typecheck && npm run lint:vocab && npm run test:unit"
   },
   "devDependencies": {
     "@types/pg": "^8.18.0",

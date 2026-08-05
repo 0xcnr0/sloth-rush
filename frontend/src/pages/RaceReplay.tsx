@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
-import { CUR } from '../config/theme'
+import { CUR, THEME } from '../config/theme'
 
 const RACER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7']
 

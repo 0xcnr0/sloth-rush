@@ -524,8 +524,8 @@ router.post("/wind/start", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/race/wind/release — The player let go. The server computes the
-// tension from its own two timestamps and locks it in.
+// POST /api/race/wind/release — The player let go. The client reports how long
+// it held; the server bounds that by the window it observed and locks it in.
 router.post("/wind/release", async (req: Request, res: Response) => {
   try {
     const { raceId, wallet } = req.body;

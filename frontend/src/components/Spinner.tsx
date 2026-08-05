@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { THEME } from '../../config/theme'
+import { THEME } from '../config/theme'
 
 interface SpinnerProps {
   text?: string
