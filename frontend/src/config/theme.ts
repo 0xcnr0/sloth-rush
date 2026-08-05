@@ -52,6 +52,9 @@ export const THEME = {
     reward: 'Reward',
   },
 
+  /** Where the racer art lives. Swapping a theme swaps this folder. */
+  art: { basePath: '/art/' },
+
   /** Ownership tiers. Code says `free` / `pro`. */
   tiers: {
     free: 'Wind-Up',

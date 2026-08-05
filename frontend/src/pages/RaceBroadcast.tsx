@@ -5,6 +5,7 @@ import WalletConnect from '../components/WalletConnect'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
+import { loadRacerRig, drawRacer, cadence } from '../lib/racerRig'
 import { THEME, CUR } from '../config/theme'
 import { getCommentary } from '../data/commentary'
 import { getDialogue, getEmote, getTrashTalk, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
@@ -51,6 +52,12 @@ export default function RaceBroadcast() {
   const navigate = useNavigate()
   const { address, isConnected } = useAccount()
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // The rig loads its seven PNGs once and draws nothing until they are all in.
+  const rigRef = useRef(loadRacerRig())
+  // Walk phase and key angle accumulate per racer across frames; keeping them in
+  // refs means playback scrubbing does not reset the animation mid-race.
+  const phaseRef = useRef<Record<number, number>>({})
+  const keyRef = useRef<Record<number, number>>({})
   const animFrameRef = useRef<number>(0)
 
   const isTactic = location.state?.format === 'tactic'
@@ -194,6 +201,11 @@ export default function RaceBroadcast() {
     const trackLength = raceData.trackLength || 1000
     const gridPositions = raceData.gridPositions || []
     const names = new Map<number, string>()
+    // Bots render desaturated with a BOT tag and never carry an accent colour
+    // (ART_DIRECTION §10) — only finalOrder knows which is which.
+    const bots = new Set<number>(
+      (raceData.finalOrder ?? []).filter((f: any) => f.isBot).map((f: any) => f.id)
+    )
     gridPositions.forEach((gp: any) => names.set(gp.id, gp.name))
     raceData.finalOrder?.forEach((fo: any) => {
       if (!names.has(fo.id)) names.set(fo.id, fo.name)
@@ -204,9 +216,13 @@ export default function RaceBroadcast() {
     const BOTTOM_MARGIN = 50
     const SIDE_MARGIN = 20
     const TRACK_HEIGHT = height - TOP_MARGIN - BOTTOM_MARGIN
-    const LANE_WIDTH = (width - SIDE_MARGIN * 2) / numRacers
-    const RACER_SIZE = numRacers <= 4 ? 28 : 22
-    const TREE_TRUNK_WIDTH = numRacers <= 4 ? 20 : 12
+    // Lanes stack vertically; racers travel along X. The finish chequer eats a
+    // little width on the right, so the running surface stops short of it.
+    const TRACK_WIDTH = width - SIDE_MARGIN * 2 - 16
+    const LANE_HEIGHT = TRACK_HEIGHT / numRacers
+    /** Where the shelf sits inside a lane — the toy's feet land here. */
+    const GROUND_AT = 0.72
+    const RACER_HEIGHT = Math.min(LANE_HEIGHT * GROUND_AT - 14, numRacers <= 4 ? 56 : 40)
     const FRAME_DELAY = isDemo ? 80 : 280 // demo: ~18s, normal: ~65s
 
     function drawFrame(fi: number) {
@@ -216,156 +232,107 @@ export default function RaceBroadcast() {
 
       ctx.clearRect(0, 0, width, height)
 
-      // Draw tree trunks
+      // --- Diorama Speedway: four stacked horizontal lanes ------------------
+      // The track was a vertical tree trunk, left over from the first theme.
+      // CLAUDE.md locks the format as stacked horizontal lanes running left to
+      // right: it is the photo-finish framing, and on a phone it keeps four
+      // racers legible without shrinking them (ART_DIRECTION §8).
       for (let i = 0; i < numRacers; i++) {
-        const cx = SIDE_MARGIN + i * LANE_WIDTH + LANE_WIDTH / 2
+        const top = TOP_MARGIN + i * LANE_HEIGHT
+        const ground = top + LANE_HEIGHT * GROUND_AT
 
-        // Tree trunk (brown rectangle, full height)
-        ctx.fillStyle = '#5a3a1a'
-        ctx.fillRect(cx - TREE_TRUNK_WIDTH / 2, TOP_MARGIN, TREE_TRUNK_WIDTH, TRACK_HEIGHT)
+        // Sky, then the painted shelf the toys run along.
+        ctx.fillStyle = i % 2 === 0 ? '#101a2e' : '#0e1728'
+        ctx.fillRect(SIDE_MARGIN, top, TRACK_WIDTH, LANE_HEIGHT)
+        ctx.fillStyle = '#3a2f24'
+        ctx.fillRect(SIDE_MARGIN, ground, TRACK_WIDTH, LANE_HEIGHT - LANE_HEIGHT * GROUND_AT)
 
-        // Tree trunk border (darker)
-        ctx.strokeStyle = '#3a2510'
+        // Model-railway rail: dashed line along the running surface.
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)'
         ctx.lineWidth = 1
-        ctx.strokeRect(cx - TREE_TRUNK_WIDTH / 2, TOP_MARGIN, TREE_TRUNK_WIDTH, TRACK_HEIGHT)
-
-        // Subtle horizontal wood grain lines
-        ctx.strokeStyle = 'rgba(0,0,0,0.15)'
-        ctx.lineWidth = 1
-        for (let gy = TOP_MARGIN + 30; gy < TOP_MARGIN + TRACK_HEIGHT; gy += 40 + (i * 7) % 20) {
-          ctx.beginPath()
-          ctx.moveTo(cx - TREE_TRUNK_WIDTH / 2 + 2, gy)
-          ctx.lineTo(cx + TREE_TRUNK_WIDTH / 2 - 2, gy)
-          ctx.stroke()
-        }
-
-        // For 4-racer mode: add small leaf clusters in the gaps
-        if (numRacers <= 4 && i < numRacers - 1) {
-          const midX = cx + LANE_WIDTH / 2
-          const leafPositions = [0.2, 0.5, 0.8]
-          leafPositions.forEach(pct => {
-            const ly = TOP_MARGIN + TRACK_HEIGHT * pct + ((i * 37) % 30) - 15
-            ctx.fillStyle = 'rgba(34, 120, 34, 0.3)'
-            ctx.beginPath()
-            ctx.ellipse(midX, ly, 12, 8, 0, 0, Math.PI * 2)
-            ctx.fill()
-          })
-        }
-      }
-
-      // Start line (bottom)
-      ctx.strokeStyle = '#374151'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(SIDE_MARGIN, height - BOTTOM_MARGIN)
-      ctx.lineTo(width - SIDE_MARGIN, height - BOTTOM_MARGIN)
-      ctx.stroke()
-
-      // START label
-      ctx.fillStyle = '#374151'
-      ctx.font = 'bold 9px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('START', width / 2, height - BOTTOM_MARGIN + 12)
-
-      // Finish line - checkered pattern at top
-      const checkerSize = 8
-      const checkerY = TOP_MARGIN - checkerSize * 2
-      const checkerStartX = SIDE_MARGIN
-      const checkerEndX = width - SIDE_MARGIN
-      const numCheckers = Math.floor((checkerEndX - checkerStartX) / checkerSize)
-
-      for (let row = 0; row < 2; row++) {
-        for (let col = 0; col < numCheckers; col++) {
-          const isBlack = (row + col) % 2 === 0
-          ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5'
-          ctx.fillRect(
-            checkerStartX + col * checkerSize,
-            checkerY + row * checkerSize,
-            checkerSize,
-            checkerSize
-          )
-        }
-      }
-
-      // FINISH label above checkered
-      ctx.fillStyle = '#f59e0b'
-      ctx.font = 'bold 10px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('FINISH', width / 2, checkerY - 4)
-
-      // Progress markers
-      for (let m = 0.25; m < 1; m += 0.25) {
-        const my = height - BOTTOM_MARGIN - TRACK_HEIGHT * m
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
-        ctx.lineWidth = 1
-        ctx.setLineDash([3, 6])
+        ctx.setLineDash([7, 9])
         ctx.beginPath()
-        ctx.moveTo(SIDE_MARGIN, my)
-        ctx.lineTo(width - SIDE_MARGIN, my)
+        ctx.moveTo(SIDE_MARGIN, ground)
+        ctx.lineTo(SIDE_MARGIN + TRACK_WIDTH, ground)
         ctx.stroke()
         ctx.setLineDash([])
 
-        // Percentage label on left
-        ctx.fillStyle = '#4a5568'
-        ctx.font = '9px sans-serif'
-        ctx.textAlign = 'right'
-        ctx.fillText(Math.round(m * 100) + '%', SIDE_MARGIN - 4, my + 3)
+        // Lane accent stripe — which lane is whose, at a glance (§10).
+        ctx.fillStyle = RACER_COLORS[i] || '#fff'
+        ctx.fillRect(SIDE_MARGIN, top, 3, LANE_HEIGHT)
       }
+
+      // Start line (left) and chequered finish (right).
+      ctx.strokeStyle = '#374151'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(SIDE_MARGIN, TOP_MARGIN)
+      ctx.lineTo(SIDE_MARGIN, TOP_MARGIN + TRACK_HEIGHT)
+      ctx.stroke()
+
+      const checkerSize = 8
+      const checkerX = SIDE_MARGIN + TRACK_WIDTH
+      for (let col = 0; col < 2; col++) {
+        for (let row = 0; row < Math.floor(TRACK_HEIGHT / checkerSize); row++) {
+          ctx.fillStyle = (row + col) % 2 === 0 ? '#1a1a1a' : '#f5f5f5'
+          ctx.fillRect(checkerX + col * checkerSize, TOP_MARGIN + row * checkerSize, checkerSize, checkerSize)
+        }
+      }
+      ctx.fillStyle = '#f59e0b'
+      ctx.font = 'bold 10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('FINISH', checkerX + checkerSize, TOP_MARGIN - 6)
 
       // Sort for ranking
       const sorted = [...frame.positions].sort((a, b) => b.distance - a.distance)
 
       frame.positions.forEach((pos, i) => {
-        const cx = SIDE_MARGIN + i * LANE_WIDTH + LANE_WIDTH / 2
-        const cy = height - BOTTOM_MARGIN - (pos.distance / trackLength) * TRACK_HEIGHT
-        const color = RACER_COLORS[i] || '#fff'
+        const progress = Math.min(1, pos.distance / trackLength)
+        const cx = SIDE_MARGIN + progress * TRACK_WIDTH
+        const top = TOP_MARGIN + i * LANE_HEIGHT
+        const ground = top + LANE_HEIGHT * GROUND_AT
         const rank = sorted.findIndex(s => s.id === pos.id) + 1
+        const isBot = bots.has(pos.id)
 
-        // Glowing circle (racer on tree)
-        ctx.shadowColor = color
-        ctx.shadowBlur = 10
-        ctx.fillStyle = color
-        ctx.beginPath()
-        ctx.arc(cx, cy, RACER_SIZE / 2, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.shadowBlur = 0
+        // The seven-part rig, driven from race state. Cadence comes from ground
+        // speed so the planted foot tracks the shelf instead of moonwalking, and
+        // the key's spin rate is stamina — the gauge the player learned in the
+        // Wind-Up phase (ART_DIRECTION §7.2).
+        const phase = phaseRef.current[pos.id] ?? 0
+        const stamina = Math.max(0, Math.min(1, pos.speed / 12))
+        keyRef.current[pos.id] = (keyRef.current[pos.id] ?? 0) + stamina * 14
+        drawRacer(ctx, rigRef.current, {
+          x: cx,
+          y: ground + 2,
+          height: RACER_HEIGHT,
+          phase,
+          keyAngle: -keyRef.current[pos.id],
+          facing: 1,
+          dimmed: isBot,
+        })
+        phaseRef.current[pos.id] = phase + cadence(pos.speed * 2.2, RACER_HEIGHT) * 0.28
 
-        // White border for visibility
-        ctx.strokeStyle = 'rgba(255,255,255,0.5)'
-        ctx.lineWidth = 1.5
-        ctx.beginPath()
-        ctx.arc(cx, cy, RACER_SIZE / 2, 0, Math.PI * 2)
-        ctx.stroke()
-
-        // Racer emoji on circle
-        ctx.font = `${Math.round(RACER_SIZE * 0.7)}px sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(THEME.brand.mark, cx, cy)
-
-        // Rank badge (small circle above racer)
+        // Rank above the racer, name and speed pinned to the lane's left edge.
         ctx.fillStyle = rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : '#78716c'
         ctx.beginPath()
-        ctx.arc(cx, cy - RACER_SIZE / 2 - 8, 7, 0, Math.PI * 2)
+        ctx.arc(cx, ground - RACER_HEIGHT - 10, 8, 0, Math.PI * 2)
         ctx.fill()
         ctx.fillStyle = '#fff'
-        ctx.font = 'bold 9px sans-serif'
+        ctx.font = 'bold 10px ui-monospace, monospace'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(String(rank), cx, cy - RACER_SIZE / 2 - 8)
+        ctx.fillText(String(rank), cx, ground - RACER_HEIGHT - 10)
 
-        // Name label at the bottom of each tree
         const name = names.get(pos.id) || '#' + pos.id
-        ctx.fillStyle = '#e5e7eb'
-        ctx.font = numRacers <= 4 ? 'bold 11px sans-serif' : 'bold 9px sans-serif'
-        ctx.textAlign = 'center'
+        ctx.fillStyle = isBot ? '#6b7280' : '#e5e7eb'
+        ctx.font = 'bold 10px sans-serif'
+        ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
-        ctx.fillText(name, cx, height - BOTTOM_MARGIN + 4)
+        ctx.fillText(isBot ? `${name}  BOT` : name, SIDE_MARGIN + 8, top + 5)
 
-        // Speed below name
         ctx.fillStyle = '#6b7280'
-        ctx.font = '8px sans-serif'
-        ctx.fillText(pos.speed.toFixed(1) + ' u/t', cx, height - BOTTOM_MARGIN + 18)
+        ctx.font = '9px ui-monospace, monospace'
+        ctx.fillText(pos.speed.toFixed(1) + ' u/t', SIDE_MARGIN + 8, top + 18)
       })
 
       const live = frame.positions.map((pos) => ({
