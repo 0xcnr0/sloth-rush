@@ -39,11 +39,23 @@ async function main() {
   }));
   app.use(express.json());
 
-  // Rate limiting
+  // Rate limiting.
+  //
+  // The end-to-end QA suite makes far more requests per minute than a real
+  // player ever would, so outside production it may present a shared secret to
+  // opt out. The secret is only honoured when QA_BYPASS_TOKEN is explicitly
+  // set AND we are not in production, so a deployed server can never be
+  // talked out of rate limiting. The suite's own rate-limit tests deliberately
+  // omit the header, so they still exercise the real limiter.
+  const qaBypassToken = process.env.QA_BYPASS_TOKEN;
+  const skipRateLimit = (req: express.Request): boolean =>
+    !isProduction && !!qaBypassToken && req.headers["x-qa-bypass"] === qaBypassToken;
+
   const generalLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 100,
     message: { error: "Too many requests, please try again later" },
+    skip: skipRateLimit,
   });
   app.use('/api', generalLimiter);
 
@@ -51,6 +63,7 @@ async function main() {
     windowMs: 60 * 1000,
     max: 10,
     message: { error: "Too many requests, please try again later" },
+    skip: skipRateLimit,
   });
   app.use('/api/racer/mint', strictLimiter);
   app.use('/api/racer/daily-login', strictLimiter);

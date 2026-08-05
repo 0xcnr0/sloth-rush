@@ -1,8 +1,8 @@
 {
-  "name": "sloth-rush",
+  "name": "wind-up-rush",
   "version": "0.1.0",
   "private": true,
-  "description": "Sloth Rush — Sloth Racing Game",
+  "description": "Wind-Up Rush \u2014 wind-up toy racing on Base",
   "workspaces": [
     "frontend",
     "backend",
@@ -13,7 +13,8 @@
     "backend": "npm run dev --workspace=backend",
     "contracts": "npx hardhat compile --config contracts/hardhat.config.ts",
     "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
-    "qa": "tsx qa-agent.ts"
+    "qa": "tsx qa-agent.ts",
+    "lint:vocab": "bash tools/check-vocabulary.sh"
   },
   "devDependencies": {
     "@types/pg": "^8.18.0",

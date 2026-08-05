@@ -16,6 +16,13 @@ const WALLET_B = "0x2222000000000000000000000000000000000002";
 const OLD_WALLET_A = "0x1111111111111111111111111111111111111111";
 const OLD_WALLET_B = "0x2222222222222222222222222222222222222222";
 
+// Economy constants — these mirror backend/src/routes/racer.ts. Sprint 8
+// rebalanced training and added the mint welcome bonus; the suite went stale
+// against that change, so keep code, tests and CLAUDE.md moving together.
+const WELCOME_BONUS = 10;
+const DAILY_LOGIN_BONUS = 15;
+const TRAINING_COST = 5;
+
 const pool = new Pool({
   connectionString:
     process.env.DATABASE_URL || "postgresql://localhost:5432/wind_up_rush",
@@ -30,15 +37,26 @@ interface ApiResponse {
   data: any;
 }
 
+/**
+ * Shared secret that lets this suite opt out of rate limiting. The backend only
+ * honours it outside production and only when the same value is configured
+ * there, so it cannot weaken a deployed server. Suite D omits it on purpose.
+ */
+const QA_BYPASS_TOKEN = process.env.QA_BYPASS_TOKEN || "";
+
 async function api(
   method: "GET" | "POST",
   path: string,
-  body?: any
+  body?: any,
+  opts_?: { rateLimited?: boolean }
 ): Promise<ApiResponse> {
   const url = BASE_URL + path;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  // Suite D needs the real limiter, so it asks to stay rate limited.
+  if (QA_BYPASS_TOKEN && !opts_?.rateLimited) headers["x-qa-bypass"] = QA_BYPASS_TOKEN;
   const opts: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers,
   };
   if (body !== undefined) {
     opts.body = JSON.stringify(body);
@@ -403,10 +421,11 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
   );
 
   results.push(
-    await runTest("A05: Check balance (should be 0)", "Happy Path", async () => {
+    await runTest("A05: Check balance (10 welcome bonus)", "Happy Path", async () => {
       const res = await tapi("GET", `/api/racer/coin/${WALLET_A}`);
       assertStatus(res, 200);
-      assertEqual(res.data.balance, 0, "balance should be 0");
+      // Sprint 8 added a 10-coin welcome bonus on first mint.
+      assertEqual(res.data.balance, WELCOME_BONUS, "balance should be the welcome bonus");
     })
   );
 
@@ -422,10 +441,14 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
   );
 
   results.push(
-    await runTest("A07: Check balance after login (15)", "Happy Path", async () => {
+    await runTest("A07: Check balance after login (welcome + 15)", "Happy Path", async () => {
       const res = await tapi("GET", `/api/racer/coin/${WALLET_A}`);
       assertStatus(res, 200);
-      assertEqual(res.data.balance, 15, "balance should be 15");
+      assertEqual(
+        res.data.balance,
+        WELCOME_BONUS + DAILY_LOGIN_BONUS,
+        "balance should be welcome bonus plus daily login"
+      );
     })
   );
 
@@ -597,9 +620,9 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
       });
       assertStatus(res, 200);
       assertEqual(res.data.started, true, "started should be true");
-      // Verify 10 coins deducted
+      // Sprint 8 rebalanced training: 5 coins, 2 hours, +0.5 stat.
       const balAfter = (await tapi("GET", `/api/racer/coin/${WALLET_A}`)).data.balance;
-      assertEqual(balAfter, balBefore - 10, "should deduct 10 coins");
+      assertEqual(balAfter, balBefore - TRAINING_COST, "should deduct the training fee");
       ctx.balanceA = balAfter;
     })
   );
@@ -952,8 +975,13 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
   );
 
   results.push(
-    await runTest("B04: Train with 0 balance", "Edge Cases", async () => {
-      // Wallet B has free racer but 0 balance
+    await runTest("B04: Train with insufficient balance", "Edge Cases", async () => {
+      // Wallet B holds the mint welcome bonus, which now covers a training fee.
+      // Drain it first so this still tests what it is named after.
+      await pool.query(
+        "UPDATE coin_balances SET balance = 0 WHERE wallet = $1",
+        [WALLET_B]
+      );
       const res = await tapi("POST", "/api/racer/train", {
         wallet: WALLET_B,
         racerId: ctx.freeRacerIdB,
@@ -1207,7 +1235,7 @@ async function runRateLimits(): Promise<TestResult[]> {
       let got429 = false;
       // Use /api endpoint (general limiter applies to /api, not /health)
       for (let i = 0; i < 120; i++) {
-        const r = await api("GET", "/api/racer/coin/0x0000000000000000000000000000000000000000");
+        const r = await api("GET", "/api/racer/coin/0x0000000000000000000000000000000000000000", undefined, { rateLimited: true });
         if (r.status === 429) {
           got429 = true;
           break;
@@ -1225,7 +1253,7 @@ async function runRateLimits(): Promise<TestResult[]> {
       let got429 = false;
       for (let i = 0; i < 15; i++) {
         const wallet = `0xaaaa000000000000000000000000000000000${String(i).padStart(3, "0")}`;
-        const res = await api("POST", "/api/racer/mint", { wallet });
+        const res = await api("POST", "/api/racer/mint", { wallet }, { rateLimited: true });
         if (res.status === 429) {
           got429 = true;
           break;
@@ -1259,9 +1287,8 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
   } catch { /* ignore */ }
 
   results.push(
-    await runTest("E01: Mint gives 0 coins", "Economy", async () => {
-      // This was already verified in A05 (balance = 0 after mint)
-      // Double check from DB
+    await runTest("E01: Mint gives exactly the welcome bonus", "Economy", async () => {
+      // Cross-checks A05 straight from the database.
       const walletC = "0x3333000000000000000000000000000000000003";
       // Clean up any leftover from previous runs
       try {
@@ -1272,7 +1299,11 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
       const res = await tapi("POST", "/api/racer/mint", { wallet: walletC });
       assert(res.status === 200 || res.status === 201, `mint should succeed, got ${res.status}: ${JSON.stringify(res.data)}`);
       const balAfter = await getDbBalance(walletC);
-      assertEqual(balAfter, balBefore, "Mint should not change balance");
+      assertEqual(
+        balAfter,
+        balBefore + WELCOME_BONUS,
+        "Mint should credit exactly the welcome bonus"
+      );
       // Cleanup
       try {
         await pool.query("DELETE FROM racers WHERE wallet = $1", [walletC]);
@@ -1595,7 +1626,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
 async function waitForRateLimitReset(label: string): Promise<void> {
   const probe = "/api/racer/coin/0x0000000000000000000000000000000000000000";
   for (let elapsed = 0; elapsed < 70000; elapsed += 2000) {
-    const res = await api("GET", probe);
+    const res = await api("GET", probe, undefined, { rateLimited: true });
     if (res.status !== 429) return;
     if (elapsed === 0) console.log(`  Rate limit window exhausted; waiting before ${label}...`);
     await delay(2000);
