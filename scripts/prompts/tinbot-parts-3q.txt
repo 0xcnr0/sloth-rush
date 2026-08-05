@@ -1,0 +1,14 @@
+Redraw this parts sheet in the exact same art style, palette, line weight and
+three-quarter pose. Keep the flat printed colour, thick dark outline, rivets
+and colours identical.
+
+Fix the part list. There must be EXACTLY SEVEN separate pieces, none touching,
+none attached to each other:
+1 head, 1 torso, 2 arms that are identical to each other and both end in a
+rounded red hand, 2 legs that are identical to each other and both end in a
+red block foot, and 1 gold butterfly winding key floating entirely on its own.
+
+The key is NOT attached to the head or to anything else — it is a loose part.
+
+Stay flat: no perspective, no 3D shading, no gradient, no scratches. Plain
+cream background, no shadow.

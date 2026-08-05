@@ -25,16 +25,16 @@ OUT = Path("scripts/generated/parts/tinbot/rig-preview.png")
 # "genis, koseli, dik" ve tiknaz tarif ediyor, sıska degil.
 RIG = {
     "torso": {"file": "part-04.png", "scale": 1.0},
-    "head":  {"file": "part-01.png", "scale": 1.0,  "pivot": (124, 200), "anchor": (162, 30)},
+    "head":  {"file": "part-01.png", "scale": 1.0,  "pivot": (153, 200), "anchor": (140, -4)},
     "arm":   {"file": "part-03.png", "scale": 0.78, "pivot": (52, 30)},
     "leg":   {"file": "part-07.png", "scale": 0.62, "pivot": (100, 40)},
     # Anahtar TEK PARCA doner: dikeyde kisalir, yatay mil ekseni etrafinda.
     # Hub 341 secildi ki milin dibi govdenin arka sinirinin icine gomulsun.
-    "key":   {"file": "part-05.png", "scale": 1.45, "pivot": (38, 60), "anchor": (341, 172)},
+    "key":   {"file": "part-06.png", "scale": 1.50, "pivot": (90, 60), "anchor": (437, 101)},
 }
 # Uzuv araliklari govde merkezine (x=162) gore simetrik. Deger 2026-08-05'te
 # canli kaydiricilarla secildi: dar durus bilincli bir tercih, tesadufi degil.
-CENTER, ARM_SPREAD, LEG_SPREAD = 162, 20, 10
+CENTER, ARM_SPREAD, LEG_SPREAD = 163, 27, 10
 SHOULDER = {"near": (CENTER + ARM_SPREAD, 56), "far": (CENTER - ARM_SPREAD, 56)}
 HIP = {"near": (CENTER + LEG_SPREAD, 316), "far": (CENTER - LEG_SPREAD, 316)}
 
