@@ -408,15 +408,29 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 
 ## Şu An Neredeyiz
 
-Tema kilitli, dokümantasyon güncel. **Kod henüz pivota uğramadı** — Faz 1 (tema decoupling + bahis dili temizliği) planlandı ama uygulanmadı. Kodda hâlâ eski tema yüzeyi duruyor: **64 dosyada 2387 eşleşme.**
+Tema kilitli, **Faz 1 tamamlandı ve `main`'e birleştirildi** (2026-08-05). Kod artık tema-nötr: tema ve bahis dili grep'leri sıfır, iki `tsc` temiz, QA 89/89 (birleştirme öncesi 72/92 idi). Kalıcı kontrol: `npm run lint:vocab`.
+
+### Kontrat redeploy'u — bilinçli olarak bekletiliyor
+
+Kontratlar yeniden adlandırıldı (`FreeRacer` / `Racer` / `RaceCore`) ve derlendi ama **deploy edilmedi.** Bu bir eksik değil, karar:
+
+- **Kırık bir şey yok.** ABI fonksiyon imzalarından üretilir, kontrat adından değil — yeniden adlandırma hiçbir selector'ı değiştirmiyor. Frontend zincirdeki kontratlarla konuşmaya devam ediyor, `contracts.ts` eski adresleri bilerek koruyor.
+- **Rarity kontrata dokunmuyor.** Zincirdeki enum `Common…Legendary` — tema-nötr. Fair→Mint sadece `theme.ts`'teki etiket.
+- **Bayat olan tek şey ERC-721 name/symbol.** Constructor'da sabitlenir, sonradan değişmez; zincirdeki NFT hâlâ eski markayı taşıyor. Cüzdanda ve OpenSea'de böyle görünür.
+
+**Redeploy tetikleyicisi** — şu ikisinden hangisi önce gelirse:
+1. Kontrat **mantığı** gerçekten değişince (bekleyen onchain pivot)
+2. Demo öncesi, marka cüzdanda doğru görünsün diye
+
+Erken deploy etmek çift iş demek, ve her redeploy testnet'teki mevcut durumu (mint edilmiş NFT'ler, kayıtlı yarışlar) sahipsiz bırakıyor. Bir kez, doğru zamanda yapılacak.
 
 ### Sıradaki iş kalemleri
 
-1. **Faz 1 — tema decoupling** (3-4 gün): tahmin sistemini kaldır, DB migration (`sloths`→`racers`, `bid_amount` kaldır, `payout`→`reward`), route/tip/CSS yeniden isimlendirme, `theme.ts` oluştur, kontratları yeniden isimlendir ve redeploy, doğrulama grep'i, 92 testi uyarla
-2. **Wind-Up fazını uygula** — mekanik tasarlandı ([docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md)), sayılar denenmedi. **Faz 1'den sonra gelmeli:** `wind_tension` kolonu Faz 1 migration'ının içinde doğuyor, paralel yürütülürse aynı migration'a iki taraftan dokunulur.
+1. ~~**Faz 1 — tema decoupling**~~ ✅ bitti (`d18ab4c`)
+2. **Wind-Up fazını uygula** — mekanik tasarlandı ([docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md)), sayılar denenmedi. Sunucu tarafı sıradaki iş; istemci UI'ı görsel karar gerektiriyor.
 3. **Ekonomi yeniden dengeleme** (Sprint 9) — yukarıdaki açık kalem
-4. **Sanat: golden sample** — Tinbot T1 Excellent. Stil kilitlendi ([docs/art/tinbot-t1-excellent-golden-sample.png](docs/art/tinbot-t1-excellent-golden-sample.png)): kalın kontur, düz baskılı renk, litho panel, perçin, sol-üst highlight, palet, güleç yüz, yan kanatta kelebek anahtar. T-pose varyantı: [tinbot-t1-excellent-tpose-ref.png](docs/art/tinbot-t1-excellent-tpose-ref.png). **Sıradaki adım kesim:** 8 Rive katmanına ayrılıp rig edilmeli ve oyunda çalıştığı kanıtlanmalı — bu olmadan diğer 15 forma geçilmez. **Atlanamaz.**
-5. **Faz 0 artıkları** — `winduprush.xyz` al, `.mcp.json` yolları kırık (`/Users/canerpinarbasi/sloth-rush` gösteriyor, proje `_arsiv/sloth-rush` altında), projeyi `_arsiv`'den ana dizine taşı
+4. **Sanat: golden sample** — Tinbot T1 Excellent. Stil kilitlendi ([docs/art/tinbot-t1-excellent-golden-sample.png](docs/art/tinbot-t1-excellent-golden-sample.png)). Parça üretimi ve rig kod tarafında çalışıyor (`scripts/extract-parts.py`, `scripts/rig-preview.py`). **Kalan:** parçaların sağa bakan bir sayfadan yeniden üretilmesi, sonra diğer üç arketip.
+5. **Faz 0 artıkları** — `winduprush.xyz` al, `.mcp.json` yolları kırık, projeyi `_arsiv`'den ana dizine taşı
 6. **Pitch dokümanları** — LIGHT_PAPER ve DEVFOLIO_ANSWERS "Built-in Prediction Market"i ana farklılaştırıcı olarak sunuyor, o sistem kaldırıldı. Yerine "Base App native, mobil-öncelikli mini app" konacak.
 
 ### İlgili dokümanlar
