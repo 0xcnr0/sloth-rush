@@ -31,11 +31,20 @@ pahalıdır.
 
 Sıralama zorunlu — 2 numara 1 numaranın açtığı DB kolonuna bağlı.
 
-### 1. Faz 1 — doğrulamayı tamamla
-**Spec:** [HANDOFF_PHASE1.md](HANDOFF_PHASE1.md)
+### 1. Faz 1 — ✅ BİTTİ, `main`'e birleştirildi (2026-08-05)
 
-**Kod migration'ı büyük ölçüde bitmiş durumda** (commit `7e0af73`, paralel bir
-oturum yaptı). 2026-08-05'te ölçüldü:
+`phase1-theme-decoupling` → `main`, commit `d18ab4c`. Dört kapı da `main` üzerinde
+bağımsız olarak doğrulandı: tema grep 0, bahis grep 0, iki `tsc` 0 hata, QA 89/89
+(sıfırdan kurulan veritabanında). Kıyas: birleştirme öncesi `main` aynı prosedürde
+72/92 idi.
+
+Kalan iki bilinen açık, ikisi de bilinçli:
+- **Kontrat redeploy'u** — yeniden isimlendirildi ve derlendi, deploy edilmedi. Anahtar/gas gerektiriyor, kullanıcı başındayken yapılacak.
+- **Hardhat `hre.viem` hatası** — Hardhat 3 API değişikliği, Faz 1 öncesinden var, kapsam dışı.
+
+<details><summary>Faz 1 başlarkenki ölçüm (arşiv)</summary>
+
+2026-08-05'te, iş devralınırken:
 
 | Kapı | Durum |
 |---|---|
@@ -47,14 +56,9 @@ oturum yaptı). 2026-08-05'te ölçüldü:
 | Kontrat deploy | ⛔ bilerek ertelendi — kullanıcı başındayken |
 | DB migration'ı gerçekten koştu mu | ❓ doğrulanmadı |
 
-Yani senin işin sıfırdan migration değil, **kalan kapıları kapatmak**:
+</details>
 
-1. `npm run qa` çalıştır, kırılanları onar (7 test bloğu var, isimler değişti)
-2. `backend/src/migrations/legacyNames.ts` gerçekten koşuyor mu doğrula — **önce yedek al**
-3. Dört doğrulama komutunu yeniden koştur ve çıktılarını rapora koy
-
-Bunlar bitince 2 numaraya geç. Beklenenden erken biterse bu iyi haber, gecenin
-ana işi artık Wind-Up fazı.
+**Sıradaki iş artık 2 numara.**
 
 ### 2. Wind-Up fazı — sunucu tarafı
 **Spec:** [WIND_UP_PHASE.md](WIND_UP_PHASE.md)
