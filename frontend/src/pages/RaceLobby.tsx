@@ -6,10 +6,11 @@ import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { THEME, CUR, rarityLabel, archetypeLabel } from '../config/theme'
+import WindUpPhase from '../components/PreRace/WindUpPhase'
 import Spinner from '../components/Spinner'
 import { FEATURES } from '../config/features'
 
-type Phase = 'select' | 'lobby' | 'reveal' | 'starting' | 'gp_break'
+type Phase = 'select' | 'lobby' | 'winding' | 'reveal' | 'starting' | 'gp_break'
 
 const FORMATS = [
   { id: 'exhibition', name: 'Exhibition', fee: 0, maxTune: 0, desc: 'Free practice race' },
@@ -126,7 +127,21 @@ export default function RaceLobby() {
     if (!raceId) return
     setLoading(true)
     try {
+      // Opens the tuning window server-side. The race does NOT simulate yet —
+      // the Wind-Up phase owns the gap, and calls runRace() once the player has
+      // locked their tension in (docs/WIND_UP_PHASE.md §4).
       await api.startTuning(raceId)
+      setPhase('winding')
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+    setLoading(false)
+  }
+
+  async function runRace() {
+    if (!raceId) return
+    setLoading(true)
+    try {
       setPhase('starting')
       const result = await api.simulateRace(raceId)
       setGridPositions(result.gridPositions)
@@ -453,6 +468,11 @@ export default function RaceLobby() {
               {loading ? 'Filling with Bots...' : 'Start Race!'}
             </button>
           </motion.div>
+        )}
+
+        {/* Wind-Up phase — skill decides the grid, not spending. */}
+        {phase === 'winding' && address && raceId && (
+          <WindUpPhase raceId={raceId} wallet={address} onLocked={() => void runRace()} />
         )}
 
         {/* Grid Reveal */}

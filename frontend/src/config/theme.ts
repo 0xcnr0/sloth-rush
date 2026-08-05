@@ -38,6 +38,20 @@ export const THEME = {
     plural: 'SPRING',
   },
 
+  /**
+   * Race-flow labels. The code calls the pre-race window `tuning` (the DB status
+   * and the route both say so); "Wind-Up" is what the player reads, so it lives
+   * here and not in the component.
+   */
+  race: {
+    windUp: 'Wind-Up',
+    gridReveal: 'Grid Reveal',
+    grid: 'Starting Grid',
+    prizePool: 'Prize Pool',
+    entryFee: 'Entry Fee',
+    reward: 'Reward',
+  },
+
   /** Ownership tiers. Code says `free` / `pro`. */
   tiers: {
     free: 'Wind-Up',
