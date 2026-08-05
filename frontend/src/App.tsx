@@ -11,6 +11,7 @@ import Spectate from './pages/Spectate'
 import RaceReplay from './pages/RaceReplay'
 import Profile from './pages/Profile'
 import Guide from './pages/Guide'
+import DevPreview from './pages/DevPreview'
 import Invite from './pages/Invite'
 import Feedback from './pages/Feedback'
 import CommunityBoard from './pages/CommunityBoard'
@@ -33,6 +34,8 @@ export default function App() {
         <Route path="/replay/:id" element={FEATURES.replay ? <RaceReplay /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={FEATURES.profile ? <Profile /> : <Navigate to="/" replace />} />
         <Route path="/guide" element={<Guide />} />
+        {/* Component gallery, dev builds only — see pages/DevPreview.tsx. */}
+        {import.meta.env.DEV && <Route path="/dev" element={<DevPreview />} />}
         <Route path="/feedback" element={FEATURES.feedback ? <Feedback /> : <Navigate to="/" replace />} />
         <Route path="/community" element={FEATURES.community ? <CommunityBoard /> : <Navigate to="/" replace />} />
         <Route path="/invite/:code" element={<Invite />} />
