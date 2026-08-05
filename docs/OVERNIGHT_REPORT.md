@@ -12,7 +12,7 @@
 |---|---|
 | `bb64a5a` | Wind-Up ayar sabitleri, saf mantık, motor etkileri + 47 birim testi |
 | `65773b6` | Faz penceresi, sunucu-ölçümlü gerilim, grid reveal, DB migration'ı |
-| `<son>` | Pitch dokümanları (madde 3) + `test:unit` script'i + bu rapor |
+| `5812cfe` | Pitch dokümanları (madde 3) + `test:unit` script'i + bu rapor |
 
 ### Madde 2 — Wind-Up fazı, sunucu tarafı: **bitti**
 
