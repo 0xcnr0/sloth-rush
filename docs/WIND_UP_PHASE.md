@@ -117,7 +117,26 @@ Bunun yerine dördü de aynı hizada başlar, pole'daki yarışçı ilk saniyele
 
 Bu bir istemci-input mekaniği ve **script'le mükemmel oynanabilir.** Bir bot her seferinde tam Safe Wind'de bırakabilir.
 
-Sunucu tarafı doğrulama zorunlu: istemci sadece ham bırakma zaman damgasını gönderir, gerilimi **sunucu** hesaplar. Bu, uydurma gerilim değeri göndermeyi engeller — ama mükemmel zamanlamayı engellemez.
+### İstemci sözleşmesi (S1 — karar verildi 2026-08-05)
+
+Bu dokümanın ilk hâli "istemci ham zaman damgasını gönderir, gerilimi sunucu hesaplar" diyordu. **Bu yanlıştı:** zaman damgasını uyduran, gerilimi de uydurmuş olur. Sunucunun hesaplaması tek başına koruma değil.
+
+Alternatif — sunucunun hem basışı hem bırakışı kendi damgalaması — forjeyi kapatıyor ama yerine daha kötü bir şey koyuyor: **gecikme sistematik dezavantaj olur.** Yüksek pingli oyuncu, tamamen beceri bazlı ilan edilmiş bir mekanikte kalıcı olarak kaybeder. Parayla pole almayı kaldırıp yerine bant genişliğiyle pole almayı koymuş oluruz.
+
+**Karar: istemci süreyi gönderir, sunucu sınırlar.**
+
+```
+POST /api/race/:id/wind/press     → sunucu varış anını kaydeder (pencere başı)
+POST /api/race/:id/wind/release   → { heldMs }
+                                    sunucu varış anını kaydeder (pencere sonu)
+```
+
+- İstemci `performance.now()` farkını gönderir — **süre, zaman damgası değil.** Monotonik, saat senkronu gerekmez, kullanıcının sistem saatinden etkilenmez.
+- Sunucu kendi gözlediği pencereyi biliyor. Kabul koşulu: `heldMs <= gözlenenPencere + tolerans`.
+- **Olmayan süreyi uydurmak imkânsız** — fiziksel olarak geçmemiş zamanı talep edemezsin.
+- Gecikme cezası yok: dürüst oyuncu, pingi ne olursa olsun gerçek süresini alır.
+
+**Artık risk, dürüstçe:** istemci gerçekte tuttuğundan **kısa** bir süre bildirebilir, yani istediği değeri tam tutturabilir. Bunu engelleyen şey zamanlama değil, **eşiğin gizli olması** — Safe Wind her yarışta VRF seed'inden kaydırılıyor ve oyuncuya yaklaşık gösteriliyor. Bu savunma her iki tasarımda da aynı; süre sınırlaması onun yerine geçmiyor, üstüne biniyor.
 
 Azaltıcılar:
 
@@ -151,4 +170,12 @@ CLAUDE.md'deki ekonomi tablosu bu yüzden geçici işaretli. Sprint 9'un "Number
 1. **Basılı tut mu, tekrarlı dokunuş mu?** Basılı tut daha sakin ve erişilebilir; tekrarlı dokunuş daha fiziksel ve "kurma" hissine daha yakın ama mobilde yorucu ve erişilebilirlik açısından kötü. Öneri: basılı tut.
 2. **Oyuncu kendi Safe Wind'ini tam olarak görmeli mi?** Kesin değer gösterilirse mekanik bir refleks testine iner. Yaklaşık göstermek riski korur ama sinir bozucu olabilir. Öneri: yaklaşık bant göster, kesin çizgiyi gizle.
 3. **Az kurmanın bir ödülü olmalı mı?** Şu an sadece "ceza yok". Uzun yarışlarda gerçek bir avantaja dönüşüyor mu, playtest gösterecek.
-4. **Exhibition (ücretsiz) yarışta faz olmalı mı?** Öğrenme için evet gibi duruyor, ama akışı uzatıyor.
+4. ~~**Exhibition (ücretsiz) yarışta faz olmalı mı?**~~ **Karar: evet, her yarışta.** Faz aynı zamanda anahtar/stamina göstergesinin öğreticisi (§5); Exhibition yeni oyuncunun öğrendiği yer. Oradan çıkarmak, oyuncuya oyunu merkezî yarış öncesi mekaniği olmadan öğretmek olurdu.
+
+## 13. Ölçülmemiş: risk almak gerçekten kazandırıyor mu (S4)
+
+§6 şunu kritik ayar noktası olarak işaretledi: *"pole avantajı, aşırı kurmanın stamina maliyetini biraz aşmalı ki risk almak mantıklı olsun — ama herkesin kırmızıya kadar kurmasını sağlayacak kadar değil."*
+
+Uygulamadaki sayılar **tahmin**, ölçüm değil. Doğru ayarda üç strateji de yaşayabilir olmalı: temiz kur, sınırda kur, kırmızıya kur.
+
+Bu tartışmayla değil **simülasyonla** çözülür: pole avantajı × aşırı kurma cezası ızgarası üzerinde N yarış koştur, her hücrede üç stratejinin kazanma oranını ölç. Hiçbiri baskın değilse ayar doğrudur. Bir strateji %50'yi geçiyorsa o hücre elenir.
