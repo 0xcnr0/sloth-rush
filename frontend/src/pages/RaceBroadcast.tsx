@@ -221,8 +221,8 @@ export default function RaceBroadcast() {
     const TRACK_WIDTH = width - SIDE_MARGIN * 2 - 16
     const LANE_HEIGHT = TRACK_HEIGHT / numRacers
     /** Where the shelf sits inside a lane — the toy's feet land here. */
-    const GROUND_AT = 0.72
-    const RACER_HEIGHT = Math.min(LANE_HEIGHT * GROUND_AT - 14, numRacers <= 4 ? 56 : 40)
+    const GROUND_AT = 0.84
+    const RACER_HEIGHT = Math.min(LANE_HEIGHT * GROUND_AT - 12, numRacers <= 4 ? 60 : 42)
     const FRAME_DELAY = isDemo ? 80 : 280 // demo: ~18s, normal: ~65s
 
     function drawFrame(fi: number) {
