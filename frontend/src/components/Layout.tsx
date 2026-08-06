@@ -135,7 +135,10 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-brand-border py-4 px-4">
+      {/* The room illustration is painted on the body and bleeds to the bottom of
+          the viewport, so a transparent footer sat directly on top of the shelf
+          and became unreadable. It gets its own opaque band. */}
+      <footer className="border-t-[3px] border-brand-ink bg-brand-surface py-4 px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-brand-dust text-xs">
           <span>{THEME.brand.name} — {THEME.brand.description}</span>
           <div className="flex items-center gap-4">

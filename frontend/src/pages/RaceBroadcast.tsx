@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { rigFor, drawRacer, cadence } from '../lib/racerRig'
 import { THEME } from '../config/theme'
+import RacerPortrait from '../components/RacerPortrait'
 import { getCommentary } from '../data/commentary'
 import { getDialogue, getEmote, getTrashTalk, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
 import {
@@ -39,14 +40,6 @@ interface FinalOrder {
 // The four locked archetype accents (ART_DIRECTION §3), reused as lane colours
 // so the stripes belong to the game rather than to Tailwind's default swatches.
 const RACER_COLORS = ['#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D', '#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D']
-// Tints of the same four accents, faint enough that the standings panel stays
-// neutral — §5 allows at most two accents to dominate a frame.
-const RACER_BG = [
-  'rgba(230,57,70,0.12)', 'rgba(42,111,219,0.12)',
-  'rgba(255,201,60,0.16)', 'rgba(76,175,109,0.12)',
-  'rgba(230,57,70,0.12)', 'rgba(42,111,219,0.12)',
-  'rgba(255,201,60,0.16)', 'rgba(76,175,109,0.12)',
-]
 
 /**
  * Canvas colours. The stylesheet's CSS variables cannot be read cheaply per
@@ -70,6 +63,8 @@ export default function RaceBroadcast() {
   const location = useLocation()
   const navigate = useNavigate()
   const { address, isConnected } = useAccount()
+  const previewMode =
+    import.meta.env.DEV && new URLSearchParams(window.location.search).has('preview')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Each archetype's art loads once and is shared; the rig draws nothing until
   // all seven of its PNGs are in.
@@ -194,9 +189,21 @@ export default function RaceBroadcast() {
     // little width on the right, so the running surface stops short of it.
     const TRACK_WIDTH = width - SIDE_MARGIN * 2 - 16
     const LANE_HEIGHT = TRACK_HEIGHT / numRacers
-    /** Where the shelf sits inside a lane — the toy's feet land here. */
-    const GROUND_AT = 0.84
-    const RACER_HEIGHT = Math.min(LANE_HEIGHT * GROUND_AT - 12, numRacers <= 4 ? 60 : 42)
+    /**
+     * Lane composition. The toy is sized FROM the lane, not clamped inside it.
+     *
+     * This read `Math.min(LANE_HEIGHT * 0.84 - 12, 60)`: a hard 60px ceiling on
+     * the racer while the lane height came from 65vh divided by four. On a tall
+     * screen the lane grew to ~137px and the toy stayed at 60, so 40% of every
+     * lane was empty wall — four times over, that is most of the track. The
+     * bigger the screen, the smaller the toys looked. That is the disproportion.
+     *
+     * Now the lane is built out of the toy: a shelf to stand on, the toy, and a
+     * little headroom for the rank badge.
+     */
+    const SHELF_SHARE = 0.17
+    const GROUND_AT = 1 - SHELF_SHARE
+    const RACER_HEIGHT = LANE_HEIGHT * GROUND_AT * 0.82
     const FRAME_DELAY = isDemo ? 80 : 280 // demo: ~18s, normal: ~65s
 
     function drawFrame(fi: number) {
@@ -645,7 +652,7 @@ export default function RaceBroadcast() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, y: -30 }}
-            className="bg-brand-surface border border-brand-border rounded-xl p-6 mb-4"
+            className="toy-panel p-6 mb-4"
           >
             <motion.h2
               initial={{ scale: 0.5, opacity: 0 }}
@@ -663,14 +670,24 @@ export default function RaceBroadcast() {
                   transition={{ delay: i * 1.0 }}
                   className="text-center"
                 >
-                  <div className="text-5xl mb-2">{THEME.brand.mark}</div>
+                  {/* The racers themselves. This was four copies of the brand
+                      key emoji — the one screen whose entire job is introducing
+                      four different toys was showing the same icon four times. */}
+                  <div className="mb-1">
+                    <RacerPortrait
+                      archetype={gp.race ?? gp.racerRace}
+                      rarity={gp.rarity}
+                      height={92}
+                      still
+                    />
+                  </div>
                   <p className="text-brand-ink font-bold text-sm mb-1">{gp.name}</p>
                   <p className="text-brand-dust text-xs mb-2">P{gp.position}</p>
                   <motion.div
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 1.0 + 0.5 }}
-                    className="bg-white text-brand-surface text-xs font-bold px-3 py-1.5 rounded-xl inline-block max-w-[160px]"
+                    className="toy-chip bg-brand-surface text-brand-ink text-xs px-3 py-1.5 inline-block max-w-[160px]"
                   >
                     {(() => {
                       const talk = getTrashTalk(gp.racerRace)
@@ -706,8 +723,14 @@ export default function RaceBroadcast() {
           ref={canvasRef}
           className="w-full"
           style={{
-            height: 'clamp(400px, 65vh, 650px)',
-            filter: raceData?.weather === 'foggy' ? 'blur(0.5px) brightness(0.85)' : undefined,
+            // Four lanes of a legible toy plus margins. Taking a share of the
+            // viewport instead meant the track kept growing while the toys did
+            // not, which is what made the lanes read as empty bands.
+            height: 'clamp(360px, 58vh, 520px)',
+            // Fog used to darken (brightness 0.85), which read as atmosphere on a
+            // black background and as "the whole scene is faded" on a lit one.
+            // Lift and desaturate instead.
+            filter: raceData?.weather === 'foggy' ? 'blur(0.4px) saturate(0.8) brightness(1.04)' : undefined,
           }}
         />
 
@@ -788,7 +811,7 @@ export default function RaceBroadcast() {
               initial={{ y: 30, opacity: 0, scale: 0.9 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: -20, opacity: 0 }}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 px-5 py-2.5 bg-black/80 border border-brand-gold/50 rounded-xl max-w-[90%]"
+              className="toy-panel absolute bottom-4 left-1/2 -translate-x-1/2 px-5 py-2.5 max-w-[90%]"
             >
               <p className="text-brand-gold font-bold text-sm sm:text-base text-center">{commentary}</p>
             </motion.div>
@@ -846,11 +869,11 @@ export default function RaceBroadcast() {
         {livePositions.map((pos, i) => (
           <div
             key={pos.id}
-            className="flex items-center gap-3 rounded-xl p-3 border"
-            style={{
-              backgroundColor: RACER_BG[i] || 'transparent',
-              borderColor: RACER_COLORS[i] || '#1f2937',
-            }}
+            // Opaque. These tinted panels were translucent over a drawn room,
+            // so the standings sat on top of a window and a pile of blocks and
+            // could not be read at all.
+            className="toy-panel flex items-center gap-3 p-3"
+            style={{ borderColor: RACER_COLORS[i] || undefined }}
           >
             <span className="text-2xl font-extrabold" style={{ color: RACER_COLORS[i] }}>
               {i + 1}
@@ -865,8 +888,12 @@ export default function RaceBroadcast() {
         ))}
       </div>
 
-      {/* Wallet Disconnect Overlay */}
-      {!isConnected && (
+      {/* Wallet Disconnect Overlay.
+          Suppressed in dev with ?preview=1 so the race screen can actually be
+          looked at and measured. Three rounds of styling went into this screen
+          while every screenshot of it was covered by this dim overlay — the
+          layout was being changed blind. */}
+      {!isConnected && !previewMode && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
           <div className="bg-brand-surface border border-brand-border rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
             <div className="text-5xl mb-4">{'\u26A0\uFE0F'}</div>
