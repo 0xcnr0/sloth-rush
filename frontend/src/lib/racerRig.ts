@@ -60,15 +60,15 @@ const GEOMETRY: Record<string, Geometry> = {
     torso: [162, 172],
     scale: { head: 0.95, arm: 0.42, leg: 0.46, key: 0.75 },
     neck: [0.46, 0.0], shoulderY: 0.2, hipY: 0.95,
-    armSpread: 0.2, legSpread: 0.08,
+    armSpread: 0.2, legSpread: 0.14,
     key: [1.3, 0.35], keyScale: 0.75, height: 330,
   },
   // Rocket: tall narrow capsule, wide cone head, blade limbs.
   jetster: {
     torso: [138, 284],
-    scale: { head: 0.8, arm: 0.4, leg: 0.4, key: 0.7 },
+    scale: { head: 0.8, arm: 0.5, leg: 0.4, key: 0.7 },
     neck: [0.55, 0.06], shoulderY: 0.2, hipY: 0.95,
-    armSpread: 0.34, legSpread: 0.16,
+    armSpread: 0.46, legSpread: 0.18,
     key: [1.2, 0.4], keyScale: 0.7, height: 420,
   },
   // Duck: round head and fat egg body, short webbed legs.

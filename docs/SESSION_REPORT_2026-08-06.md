@@ -73,4 +73,4 @@ Buna karşılık dört kalıcı kontrol eklendi: `tools/typecheck.sh` (sahiplik 
 
 ## Harcanan
 
-Meshy: 1250 → ~1092 kredi (bu oturumun tamamı, dört arketip dahil).
+Meshy: 1250 → **1110** kredi (bu oturumun tamamı, dört arketip dahil). 140 kredi.
