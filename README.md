@@ -111,7 +111,7 @@ See [`simulation/README.md`](simulation/README.md) for full documentation on the
 
 ## QA
 
-81 end-to-end tests covering happy path, edge cases, security, rate limits,
+57 end-to-end tests covering happy path, edge cases, security, rate limits,
 economy, and race logic. Needs a running backend.
 
 ```bash
