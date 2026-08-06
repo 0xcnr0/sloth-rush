@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * Racer Rush — Standalone Race Verifier
+ * Wind-Up Rush — Standalone Race Verifier
  *
  * Independently verify any race result using the same deterministic engine.
  * Given a seed and participant stats, this produces the exact same outcome
  * as the game server — proving the race was fair.
  *
  * Usage:
- *   npx tsx verify.ts --seed <seed> --participants '<JSON array>'
+ *   npx tsx verify.ts --seed <seed> --length <units> \
+ *     --participants '<JSON array>' [--items '<JSON array>']
  *
  * Example:
  *   npx tsx verify.ts \
@@ -30,6 +31,8 @@
 
 import * as crypto from "crypto";
 import { simulateRace, getWeatherFromSeed, RacerStats, TacticAction } from "./engine";
+import { SPRINT_LENGTH } from "./formats";
+import type { ScheduledItem } from "./items";
 
 interface ParticipantInput {
   name: string;
@@ -152,8 +155,22 @@ function main(): void {
   const chaosMode = args.chaos === "true";
   const seed = args.seed;
 
+  // Distance and the deployed item list are part of the input now. A race
+  // verified without them is a different race — the length decides which stat
+  // wins, and the items are live input that still has to reproduce exactly.
+  const trackLength = args.length ? parseInt(args.length, 10) : SPRINT_LENGTH;
+  let items: ScheduledItem[] = [];
+  if (args.items) {
+    try {
+      items = JSON.parse(args.items);
+    } catch {
+      console.error("--items must be a JSON array of {racerId, code, tick}");
+      process.exit(1);
+    }
+  }
+
   // Run simulation
-  const result = simulateRace(participants, seed, actions, chaosMode);
+  const result = simulateRace(participants, seed, actions, chaosMode, trackLength, items);
 
   // Generate result hash (same as server: SHA-256 of JSON.stringify(finalOrder))
   const resultHash = crypto

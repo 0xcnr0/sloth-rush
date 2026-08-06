@@ -6,13 +6,11 @@ import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { THEME, rarityLabel, archetypeLabel, formatLabel } from '../config/theme'
-import WindUpPhase from '../components/PreRace/WindUpPhase'
-import GridReveal from '../components/PreRace/GridReveal'
 import Spinner from '../components/Spinner'
 import RacerPortrait from '../components/RacerPortrait'
 import { FEATURES } from '../config/features'
 
-type Phase = 'select' | 'winding' | 'reveal' | 'starting'
+type Phase = 'select' | 'starting'
 
 // Sprint and Endurance cost the same and differ only in distance — the choice
 // is which racer you own, not how much you are willing to spend. Entry fees and
@@ -45,15 +43,17 @@ export default function RaceLobby() {
   const [liveRaces, setLiveRaces] = useState<any[]>([])
   const [liveLoading, setLiveLoading] = useState(false)
 
-  const [phase, setPhase] = useState<Phase>('select')
+  const [phase] = useState<Phase>('select')
   const [racers, setRacers] = useState<any[]>([])
   const [selectedRacer, setSelectedRacer] = useState<any>(null)
+  // The pre-race decision: two items, chosen from two types. Replaces the
+  // Wind-Up phase, and sits on the same screen as the racer and the distance so
+  // choosing a race is one screen rather than three.
+  const [loadout, setLoadout] = useState<('boost' | 'hinder')[]>(['boost', 'hinder'])
   // "Race Again" comes back here with the format it just ran, so repeating a
   // race is one tap on the racer plus one on Enter — not a re-pick of both.
   const preselected = visibleFormats.find(f => f.id === (location.state as any)?.format)
   const [selectedFormat, setSelectedFormat] = useState(preselected ?? visibleFormats[0])
-  const [raceId, setRaceId] = useState('')
-  const [gridPositions, setGridPositions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [dailyRace, setDailyRace] = useState<{ raceId: string; weather: string; date: string } | null>(null)
 
@@ -102,36 +102,17 @@ export default function RaceLobby() {
     try {
       const apiFormat = selectedFormat.id === 'demo_standard' ? 'exhibition' : selectedFormat.id
       const race = await api.createRace(address, selectedRacer.id, apiFormat)
-      setRaceId(race.raceId)
 
-      await api.joinRace(race.raceId, selectedRacer.id, address)
+      // The loadout goes with the join — it is the pre-race decision now, and
+      // it is made on the same screen as the racer and the distance rather than
+      // in a phase of its own.
+      await api.joinRaceWithLoadout(race.raceId, selectedRacer.id, address, loadout)
+      await api.startRace(race.raceId)
 
-      // Straight into the Wind-Up window. There used to be a lobby screen here
-      // with a "Start Race!" button and three slots that permanently read
-      // "Waiting...", but nothing was ever waiting: bots are filled server-side
-      // by this very call, and the entry fee was already charged on join. It
-      // was a tap after the payment with no decision behind it.
-      await api.startTuning(race.raceId)
-      setPhase('winding')
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-    setLoading(false)
-  }
-
-  async function runRace() {
-    if (!raceId) return
-    setLoading(true)
-    try {
-      setPhase('starting')
-      const result = await api.simulateRace(raceId)
-      setGridPositions(result.gridPositions)
-      setPhase('reveal')
-
-      const isDemoNav = selectedFormat.id === 'demo_standard'
-      setTimeout(() => {
-        navigate(`/race/${raceId}`, { state: { raceResult: result, format: isDemoNav ? 'exhibition' : selectedFormat.id, racerId: selectedRacer?.id, demo: isDemoNav } })
-      }, 4000)
+      const result = await api.simulateRace(race.raceId)
+      navigate(`/race/${race.raceId}`, {
+        state: { raceResult: result, format: selectedFormat.id, racerId: selectedRacer.id },
+      })
     } catch (err: any) {
       toast.error(err.message)
     }
@@ -262,8 +243,7 @@ export default function RaceLobby() {
                   </div>
                   <button
                     onClick={() => {
-                      setSelectedFormat(FORMATS[0]) // Exhibition
-                      setRaceId(dailyRace.raceId)
+                      setSelectedFormat(FORMATS[0]) // Practice Run
                     }}
                     className="px-4 py-1.5 bg-brand-accent text-brand-ink font-bold rounded-lg text-sm cursor-pointer hover:bg-brand-accent/80"
                   >
@@ -272,7 +252,6 @@ export default function RaceLobby() {
                 </div>
               </div>
             )}
-
 
             {racers.length === 0 ? (
               <div className="text-center py-16">
@@ -344,6 +323,33 @@ export default function RaceLobby() {
                   ))}
                 </div>
 
+                {/* Loadout — the pre-race decision */}
+                <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">Pack Two Items</h2>
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {([0, 1] as const).map(slot => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() =>
+                        setLoadout(prev => {
+                          const next = [...prev]
+                          next[slot] = next[slot] === 'boost' ? 'hinder' : 'boost'
+                          return next
+                        })
+                      }
+                      className="toy-panel p-4 text-left cursor-pointer transition-transform hover:-translate-y-[2px]"
+                    >
+                      <p className="text-brand-ink font-semibold">
+                        {THEME.items[loadout[slot]].name}
+                      </p>
+                      <p className="text-brand-dust text-sm mt-1">
+                        {THEME.items[loadout[slot]].blurb}
+                      </p>
+                      <p className="text-brand-dust text-[11px] mt-2">Tap to swap</p>
+                    </button>
+                  ))}
+                </div>
+
                 {/* Start button */}
                 <button
                   onClick={handleCreateAndJoin}
@@ -356,16 +362,6 @@ export default function RaceLobby() {
             )}
           </motion.div>
         )}
-
-        {/* Phase 2: Lobby (waiting) */}
-        {/* Wind-Up phase — skill decides the grid, not spending. */}
-        {phase === 'winding' && address && raceId && (
-          <WindUpPhase raceId={raceId} wallet={address} onLocked={() => void runRace()} />
-        )}
-
-        {/* Grid Reveal */}
-        {phase === 'reveal' && <GridReveal entries={gridPositions} />}
-
 
       </AnimatePresence>
     </div>

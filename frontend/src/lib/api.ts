@@ -60,47 +60,36 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ raceId, racerId: racerId, wallet }) }
     ),
 
-  startTuning: (raceId: string) =>
-    request<{ raceId: string; status: string; botsAdded: number }>(
-      '/race/start-tuning',
+  joinRaceWithLoadout: (raceId: string, racerId: number, wallet: string, loadout: string[]) =>
+    request<{ joined: boolean; raceId: string; entryFeeCharged: number }>(
+      '/race/join',
+      { method: 'POST', body: JSON.stringify({ raceId, racerId, wallet, loadout }) }
+    ),
+
+  startRace: (raceId: string) =>
+    request<{ raceId: string; status: string; botsAdded: number; startedAt: string; tickRate: number }>(
+      '/race/start',
       { method: 'POST', body: JSON.stringify({ raceId }) }
     ),
 
-  // --- Wind-Up phase (docs/WIND_UP_PHASE.md) -------------------------------
-  // Two calls, one per end of the hold. The server stamps its own arrival times
-  // and uses them as a ceiling; see releaseWind for why the client sends a
-  // duration rather than a timestamp.
-  startWind: (raceId: string, wallet: string) =>
+  // --- In-race items (backend/src/simulation/items.ts) ----------------------
+  // The client never chooses the tick. It asks for an item and the server
+  // schedules it past the reveal frontier, which is the rule that keeps the
+  // race deterministic while still accepting input while it runs.
+  getRaceItems: (raceId: string, racerId: number) =>
     request<{
-      raceId: string
-      winding?: boolean
-      alreadyWinding?: boolean
-      /** Approximate band only — the exact Safe Wind line is never sent (§9). */
-      safeWindBand?: { low: number; high: number }
-      fullWindMs?: number
-      windowRemainingMs?: number
-    }>('/race/wind/start', { method: 'POST', body: JSON.stringify({ raceId, wallet }) }),
+      loadout: string[]
+      remaining: string[]
+      revealedTick: number
+      earliestTick: number
+      durationTicks: number
+    }>(`/race/${raceId}/items?racerId=${racerId}`),
 
-  /**
-   * `heldMs` is a duration measured with performance.now(), NOT a timestamp:
-   * monotonic, needs no clock sync, and unaffected by the user's system clock.
-   * The server caps it at the window it observed plus one round trip, so time
-   * that never elapsed cannot be claimed while an honest slow connection keeps
-   * the tension it earned (§9).
-   */
-  releaseWind: (raceId: string, wallet: string, heldMs: number) =>
-    request<{
-      raceId: string
-      tension: number
-      /** Server values, verified end to end: under / over / snapped. */
-      band: 'under' | 'over' | 'snapped'
-      snapped: boolean
-      holdMs: number
-      locked: boolean
-    }>('/race/wind/release', {
-      method: 'POST',
-      body: JSON.stringify({ raceId, wallet, heldMs: Math.round(heldMs) }),
-    }),
+  deployItem: (raceId: string, racerId: number, wallet: string, code: 'boost' | 'hinder') =>
+    request<{ deployed: boolean; code: string; tick: number; revealedTick: number }>(
+      '/race/item',
+      { method: 'POST', body: JSON.stringify({ raceId, racerId, wallet, code }) }
+    ),
 
   simulateRace: (raceId: string) =>
     request<{

@@ -123,10 +123,22 @@ OFFCHAIN (Server):
 
 - 4 yarışçı per yarış (bot doldurur, ama botlar ödül kazanamaz)
 - **Pist formatı: dikey ekranda üst üste 4 yatay şerit** — foto-finiş görünümü. Hem mobil ergonomi hem tema-otantiklik (bir model tren dioraması gibi). Yarışçılar soldan sağa ilerler.
-- **Wind-Up Fazı** (yarış öncesi): Tamamen **beceri bazlı**, para harcanmaz. Basılı tut → yay gerilir, bırak → kilitlenirsin. Çok kurmak daha iyi grid verir ama stamina'yı hızlandırır; fazla kurmak yayı koparır. Eşik STA'dan türer. Dördü aynı anda ve gizli kurar, sonra Grid Reveal. **Tam mekanik: [docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md)**
+- **Loadout** (yarış öncesi): İki item seçilir — `boost` (kendine) veya `hinder`
+  (lidere). Yarışçı ve mesafeyle **aynı ekranda**, ayrı bir faz değil.
+- **Item kullanımı** (yarış sırasında): Zamanı oyuncu seçer. Tick'i **sunucu**
+  belirler — istemcinin tick önermesi, oyuncunun zaten izlediği bir ana item
+  düşürmesine izin verirdi ve Taktik Mod'u bozan şey tam olarak buydu.
+- Grid tohumdan türer. **Tam mekanik: [backend/src/simulation/items.ts](backend/src/simulation/items.ts)**
+
+> **Wind-Up fazı 2026-08-07'de emekliye ayrıldı.** Bir butonu doğru sürede basılı
+> tutmayı ölçüyordu — refleks testi, karar değil — ve her yarışın önünde
+> duruyordu. Tarihî kayıt: [docs/RETIRED_WIND_UP_PHASE.md](docs/RETIRED_WIND_UP_PHASE.md).
 - Prize pool: Platform %15 keser, kalan %85 dağıtılır (1.:%50, 2.:%30, 3.:%15, 4.:%5)
 
-> **Wind-Up Fazı, Tune-Up / Sealed Bid mekaniğinin yerine geçmiştir.** Eski mekanik 10 saniyelik gizli para harcamasıydı ve grid pozisyonunu para belirliyordu. Artık grid'i beceri belirliyor. `docs/REBRAND_AND_VISUAL_PLAN.md` §3.3 hâlâ Tune-Up'ı anlatıyor — **o bölüm eskidir, bu karar onu geçersiz kılar.**
+> **Bu mekanik üçüncü halidir.** Tune-Up (gizli para harcaması) → Wind-Up fazı
+> (beceri bazlı basılı tutma) → loadout + yarış içi item. İlk ikisi de yarış
+> öncesineydi; şimdiki tek fark, kararın **yarışın içinde** de sürmesi.
+> `docs/REBRAND_AND_VISUAL_PLAN.md` §3.3 hâlâ Tune-Up'ı anlatıyor — eskidir.
 
 ### Yarış Formatları (V1 — iki mesafe, aynı ücret)
 
@@ -480,7 +492,7 @@ Rig geometrisi arketip başına, eklem noktaları gövdenin oranı olarak: `fron
 
 ### İlgili dokümanlar
 
-- [docs/WIND_UP_PHASE.md](docs/WIND_UP_PHASE.md) — yarış öncesi faz mekaniği, bot davranışı, hile değerlendirmesi
+- [docs/RETIRED_WIND_UP_PHASE.md](docs/RETIRED_WIND_UP_PHASE.md) — emekli faz, tarihî kayıt
 - [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md) — palet, siluetler, evrim, rarity malzemeleri, Rive katman şeması, QC listesi
 - [docs/REBRAND_AND_VISUAL_PLAN.md](docs/REBRAND_AND_VISUAL_PLAN.md) — migration planı, faz planı, riskler *(§3.3 Tune-Up bölümü eskidir — Wind-Up fazı onu geçersiz kıldı)*
 - [docs/HANDOFF_MESHY_3D.md](docs/HANDOFF_MESHY_3D.md) — 3D sanat pipeline durumu

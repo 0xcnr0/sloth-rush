@@ -113,6 +113,10 @@ export default function RaceBroadcast() {
   const emoteIdRef = useRef(0)
   const [racePhase, setRacePhase] = useState<'trash_talk' | 'racing' | 'finished'>('trash_talk')
   const [canvasFlash, setCanvasFlash] = useState<string | null>(null)
+  // Items the player still has. The server owns the tick an item lands on, so
+  // the client only ever asks — it never proposes a moment.
+  const [itemsLeft, setItemsLeft] = useState<string[]>([])
+  const [deploying, setDeploying] = useState(false)
   const racerRacesRef = useRef<Map<number, string>>(new Map()) // id -> race type
   const currentTickRef = useRef(0)
   const pausedRef = useRef(false)
@@ -561,6 +565,14 @@ export default function RaceBroadcast() {
     }
   }, [raceData, racePhase])
 
+  // Load the player's remaining items once the race is running.
+  useEffect(() => {
+    if (!id || !playerRacerId || racePhase !== 'racing') return
+    api.getRaceItems(id, playerRacerId)
+      .then(d => setItemsLeft(d.remaining))
+      .catch(() => { /* a spectator has no loadout; the controls stay hidden */ })
+  }, [id, playerRacerId, racePhase])
+
   // Trash talk phase: show for 5 seconds before race starts + entry SFX
   useEffect(() => {
     if (racePhase !== 'trash_talk') return
@@ -848,6 +860,46 @@ export default function RaceBroadcast() {
       </div>
 
       </div>
+
+      {/* Item controls. Only the player who owns a racer in this race sees them,
+          and only while it is running. The button says what happens; the server
+          decides when, because a client-chosen tick could land in a moment the
+          player had already watched. */}
+      {!raceFinished && playerRacerId && address && itemsLeft.length > 0 && (
+        <div className="flex gap-3 mb-4">
+          {(['boost', 'hinder'] as const).map(code => {
+            const count = itemsLeft.filter(c => c === code).length
+            if (count === 0) return null
+            return (
+              <button
+                key={code}
+                type="button"
+                disabled={deploying}
+                onClick={async () => {
+                  if (!id || !playerRacerId) return
+                  setDeploying(true)
+                  try {
+                    await api.deployItem(id, playerRacerId, address, code)
+                    setItemsLeft(prev => {
+                      const next = [...prev]
+                      next.splice(next.indexOf(code), 1)
+                      return next
+                    })
+                    toast.success(`${THEME.items[code].name} away!`)
+                  } catch (err: any) {
+                    toast.error(err.message)
+                  }
+                  setDeploying(false)
+                }}
+                className="toy-btn flex-1 py-3 px-4 bg-brand-gold text-brand-ink"
+              >
+                {THEME.items[code].name}
+                {count > 1 && <span className="ml-2 text-sm">×{count}</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Live standings */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">

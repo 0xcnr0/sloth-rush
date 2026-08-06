@@ -5,10 +5,10 @@
  * This engine will be open-sourced for anyone-can-verify.
  */
 
-import { WIND_UP_TUNING, poleAccelerationBonus } from "./windUp";
+import { itemMultiplier, type ScheduledItem } from "./items";
 
 // Seeded PRNG (mulberry32) — deterministic random from seed
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   return () => {
     seed |= 0;
     seed = (seed + 0x6d2b79f5) | 0;
@@ -18,7 +18,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function seedFromString(str: string): number {
+export function seedFromString(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -40,6 +40,14 @@ export interface RacerStats {
   lck: number;
   gridPosition: number; // 1 = pole, 4 = last
   passive?: string;
+  /**
+   * Archetype CODE — speedster / tank / trickster / burst. Never a display
+   * name: the label lives in theme.ts (CLAUDE.md §0). The client picks which
+   * art folder to draw from this.
+   */
+  archetype?: string;
+  /** Rarity CODE — common…legendary. Visual only; never affects the sim. */
+  rarity?: string;
 
   // --- Wind-Up phase results (see simulation/windUp.ts) ---
   // Optional so an older caller, a replay or the standalone verifier can leave
@@ -147,9 +155,101 @@ export function applyGDAPurchase(state: GDAState, actionType: "boost" | "project
   }
 }
 
-const TRACK_LENGTH = 2800; // race distance units
-const TICKS_PER_SECOND = 10;
-const MAX_TICKS = 1500; // 150 seconds max
+// Fallback only. Real races take their distance from the race format
+// (backend/src/simulation/formats.ts) — distance is the one lever that
+// changes which stat decides the race, so it belongs to the format, not
+// to the engine. Callers that omit it are tests and tuning harnesses.
+export const DEFAULT_TRACK_LENGTH = 2800; // race distance units
+
+/**
+ * Grid advantage.
+ *
+ * Pole is an ACCELERATION bonus over the opening ticks, never a head start in
+ * distance: all four lanes have to leave the line level or the stacked-lane
+ * framing stops reading as a photo finish. The value was measured when the grid
+ * was earned by the Wind-Up phase; the phase is gone and the grid now comes
+ * from the seed, but the advantage still has to be small enough that a grid
+ * slot is a nudge rather than the result.
+ */
+export const GRID_TUNING = {
+  poleAccelerationBonus: 0.08,
+  poleAccelerationTicks: 60,
+} as const;
+
+/** Share of the pole bonus for a given grid slot; last place gets none. */
+export function poleAccelerationBonus(gridPosition: number, fieldSize: number): number {
+  if (fieldSize <= 1) return 0;
+  const share = (fieldSize - gridPosition) / (fieldSize - 1);
+  return GRID_TUNING.poleAccelerationBonus * share;
+}
+
+/**
+ * Fatigue — the only thing that makes distance a real choice.
+ *
+ * Two things were wrong here and both are worth naming, because both were
+ * invisible while every gate stayed green.
+ *
+ * 1. The decay coefficient was `0.35 - sta * 0.015`, which reaches the 0.05
+ *    floor at STA 20. Every racer in the game sits above 20, so STA 25 and
+ *    STA 100 faded at exactly the same rate — six stats were advertised and
+ *    one of them did nothing.
+ * 2. Fatigue was measured as a fraction of the track (`distance > len * 0.6`),
+ *    so a race twice as long faded you over twice the distance at half the
+ *    rate. The shape was identical at every distance; a longer track was just
+ *    a longer wait.
+ *
+ * Now it is absolute: everyone runs fresh for `freeDistance`, then fades per
+ * `spanDistance` travelled beyond it, at a rate STA actually spans. That makes
+ * a long race a genuinely different question from a short one, which is the
+ * whole reason for having two.
+ *
+ * Measure any change with `distanceLever.check.ts` and `fatigueSweep.ts`.
+ */
+export const FATIGUE = {
+  /**
+   * Distance covered before anyone starts to fade. Deliberately short: a wound
+   * spring starts running down the moment it is released, so a long grace
+   * period reads wrong as well as measuring wrong. At 1200 the fade arrived so
+   * late that a sprinter had already built an unassailable lead, and the two
+   * formats came out identical (-97 vs -99).
+   */
+  freeDistance: 300,
+  /** Each additional span of this distance applies one full `decay` step. */
+  spanDistance: 500,
+  /** Decay at STA 0. */
+  decayAtZeroSta: 0.46,
+  /**
+   * Subtracted per point of STA — chosen so a maxed-rarity STA (35) lands on
+   * the floor. This was 0.0060, scaled for a 0-100 stat range that the game
+   * never produces: per-stat caps are 15 and 22-35, so across every racer that
+   * can exist the old coefficient spread decay over a band of 0.46 to 0.25 and
+   * STA barely separated anyone.
+   */
+  decayPerSta: 0.0160,
+  /** Nobody fades below this, or the tail of a long race stops being a race. */
+  minDecay: 0.04,
+  /** Hard floor on speed, so a spent racer still crosses the line. */
+  minSpeedFactor: 0.30,
+} as const;
+export const TICKS_PER_SECOND = 10;
+/**
+ * Safety stop, scaled to the distance.
+ *
+ * This was a flat 1500 ticks, which is fine for a 1600-unit Sprint and not fine
+ * for a 3200-unit Endurance: a low-stat racer runs at roughly 4 units/tick and
+ * fades from there, so it hit the cap before the line and the race was ranked
+ * on an unfinished field. Measured: an Endurance race with a fresh racer ended
+ * at exactly 150.0s, which is the cap, not a finish.
+ *
+ * The floor speed a racer can decay to is maxSpeed * FATIGUE.minSpeedFactor,
+ * and the weakest possible maxSpeed is 3, so the slowest anyone crawls is about
+ * 0.72 units/tick. Allowing for that exactly would let a hopeless race run for
+ * minutes, so this is deliberately a cap and not a guarantee — but it now
+ * scales, so the formats behave the same way as each other.
+ */
+function maxTicksFor(trackLength: number): number {
+  return Math.ceil(trackLength / 1.6);
+}
 
 // Random events from GDD
 const RANDOM_EVENTS = [
@@ -159,7 +259,21 @@ const RANDOM_EVENTS = [
   { type: "collision", chance: 0.0015, description: "Collision! Two racers tangled up!", stat: "ref" as const },
 ];
 
-export function simulateRace(participants: RacerStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false): RaceResult {
+export function simulateRace(
+  participants: RacerStats[],
+  seed: string,
+  actions: TacticAction[] = [],
+  chaosMode: boolean = false,
+  trackLength: number = DEFAULT_TRACK_LENGTH,
+  /**
+   * Items scheduled onto future ticks. Applying one must never consume
+   * randomness — see items.ts. That is what lets the server re-simulate from
+   * tick 0 after every submission and still reproduce the frames it has
+   * already shown the client.
+   */
+  items: ScheduledItem[] = []
+): RaceResult {
+  const maxTicks = maxTicksFor(trackLength);
   const rng = mulberry32(seedFromString(seed));
   const frames: RaceFrame[] = [];
   const events: RaceEvent[] = [];
@@ -193,24 +307,25 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     // Overwinding past Safe Wind burns stamina faster for the whole race.
     staminaDrainMultiplier: p.staminaDrainMultiplier ?? 1,
     finished: false,
-    finishTick: MAX_TICKS,
+    finishTick: maxTicks,
+    finishOvershoot: 0,
     slowdown: 0,
     boost: 0,
     overtakeBoostEnd: 0,
     prevPosition: p.gridPosition,
   }));
 
-  // Grid advantage is acceleration, not a head start (WIND_UP_PHASE.md §8).
+  // Grid advantage is acceleration, not a head start (the stacked-lane framing needs four level starts).
   // All four lanes must stay level at the start line so the broadcast reads as
   // a photo finish; the pole racer instead pulls away harder over the opening
   // ticks. Everyone therefore starts at distance 0.
   const fieldSize = state.length;
 
-  for (let tick = 0; tick < MAX_TICKS; tick++) {
+  for (let tick = 0; tick < maxTicks; tick++) {
     // Check for random events — chaos mode + weather affect frequency
     const eventInterval = chaosMode ? 5 : 10;
     const leaderDist = Math.max(...state.filter(s => !s.finished).map(s => s.distance));
-    const chaosMultiplier = chaosMode && leaderDist > TRACK_LENGTH * 0.7 ? 3 : chaosMode ? 2 : 1;
+    const chaosMultiplier = chaosMode && leaderDist > trackLength * 0.7 ? 3 : chaosMode ? 2 : 1;
     if (tick > 30 && tick % eventInterval === 0) {
       for (const event of RANDOM_EVENTS) {
         if (rng() < event.chance * 10 * chaosMultiplier * weatherMods.eventFreqMul) {
@@ -352,17 +467,20 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
       // something even for a racer whose decay already floored out.
       const fatigueMul = s.passive === 'fatigue_resist' ? 0.5 : 1;
       const staDecay =
-        Math.max(0.05, (0.35 - s.stamina * 0.015 * weatherMods.staMul) * fatigueMul) *
-        s.staminaDrainMultiplier;
-      const staminaFactor = s.distance > TRACK_LENGTH * 0.6
-        ? 1 - ((s.distance - TRACK_LENGTH * 0.6) / (TRACK_LENGTH * 0.4)) * staDecay
-        : 1;
+        Math.max(
+          FATIGUE.minDecay,
+          (FATIGUE.decayAtZeroSta - s.stamina * FATIGUE.decayPerSta * weatherMods.staMul) * fatigueMul
+        ) * s.staminaDrainMultiplier;
+      // Absolute, not a fraction of the track: distance has to cost something
+      // that a longer track charges more of, or the second format is decoration.
+      const fadeSpans = Math.max(0, s.distance - FATIGUE.freeDistance) / FATIGUE.spanDistance;
+      const staminaFactor = Math.max(FATIGUE.minSpeedFactor, 1 - fadeSpans * staDecay);
 
       // Passive abilities — speed multiplier
       let passiveSpeedMul = 1;
 
       // late_surge: last 33% of track +10% speed
-      if (s.passive === 'late_surge' && s.distance > TRACK_LENGTH * 0.67) {
+      if (s.passive === 'late_surge' && s.distance > trackLength * 0.67) {
         passiveSpeedMul *= 1.10;
       }
 
@@ -374,10 +492,14 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
       // Acceleration toward max speed. Grid slot adds a short opening burst
       // rather than a distance head start, so the lanes stay visually level.
       const gridAccelBonus =
-        tick < WIND_UP_TUNING.poleAccelerationTicks
+        tick < GRID_TUNING.poleAccelerationTicks
           ? poleAccelerationBonus(s.gridPosition, fieldSize)
           : 0;
-      const targetSpeed = s.maxSpeed * staminaFactor * passiveSpeedMul;
+      // Items multiply the target speed and draw no numbers from `rng`, so the
+      // frames before an item's tick come out bit-identical with or without it.
+      const isLeader = s.distance >= leaderDist - 1e-9;
+      const itemMul = items.length ? itemMultiplier(items, s.id, isLeader, tick) : 1;
+      const targetSpeed = s.maxSpeed * staminaFactor * passiveSpeedMul * itemMul;
       if (s.speed < targetSpeed) {
         s.speed = Math.min(targetSpeed, s.speed + (s.acceleration + gridAccelBonus) * 0.1);
       } else {
@@ -402,10 +524,18 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
       s.distance += moveSpeed;
 
       // Check finish
-      if (s.distance >= TRACK_LENGTH) {
+      if (s.distance >= trackLength) {
         s.finished = true;
         s.finishTick = tick;
-        s.distance = TRACK_LENGTH;
+        // Record how far PAST the line this racer went before clamping. Ticks are
+        // discrete, so photo finishes land on the same tick constantly — and once
+        // distance is clamped to trackLength the tie-break below compares two
+        // identical numbers, returns 0, and a stable sort silently falls back to
+        // state order, which is grid order. That handed every same-tick finish to
+        // whoever started further forward. Overshoot is the real signal: the racer
+        // who travelled further past the line crossed it earlier within the tick.
+        s.finishOvershoot = s.distance - trackLength;
+        s.distance = trackLength;
       }
     }
 
@@ -441,7 +571,10 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
   const finalOrder = [...state]
     .sort((a, b) => {
       if (a.finishTick !== b.finishTick) return a.finishTick - b.finishTick;
-      return b.distance - a.distance; // if same tick, further distance wins
+      // Same tick: whoever went further past the line crossed it first. Comparing
+      // `distance` here does not work — it is clamped to trackLength on finish,
+      // so every photo finish tied at 0 and fell through to grid order.
+      return b.finishOvershoot - a.finishOvershoot;
     })
     .map((s, i) => ({
       id: s.id,
@@ -456,7 +589,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     events,
     finalOrder,
     seed,
-    trackLength: TRACK_LENGTH,
+    trackLength: trackLength,
     totalTicks: frames.length,
     weather,
   };
@@ -468,40 +601,30 @@ export function calculatePrizePool(
   entryFees: number,
   finishOrder: { id: number; wallet: string; isBot: boolean }[]
 ): { id: number; wallet: string; reward: number; position: number }[] {
-  const totalPrizePool = entryFees;
-  const platformCut = Math.floor(totalPrizePool * 0.15);
-  const distributablePrizePool = totalPrizePool - platformCut;
+  const platformCut = Math.floor(entryFees * 0.15);
+  const distributable = entryFees - platformCut;
 
   const SHARES = [0.50, 0.30, 0.15, 0.05];
 
-  // Separate real players from bots
-  const realPlayers = finishOrder.filter((p) => !p.isBot);
-  const botSlots = finishOrder.filter((p) => p.isBot);
-
-  // Calculate base rewards
-  const rewards = finishOrder.map((player, index) => ({
-    id: player.id,
-    wallet: player.wallet,
-    reward: Math.floor(distributablePrizePool * SHARES[index]),
-    position: index + 1,
-    isBot: player.isBot,
-  }));
-
-  // Redistribute bot rewards to real players proportionally
-  const botTotal = rewards.filter((p) => p.isBot).reduce((sum, p) => sum + p.reward, 0);
-  if (botTotal > 0 && realPlayers.length > 0) {
-    const realRewards = rewards.filter((p) => !p.isBot);
-    const realTotal = realRewards.reduce((sum, p) => sum + p.reward, 0);
-
-    for (const p of realRewards) {
-      const share = realTotal > 0 ? p.reward / realTotal : 1 / realPlayers.length;
-      p.reward += Math.floor(botTotal * share);
-    }
-
-    for (const p of rewards.filter((p) => p.isBot)) {
-      p.reward = 0;
-    }
-  }
-
-  return rewards.map(({ isBot, ...rest }) => rest);
+  // Shares are handed out by rank AMONG REAL PLAYERS. Bots hold grid positions
+  // and finish alongside everyone, but they neither fund the pool nor take from
+  // it, so a bot ahead of you does not cost you a share.
+  //
+  // The previous version paid every finisher by absolute position and then
+  // swept the bots' shares back to the humans proportionally. With one human in
+  // the field that meant collecting the entire pool regardless of where they
+  // came — measured at 136 back on a 50 entry from a THIRD place finish. Every
+  // race was profitable and no result differed from any other.
+  let realRank = 0;
+  return finishOrder.map((p, index) => {
+    if (p.isBot) return { id: p.id, wallet: p.wallet, reward: 0, position: index + 1 };
+    const share = SHARES[realRank] ?? 0;
+    realRank++;
+    return {
+      id: p.id,
+      wallet: p.wallet,
+      reward: Math.floor(distributable * share),
+      position: index + 1,
+    };
+  });
 }

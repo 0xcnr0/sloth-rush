@@ -18,7 +18,8 @@
     "sweep:windup": "tsx tools/windup-tuning-sweep.ts",
     "lint:vocab": "bash tools/check-vocabulary.sh",
     "typecheck": "bash tools/typecheck.sh",
-    "verify": "npm run typecheck && npm run lint:vocab && npm run test:unit"
+    "verify": "npm run typecheck && npm run lint:vocab && npm run check:verifier && npm run test:unit",
+    "check:verifier": "bash tools/check-verifier.sh"
   },
   "devDependencies": {
     "@types/pg": "^8.18.0",

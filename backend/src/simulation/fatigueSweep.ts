@@ -2,7 +2,7 @@
  * Fatigue tuning grid.
  *
  * Picks the FATIGUE constants by measurement instead of by eye, the same way
- * the Wind-Up grid was settled (docs/WIND_UP_PHASE.md §13).
+ * the Wind-Up grid was settled, before that phase was retired.
  *
  * What a good cell looks like:
  *   - SPRINT   — the sprinter build clearly ahead. Short races reward top speed.

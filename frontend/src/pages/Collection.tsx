@@ -55,7 +55,7 @@ export default function Collection() {
     try {
       const race = await api.createRace(address, racerId, 'exhibition')
       await api.joinRace(race.raceId, racerId, address)
-      await api.startTuning(race.raceId)
+      await api.startRace(race.raceId)
       const result = await api.simulateRace(race.raceId)
       navigate(`/race/${race.raceId}`, {
         state: { raceResult: result, format: 'exhibition', racerId, demo: true }

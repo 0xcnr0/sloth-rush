@@ -1,3 +1,25 @@
+> # EMEKLİ — 2026-08-07
+>
+> Wind-Up fazı V1'den kaldırıldı. Yerine **loadout + yarış içi item** geçti:
+> yarış öncesi iki item seçilir, yarış sırasında zamanı oyuncu seçer.
+>
+> **Neden:** faz bir butonu doğru sürede basılı tutmayı ölçüyordu. Bu bir refleks
+> testi, karar değil — ve her yarışın önünde duruyordu. Ölçüm de bunu söylüyordu:
+> §13'ün son taraması pole avantajını 0.12'den 0.08'e indirmişti, yani fazın
+> ödemesi zaten küçülmüştü.
+>
+> **Nereye gitti ne:**
+> - Grid artık tohumdan türeyen bir karıştırmayla belirleniyor (hâlâ doğrulanabilir)
+> - Pole ivme avantajı `engine.ts`'teki `GRID_TUNING`'e taşındı, ölçülen değeriyle
+> - Yeni mekanik: `backend/src/simulation/items.ts`
+> - Belirleyicilik kanıtı: `itemsPreserveHistory.test.ts`
+>
+> Aşağısı tarihî kayıttır. **Uygulanmaz.** Özellikle §13/§14'teki ayar tabloları
+> artık var olmayan sabitlere aittir. Burada değerli olan tek şey yöntem:
+> ölçülmüş bir sayı, dayandığı model değişince sessizce bayatlar.
+
+---
+
 # WIND-UP FAZI — Mekanik Tasarımı
 
 **Tarih:** 2026-08-04

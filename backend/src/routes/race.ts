@@ -63,7 +63,7 @@ const POSITION_STAT: Record<number, string> = {
 // frontend renders the archetype's display label from the theme config.
 // `skill` drives how tightly the bot winds to its own Safe Wind: 1 rides the
 // line, 0 misses wide and sometimes snaps. Mixing them gives the player a
-// readable signal about who they are up against (WIND_UP_PHASE.md §7).
+// readable signal about who they are up against (ART_DIRECTION §10).
 const BOT_TEMPLATES = [
   { name: "Speedster-01",  race: "speedster", spd: 14, acc: 8,  sta: 10, agi: 10, ref: 10, lck: 8,  skill: 0.8 },
   { name: "Tank-02",       race: "tank",      spd: 8,  acc: 14, sta: 12, agi: 8,  ref: 10, lck: 8,  skill: 0.6 },

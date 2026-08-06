@@ -179,7 +179,7 @@ const RARITY_FILTER: Record<string, string> = {
 /** Sheet metal is thin but not invisible; letting the scale reach zero reads as a flicker. */
 const KEY_MIN_EDGE = 0.09
 
-/** Walk cycle, from WIND_UP_PHASE §3's stance/swing split. */
+/** Walk cycle, stance and swing split. */
 const SWING_MAX = 24
 const LEG_LEN = 155
 const STEP = 2 * LEG_LEN * Math.sin((SWING_MAX * Math.PI) / 180)

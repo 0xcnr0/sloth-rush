@@ -315,7 +315,7 @@ export function simulateRace(
     prevPosition: p.gridPosition,
   }));
 
-  // Grid advantage is acceleration, not a head start (WIND_UP_PHASE.md §8).
+  // Grid advantage is acceleration, not a head start (the stacked-lane framing needs four level starts).
   // All four lanes must stay level at the start line so the broadcast reads as
   // a photo finish; the pole racer instead pulls away harder over the opening
   // ticks. Everyone therefore starts at distance 0.

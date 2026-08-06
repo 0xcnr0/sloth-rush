@@ -1,154 +1,95 @@
 # Provably Fair Racing
 
-Sloth Rush uses a **deterministic race simulation engine** that guarantees fair, verifiable outcomes. Given the same seed and participant stats, the engine produces identical results on any machine — no server trust required.
+Wind-Up Rush resolves every race with a **deterministic simulation**. Given the
+same inputs, the engine produces identical results on any machine — you do not
+have to trust the server, you can run the race yourself.
 
-## How It Works
+## The inputs are the whole story
 
-### 1. Deterministic PRNG (Mulberry32)
+A race is a pure function of four things:
 
-Every race begins with a **cryptographically random seed** (64-character hex string generated server-side via `crypto.randomBytes(32)`). This seed initializes a Mulberry32 pseudo-random number generator:
+| Input | Where it comes from |
+|---|---|
+| **Seed** | Generated when the race starts and written to the race row. The grid order is derived from it too. |
+| **Participants** | The six stats and grid slot of each racer. |
+| **Track length** | The format's distance — Sprint 800, Endurance 1400. |
+| **Items** | Every item deployed during the race, each with the tick it landed on. |
 
-```
-seed → mulberry32(seed) → deterministic sequence of random numbers
-```
+Nothing else enters. No wall-clock time, no server state, no hidden roll.
 
-Mulberry32 is a 32-bit PRNG that uses bitwise operations and integer multiplication to produce uniformly distributed values between 0 and 1. The same seed always produces the same sequence — no external state, no hidden variables.
+## Why live items do not break this
 
-### 2. Six-Stat System
+Players deploy items while the race is running, which sounds incompatible with
+a result that was fixed in advance. It is not, because of one rule:
 
-Each sloth has 6 stats that directly influence race physics:
+> An item may only be scheduled onto a tick that has not been revealed yet, and
+> applying an item never consumes randomness.
 
-| Stat | Abbreviation | Effect |
-|------|-------------|--------|
-| **Speed** | SPD | Base maximum speed: `3 + SPD * 0.15` |
-| **Acceleration** | ACC | Acceleration rate: `0.3 + ACC * 0.06` per frame |
-| **Stamina** | STA | Fatigue resistance after 60% of the track |
-| **Agility** | AGI | Yawn Wave resistance: `resist = AGI * 0.1` |
-| **Reflex** | REF | Pillow Fight recovery: `slowdown = max(5, 15 - REF)` |
-| **Luck** | LCK | Weighted selection for Luck Orb events |
+The server picks the tick — the client asks for an item and is told when it
+landed. Because the tick is always ahead of what the player has watched, and
+because item effects are plain multipliers that draw nothing from the PRNG,
+re-running the simulation with the new item list reproduces every frame already
+shown, exactly. The race stays one function of `(seed, participants, length,
+items)` from start to finish.
 
-Stats range from 0 to 35, determined by rarity and training.
+`backend/src/simulation/itemsPreserveHistory.test.ts` asserts this directly
+rather than leaving it as an argument.
 
-### 3. Weather System
-
-Weather is derived deterministically from the seed (using `seed + '_weather'`):
-
-| Weather | Probability | Effect |
-|---------|------------|--------|
-| Sunny | 40% | No modifiers (baseline) |
-| Rainy | 20% | -10% max speed, STA matters 1.5x more |
-| Windy | 15% | Boost duration doubled |
-| Foggy | 15% | Event frequency halved |
-| Stormy | 10% | -15% max speed, events 2x frequent, boost duration halved |
-
-### 4. Race Events
-
-Random events fire every 10 ticks (every second), each with a small probability:
-
-| Event | Base Chance | Description |
-|-------|-----------|-------------|
-| **Yawn Wave** | 0.3% | Leader spreads drowsiness; others slow down (AGI resists) |
-| **Sudden Rain** | 0.2% | All speeds drop 30%; STA provides resistance |
-| **Luck Orb** | 0.25% | Random sloth gets speed boost; trailing sloths weighted higher (rubber-banding) |
-| **Pillow Fight** | 0.15% | Two closest sloths clash; REF determines recovery time |
-
-#### Rubber-Banding
-
-The Luck Orb uses weighted random selection where trailing sloths have higher probability: `weight = LCK * (1 + distanceBehind * 0.02)`. This keeps races competitive.
-
-### 5. Passive Abilities
-
-Evolved sloths may have passive abilities:
-
-| Passive | Effect |
-|---------|--------|
-| `caffeine_rush` | +10% speed in the last 33% of the track |
-| `adrenaline_wake` | +15% speed for 10 ticks after overtaking |
-| `deep_sleep` | 50% reduced stamina decay (better endurance) |
-| `dream_catcher` | +20% weight for Luck Orb selection |
-| `lucid_dream` | 30% chance to convert bad events into speed boosts |
-| `thick_fur` | Reduced pillow slowdown (10 → 5 ticks) |
-
-### 6. Race Physics (Per Tick)
-
-Each tick (100ms):
-
-1. **Check events** — Roll for random events based on probability and weather
-2. **Apply tactic actions** — Process boost/pillow actions for this tick
-3. **Calculate stamina factor** — After 60% of track, speed decays based on STA
-4. **Apply passive abilities** — Calculate passive speed multipliers
-5. **Accelerate** — Move toward target speed (maxSpeed * staminaFactor * passiveMul)
-6. **Random variance** — Small seeded perturbation: `speed *= 0.97 + rng() * 0.06`
-7. **Apply modifiers** — Slowdown (0.3x) and boost (1.5x) affect movement only
-8. **Move** — Update distance by moveSpeed
-9. **Check finish** — If distance >= 2800, mark as finished
-
-### 7. Result Hash
-
-After simulation completes, the final order is hashed:
-
-```
-resultHash = SHA-256(JSON.stringify(finalOrder))
-```
-
-This hash is recorded on-chain (Base L2) alongside the winner's address, creating an immutable proof that the result was computed correctly.
-
-## Verification
-
-Anyone can independently verify a race result:
+## Verify a race
 
 ```bash
-cd simulation
-npm install
 npx tsx verify.ts \
-  --seed "the-race-seed" \
-  --participants '[{"name":"Sloth1","spd":15,"acc":12,"sta":10,"agi":8,"ref":7,"lck":6},{"name":"Sloth2","spd":10,"acc":14,"sta":12,"agi":10,"ref":9,"lck":5},{"name":"Sloth3","spd":12,"acc":10,"sta":14,"agi":6,"ref":11,"lck":8},{"name":"Sloth4","spd":11,"acc":11,"sta":11,"agi":11,"ref":11,"lck":11}]'
+  --seed "<the race seed>" \
+  --length 800 \
+  --participants '[
+    {"name":"Racer1","spd":15,"acc":12,"sta":10,"agi":8,"ref":7,"lck":6,"gridPosition":1},
+    {"name":"Racer2","spd":10,"acc":14,"sta":12,"agi":10,"ref":9,"lck":5,"gridPosition":2},
+    {"name":"Racer3","spd":12,"acc":10,"sta":14,"agi":6,"ref":11,"lck":8,"gridPosition":3},
+    {"name":"Racer4","spd":11,"acc":11,"sta":11,"agi":11,"ref":11,"lck":11,"gridPosition":4}
+  ]' \
+  --items '[{"racerId":1,"code":"boost","tick":120}]'
 ```
 
-The verifier outputs:
-- **Final order** — Finish positions and times
-- **Result hash** — SHA-256 hash matching the on-chain record
-- **Weather** — Deterministic weather for the seed
-- **Events** — All random events that occurred
+The finishing order it prints is the finishing order the server recorded, and
+the result hash it produces is the one written on-chain.
 
-### Verify Against On-Chain Record
+## Stats
 
-1. Get the race seed and participant stats from the Sloth Rush API (`GET /api/race/:id`)
-2. Run the verifier with those inputs
-3. Compare the output hash against the on-chain `result_hash` stored in the SlothRush contract
-4. If they match, the race was provably fair
+Six stats, 0–100 in principle, capped in practice at 15 for a Wind-Up and 22–35
+for a Showcase by rarity.
 
-### CLI Options
+| Stat | What it does |
+|---|---|
+| **SPD** | Top speed. The base currency of a race. |
+| **ACC** | How fast top speed is reached, and the size of the grid bonus. |
+| **STA** | How well speed survives distance. Decides long races. |
+| **AGI** | Resistance to events that slow the field. |
+| **REF** | Recovery time after a collision. |
+| **LCK** | Weighting in the Luck Orb event. |
 
-| Flag | Description |
-|------|-------------|
-| `--seed` | Race seed (required) |
-| `--participants` | JSON array of participant stats (required) |
-| `--actions` | JSON array of tactic actions (optional) |
-| `--chaos` | Enable chaos mode (optional) |
-| `--json` | Output raw JSON instead of formatted text |
-| `--hash-only` | Output only the result hash |
+## Distance is the lever
 
-## Constants
+Fatigue is measured in absolute distance, not as a fraction of the track: every
+racer runs fresh for a short opening stretch and then fades per span travelled
+beyond it, at a rate STA genuinely spans. A short race is decided by top speed;
+a long one is decided by balance. Two formats, one variable.
 
-| Constant | Value |
-|----------|-------|
-| Track length | 2800 units |
-| Max ticks | 1500 (150 seconds) |
-| Ticks per second | 10 |
-| Platform cut | 15% of pot |
-| Pot distribution | 1st: 50%, 2nd: 30%, 3rd: 15%, 4th: 5% |
+## Random events
 
-## Trust Model
+| Event | Chance / tick | Effect |
+|---|---|---|
+| **Wind-Down** | 0.30% | The leader's slowdown spreads; AGI resists |
+| **Sudden Rain** | 0.20% | Everyone slows; STA resists |
+| **Luck Orb** | 0.25% | One racer gets a boost, weighted toward those behind |
+| **Collision** | 0.15% | Two racers tangle; REF decides recovery |
 
-1. **Seed** — Generated server-side with `crypto.randomBytes(32)` and published after the race
-2. **Stats** — On-chain NFT metadata (verifiable via Base L2)
-3. **Engine** — Open source (this repository), deterministic, no hidden state
-4. **Hash** — SHA-256 of final order, recorded on-chain for permanent verification
-5. **Winner** — Address recorded on-chain via SlothRush contract
+All four draw from the same seeded PRNG, in a fixed order, so they land in the
+same places on every machine.
 
-The only trust assumption is that the seed was generated randomly (not chosen to favor a specific outcome). Future versions will use Chainlink VRF for fully trustless seed generation.
+## Keeping this honest
 
-## License
-
-MIT
+This directory holds a copy of the engine so it can run without the server.
+Copies drift — this one had fallen 123 lines behind before anyone noticed, which
+would have made every verification here disagree with the real race.
+`tools/check-verifier.sh` now compares them byte for byte and runs as part of
+`npm run verify`, so the copy cannot go stale quietly again.

@@ -457,103 +457,78 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
   );
 
   results.push(
-    await runTest("A13: Start tuning", "Happy Path", async () => {
-      const res = await tapi("POST", "/api/race/start-tuning", {
+    await runTest("A13: Start the race", "Happy Path", async () => {
+      const res = await tapi("POST", "/api/race/start", {
         raceId: ctx.raceId,
       });
       assertStatus(res, 200);
-      assertEqual(res.data.status, "tuning", "race should enter the tuning phase");
+      assertEqual(res.data.status, "racing", "the race should start running");
     })
   );
 
-  // --- Wind-Up phase -------------------------------------------------------
-  // The phase's pure functions have unit tests; its HTTP surface had none, and
-  // a client/server mismatch in the band strings shipped because of it. These
-  // cover the contract itself: what the endpoints answer, and that winding
-  // harder actually buys a better grid slot.
+  // --- In-race items -------------------------------------------------------
+  // The pure functions have unit tests; this covers the HTTP contract, which is
+  // where the guarantee actually lives: the server picks the tick, and it must
+  // always be ahead of what the player has already watched.
 
   results.push(
-    await runTest("A13a: Wind-Up start opens the hold", "Happy Path", async () => {
-      const res = await tapi("POST", "/api/race/wind/start", {
-        raceId: ctx.raceId,
-        wallet: ctx.walletA,
-      });
+    await runTest("A13a: Items report the loadout and a future tick", "Happy Path", async () => {
+      const res = await tapi("GET", `/api/race/${ctx.raceId}/items?racerId=${ctx.freeRacerIdA}`);
       assertStatus(res, 200);
-      assert(res.data.winding === true, "the hold should be open");
-      // The exact Safe Wind line is never sent — only an approximate band.
-      // That vagueness is the defence against a scripted client (§9), so a
-      // response carrying the precise threshold would be a real regression.
-      assert(res.data.safeWindBand != null, "an approximate band should be returned");
+      assert(Array.isArray(res.data.loadout), "loadout should be an array");
       assert(
-        res.data.safeWindBand.high > res.data.safeWindBand.low,
-        "the band should be a range, not a line"
-      );
-      assert(res.data.exactSafeWind == null, "the exact threshold must never be sent");
-    })
-  );
-
-  results.push(
-    await runTest("A13b: Wind-Up release locks a tension in", "Happy Path", async () => {
-      const res = await tapi("POST", "/api/race/wind/release", {
-        raceId: ctx.raceId,
-        wallet: ctx.walletA,
-        heldMs: 2400,
-      });
-      assertStatus(res, 200);
-      assert(res.data.locked === true, "the wind should be locked");
-      assert(
-        ["under", "over", "snapped"].includes(res.data.band),
-        `band should be under/over/snapped, got ${res.data.band}`
-      );
-      assert(
-        res.data.tension > 0 && res.data.tension <= 100,
-        `tension should be 0-100, got ${res.data.tension}`
+        res.data.earliestTick > res.data.revealedTick,
+        `an item must land ahead of the frontier: ${res.data.earliestTick} vs ${res.data.revealedTick}`
       );
     })
   );
 
   results.push(
-    await runTest("A13c: Wind-Up refuses a second release", "Edge Case", async () => {
-      const res = await tapi("POST", "/api/race/wind/release", {
-        raceId: ctx.raceId,
-        wallet: ctx.walletA,
-        heldMs: 3400,
+    await runTest("A13b: Deploying schedules past the reveal frontier", "Happy Path", async () => {
+      const before = await tapi("GET", `/api/race/${ctx.raceId}/items?racerId=${ctx.freeRacerIdA}`);
+      const res = await tapi("POST", "/api/race/item", {
+        raceId: ctx.raceId, racerId: ctx.freeRacerIdA, wallet: WALLET_A, code: "boost",
       });
-      // Re-releasing would let a player keep winding until they liked the answer.
-      assertStatus(res, 409);
+      assertStatus(res, 200);
+      assert(
+        res.data.tick > res.data.revealedTick,
+        `scheduled into the past: tick ${res.data.tick}, frontier ${res.data.revealedTick}`
+      );
+      const after = await tapi("GET", `/api/race/${ctx.raceId}/items?racerId=${ctx.freeRacerIdA}`);
+      assert(
+        after.data.remaining.length < before.data.remaining.length,
+        "deploying should consume one item"
+      );
     })
   );
 
   results.push(
-    await runTest("A13d: Claimed hold cannot exceed the window", "Security", async () => {
-      // The client reports its own duration so latency does not cost it tension,
-      // which means the server has to bound the claim. An hour-long hold inside
-      // a ten-second window is the plain version of that attack.
-      const create = await tapi("POST", "/api/race/create", {
-        wallet: ctx.walletB,
-        racerId: ctx.freeRacerIdB,
-        format: "exhibition",
+    await runTest("A13c: A racer cannot use more than it carries", "Happy Path", async () => {
+      // Drain whatever is left, then ask once more.
+      for (let i = 0; i < 4; i++) {
+        await tapi("POST", "/api/race/item", {
+          raceId: ctx.raceId, racerId: ctx.freeRacerIdA, wallet: WALLET_A, code: "boost",
+        });
+        await tapi("POST", "/api/race/item", {
+          raceId: ctx.raceId, racerId: ctx.freeRacerIdA, wallet: WALLET_A, code: "hinder",
+        });
+      }
+      const boost = await tapi("POST", "/api/race/item", {
+        raceId: ctx.raceId, racerId: ctx.freeRacerIdA, wallet: WALLET_A, code: "boost",
       });
-      const raceId = create.data.raceId;
-      await tapi("POST", "/api/race/join", {
-        raceId,
-        racerId: ctx.freeRacerIdB,
-        wallet: ctx.walletB,
-      });
-      await tapi("POST", "/api/race/start-tuning", { raceId });
-      await tapi("POST", "/api/race/wind/start", { raceId, wallet: ctx.walletB });
-      const res = await tapi("POST", "/api/race/wind/release", {
-        raceId,
-        wallet: ctx.walletB,
-        heldMs: 3_600_000,
-      });
-      assertStatus(res, 200);
-      assert(
-        res.data.holdMs <= 10_000,
-        `hold should be capped at the phase window, got ${res.data.holdMs}ms`
-      );
+      assert(boost.status === 400, `an empty loadout should refuse, got ${boost.status}`);
     })
   );
+
+  results.push(
+    await runTest("A13d: Only the owner may deploy", "Happy Path", async () => {
+      const res = await tapi("POST", "/api/race/item", {
+        raceId: ctx.raceId, racerId: ctx.freeRacerIdA, wallet: WALLET_B, code: "boost",
+      });
+      assert(res.status === 403, `another wallet should be refused, got ${res.status}`);
+    })
+  );
+
 
   results.push(
     await runTest("A14: Simulate race", "Happy Path", async () => {
@@ -637,7 +612,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
       assertStatus(joinRes, 200);
 
       // Start tuning
-      const tuneStartRes = await tapi("POST", "/api/race/start-tuning", {
+      const tuneStartRes = await tapi("POST", "/api/race/start", {
         raceId,
       });
       assertStatus(tuneStartRes, 200);
@@ -977,9 +952,8 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
       });
       assertStatus(joinRes, 200);
 
-      const tuneRes = await tapi("POST", "/api/race/start-tuning", { raceId });
+      const tuneRes = await tapi("POST", "/api/race/start", { raceId });
       assertStatus(tuneRes, 200);
-      assertEqual(tuneRes.data.status, "tuning", "race should enter the tuning phase");
 
       const simRes = await tapi("POST", "/api/race/simulate", { raceId });
       assertStatus(simRes, 200);
@@ -1004,7 +978,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
         wallet: WALLET_A,
       });
 
-      await tapi("POST", "/api/race/start-tuning", { raceId });
+      await tapi("POST", "/api/race/start", { raceId });
 
       const simRes = await tapi("POST", "/api/race/simulate", { raceId });
       assertStatus(simRes, 200);
@@ -1031,7 +1005,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
           joinRes.data.entryFeeCharged === 0,
           `${format} charged ${joinRes.data.entryFeeCharged}`
         );
-        await tapi("POST", "/api/race/start-tuning", { raceId });
+        await tapi("POST", "/api/race/start", { raceId });
         const sim = await tapi("POST", "/api/race/simulate", { raceId });
         assertStatus(sim, 200);
         const paid = sim.data.finalOrder.filter((o: any) => (o.reward || 0) > 0);
@@ -1051,7 +1025,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
       const createRes = await tapi("POST", "/api/race/create", { format: "sprint" });
       const raceId = createRes.data.raceId;
       await tapi("POST", "/api/race/join", { raceId, racerId: ctx.racerIdA, wallet: WALLET_A });
-      await tapi("POST", "/api/race/start-tuning", { raceId });
+      await tapi("POST", "/api/race/start", { raceId });
       await tapi("POST", "/api/race/simulate", { raceId });
 
       const after = await tapi("GET", `/api/racer/collection/${WALLET_A}`);
@@ -1097,7 +1071,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
           racerId: ctx.racerIdA,
           wallet: WALLET_A,
         });
-        await tapi("POST", "/api/race/start-tuning", { raceId });
+        await tapi("POST", "/api/race/start", { raceId });
         const simRes = await tapi("POST", "/api/race/simulate", { raceId });
         assertStatus(simRes, 200);
         return simRes.data;
@@ -1142,7 +1116,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
         wallet: WALLET_A,
       });
 
-      const tuneRes = await tapi("POST", "/api/race/start-tuning", { raceId });
+      const tuneRes = await tapi("POST", "/api/race/start", { raceId });
       assertStatus(tuneRes, 200);
       assertEqual(tuneRes.data.botsAdded, 3, "should add 3 bots");
 
@@ -1207,7 +1181,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
         racerId: ctx.racerIdA,
         wallet: WALLET_A,
       });
-      await tapi("POST", "/api/race/start-tuning", { raceId });
+      await tapi("POST", "/api/race/start", { raceId });
       const simRes = await tapi("POST", "/api/race/simulate", { raceId });
       assertStatus(simRes, 200);
       assert(simRes.data.weather != null, "weather should exist");

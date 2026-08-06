@@ -136,6 +136,15 @@ export const THEME = {
     endurance: { name: 'Endurance', blurb: 'Long track. The spring has to last.' },
   } as Record<string, { name: string; blurb: string }>,
 
+  /**
+   * In-race items. Code says `boost` / `hinder`; two per racer per race, chosen
+   * before the start and deployed at a moment of the player's choosing.
+   */
+  items: {
+    boost: { name: 'Over-Wind', blurb: 'A hard turn of your own key.' },
+    hinder: { name: 'Marble Under Foot', blurb: 'Rolls under whoever is leading.' },
+  } as Record<string, { name: string; blurb: string }>,
+
   /** Tactic-mode actions. Code says `boost` / `projectile`. */
   tactics: {
     boost: 'Turbo Wind',

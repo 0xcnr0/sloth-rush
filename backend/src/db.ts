@@ -85,21 +85,6 @@ export async function initDB() {
     `ALTER TABLE feedback DROP CONSTRAINT IF EXISTS feedback_rating_check`,
     `ALTER TABLE feedback ADD CONSTRAINT feedback_rating_check CHECK(rating >= 1 AND rating <= 5)`,
 
-    // --- Wind-Up phase state (docs/WIND_UP_PHASE.md) ---
-    // `wind_tension` already exists from the Phase 1 migration. These carry the
-    // rest of the phase: when its window opened, when each player started
-    // winding, and whether their spring broke.
-    //
-    // The press timestamp is server-written, never client-supplied: the hold
-    // duration is measured entirely from the server clock so a client cannot
-    // claim a hold it did not perform (§9).
-    `ALTER TABLE races ADD COLUMN IF NOT EXISTS tuning_opened_at TIMESTAMP`,
-    `ALTER TABLE race_participants ADD COLUMN IF NOT EXISTS wind_pressed_at TIMESTAMP`,
-    // A snapped spring clamps to a tension of 100, so "did it snap" cannot be
-    // read back off the tension alone and needs its own flag.
-    `ALTER TABLE race_participants ADD COLUMN IF NOT EXISTS wind_snapped INTEGER DEFAULT 0`,
-    // Set once the phase resolves, so re-running the finalizer is a no-op.
-    `ALTER TABLE race_participants ADD COLUMN IF NOT EXISTS wind_locked INTEGER DEFAULT 0`,
   ];
 
   for (const sql of migrations) {
