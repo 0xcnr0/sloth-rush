@@ -107,7 +107,17 @@ export const api = {
       raceId: string
       seed: string
       resultHash: string
-      gridPositions: { id: number; name: string; position: number }[]
+      gridPositions: {
+        id: number
+        name: string
+        position: number
+        /** Archetype code, for picking art. Display label lives in theme.ts. */
+        race?: string
+        /** What the racer wound to, 0-100 — the reveal's whole point. */
+        tension: number
+        /** Overwound past the snap point: last on the grid, reduced stamina. */
+        snapped: boolean
+      }[]
       frames: { tick: number; positions: { id: number; distance: number; speed: number; event?: string }[] }[]
       events: { tick: number; type: string; description: string; affectedIds: number[] }[]
       finalOrder: { id: number; wallet: string; name: string; isBot: boolean; position: number; reward: number }[]

@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { THEME, CUR, rarityLabel, archetypeLabel } from '../config/theme'
 import WindUpPhase from '../components/PreRace/WindUpPhase'
+import GridReveal from '../components/PreRace/GridReveal'
 import Spinner from '../components/Spinner'
 import { FEATURES } from '../config/features'
 
@@ -476,59 +477,8 @@ export default function RaceLobby() {
         )}
 
         {/* Grid Reveal */}
-        {phase === 'reveal' && (
-          <motion.div
-            key="reveal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="text-center"
-          >
-            <motion.h1
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 150 }}
-              className="text-3xl font-extrabold text-brand-gold mb-8"
-            >
-              WHO GOT POLE POSITION?
-            </motion.h1>
+        {phase === 'reveal' && <GridReveal entries={gridPositions} />}
 
-            <div className="max-w-md mx-auto space-y-3">
-              {gridPositions.map((gp, i) => (
-                <motion.div
-                  key={gp.id}
-                  initial={{ x: -100, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: i * 0.6, type: 'spring' }}
-                  className={`flex items-center gap-4 p-4 rounded-xl border ${
-                    i === 0 ? 'bg-brand-gold/10 border-brand-gold' :
-                    'bg-brand-surface border-brand-border'
-                  }`}
-                >
-                  <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-brand-gold' : 'text-gray-500'}`}>
-                    P{gp.position}
-                  </span>
-                  <span className="text-2xl">{THEME.brand.mark}</span>
-                  <div className="flex-1 text-left">
-                    <p className="text-white font-semibold">{gp.name}</p>
-                  </div>
-                  {i === 0 && (
-                    <span className="text-brand-gold text-sm font-bold">POLE</span>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 3 }}
-              className="text-gray-400 mt-8"
-            >
-              Starting race...
-            </motion.p>
-          </motion.div>
-        )}
         {/* GP Break Phase */}
         {phase === 'gp_break' && (
           <motion.div

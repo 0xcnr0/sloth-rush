@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import WindUpPhase from '../components/PreRace/WindUpPhase'
+import GridReveal from '../components/PreRace/GridReveal'
 import { THEME } from '../config/theme'
 
 /**
@@ -14,7 +15,7 @@ import { THEME } from '../config/theme'
  *
  * It is registered only when import.meta.env.DEV is true, so it never ships.
  */
-const PANELS = ['wind-up'] as const
+const PANELS = ['wind-up', 'grid-reveal'] as const
 type Panel = (typeof PANELS)[number]
 
 export default function DevPreview() {
@@ -47,6 +48,19 @@ export default function DevPreview() {
           </button>
         ))}
       </nav>
+
+      {panel === 'grid-reveal' && (
+        // Stub grid covering every outcome the reveal has to render: a pole
+        // taken by overwinding, two clean winds, and a snapped spring at the back.
+        <GridReveal
+          entries={[
+            { id: 1, name: 'Speedy Comet', position: 1, race: 'tank', tension: 78, snapped: false },
+            { id: 2, name: 'Waddler-03', position: 2, race: 'trickster', tension: 64, snapped: false },
+            { id: 3, name: 'Jetster-01', position: 3, race: 'speedster', tension: 51, snapped: false },
+            { id: 4, name: 'Chomper-04', position: 4, race: 'burst', tension: 100, snapped: true },
+          ]}
+        />
+      )}
 
       {panel === 'wind-up' && (
         // A real raceId is not needed: the calls fail, the component shows its
