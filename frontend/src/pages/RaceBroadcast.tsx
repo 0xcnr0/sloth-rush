@@ -1161,13 +1161,13 @@ export default function RaceBroadcast() {
                     onClick={async () => {
                       if (!address || !playerRacerId) { navigate('/race'); return }
                       try {
-                        const fmt = location.state?.format || 'exhibition'
-                        const data = await api.createRace(address, playerRacerId, fmt)
-                        await api.joinRace(data.raceId, playerRacerId, address)
-                        await api.startTuning(data.raceId)
-                        const raceResult = await api.simulateRace(data.raceId)
-                        navigate(`/race/${data.raceId}`, { state: { raceResult, format: fmt, racerId: playerRacerId, demo: true } })
-                        window.location.reload()
+                        // Send them back to the lobby with the format preselected
+                        // rather than simulating here. The old version called
+                        // startTuning and simulateRace back to back, which skipped
+                        // the Wind-Up phase entirely — the fastest loop in the game
+                        // was the one that bypassed its core mechanic — then forced
+                        // a full window.location.reload() on top.
+                        navigate('/race', { state: { format: location.state?.format } })
                       } catch (err) { console.error('Race Again failed:', err); navigate('/race') }
                     }}
                     className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-bg font-black rounded-xl text-lg hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30"
@@ -1175,22 +1175,10 @@ export default function RaceBroadcast() {
                     Race Again
                   </button>
                   <button
-                    onClick={() => navigate('/quests')}
-                    className="px-6 py-2.5 border border-brand-accent text-brand-accent rounded-xl hover:bg-brand-accent/10 transition-colors cursor-pointer"
-                  >
-                    View Quests
-                  </button>
-                  <button
                     onClick={() => navigate('/collection')}
                     className="px-6 py-2.5 border border-brand-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     Back to {THEME.locations.home}
-                  </button>
-                  <button
-                    onClick={() => navigate(`/replay/${id}`)}
-                    className="px-6 py-2.5 border border-brand-accent text-brand-accent rounded-xl hover:bg-brand-accent/10 transition-colors cursor-pointer"
-                  >
-                    Watch Replay
                   </button>
                   <button
                     onClick={async () => {
@@ -1201,7 +1189,7 @@ export default function RaceBroadcast() {
                       const text = `${THEME.brand.mark} ${THEME.brand.name} Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\n${frameUrl}`
                       if (navigator.share) {
                         try {
-                          await navigator.share({ title: 'Racer Rush Race Result', text })
+                          await navigator.share({ title: `${THEME.brand.name} Race Result`, text })
                         } catch { /* user cancelled */ }
                       } else {
                         await navigator.clipboard.writeText(text)

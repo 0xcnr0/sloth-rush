@@ -4,6 +4,12 @@ import WalletConnect from '../components/WalletConnect'
 import { THEME, CUR } from '../config/theme'
 import { motion } from 'framer-motion'
 
+// Last word in white, everything before it in the accent colour — works for
+// any brand name, so a fourth rebrand is still just a theme.ts edit.
+const BRAND_WORDS = THEME.brand.nameUpper.split(' ')
+const BRAND_TAIL = BRAND_WORDS[BRAND_WORDS.length - 1]
+const BRAND_HEAD = BRAND_WORDS.slice(0, -1).join(' ')
+
 export default function Landing() {
   const { isConnected } = useAccount()
 
@@ -20,13 +26,18 @@ export default function Landing() {
           <span role="img" aria-label="pro">{THEME.brand.mark}</span>
         </div>
 
+        {/* Brand name and tagline come from theme.ts. Hardcoding them here is
+            how the first theme's "RACER RUSH / Wake up. Race hard. Nap later."
+            survived two rebrands on the game's own front door: `racer` is the
+            allowed functional word, so the vocabulary lint had no reason to
+            flag it, and nobody loaded the page. */}
         <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-4">
-          <span className="text-brand-primary">RACER</span>{' '}
-          <span className="text-white">RUSH</span>
+          <span className="text-brand-primary">{BRAND_HEAD}</span>{' '}
+          <span className="text-white">{BRAND_TAIL}</span>
         </h1>
 
         <p className="text-xl text-gray-400 mb-2 font-medium">
-          Wake up. Race hard. Nap later.
+          {THEME.brand.tagline}
         </p>
 
         <p className="text-gray-500 mb-10 max-w-md mx-auto">

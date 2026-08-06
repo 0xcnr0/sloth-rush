@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
@@ -11,7 +11,7 @@ import GridReveal from '../components/PreRace/GridReveal'
 import Spinner from '../components/Spinner'
 import { FEATURES } from '../config/features'
 
-type Phase = 'select' | 'lobby' | 'winding' | 'reveal' | 'starting'
+type Phase = 'select' | 'winding' | 'reveal' | 'starting'
 
 // Sprint and Endurance cost the same and differ only in distance — the choice
 // is which racer you own, not how much you are willing to spend. Entry fees and
@@ -39,6 +39,7 @@ export const visibleFormats = FORMATS.filter(f => {
 export default function RaceLobby() {
   const { address, isConnected } = useAccount()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [mainTab, setMainTab] = useState<'create' | 'live'>('create')
   const [liveRaces, setLiveRaces] = useState<any[]>([])
@@ -48,7 +49,10 @@ export default function RaceLobby() {
   const [racers, setRacers] = useState<any[]>([])
   const [coinBalance, setCoinBalance] = useState(0)
   const [selectedRacer, setSelectedRacer] = useState<any>(null)
-  const [selectedFormat, setSelectedFormat] = useState(FORMATS[1])
+  // "Race Again" comes back here with the format it just ran, so repeating a
+  // race is one tap on the racer plus one on Enter — not a re-pick of both.
+  const preselected = visibleFormats.find(f => f.id === (location.state as any)?.format)
+  const [selectedFormat, setSelectedFormat] = useState(preselected ?? visibleFormats[0])
   const [raceId, setRaceId] = useState('')
   const [gridPositions, setGridPositions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -104,21 +108,13 @@ export default function RaceLobby() {
 
       const joined = await api.joinRace(race.raceId, selectedRacer.id, address)
       setCoinBalance(joined.newBalance)
-      setPhase('lobby')
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-    setLoading(false)
-  }
 
-  async function handleStartRace() {
-    if (!raceId) return
-    setLoading(true)
-    try {
-      // Opens the tuning window server-side. The race does NOT simulate yet —
-      // the Wind-Up phase owns the gap, and calls runRace() once the player has
-      // locked their tension in (docs/WIND_UP_PHASE.md §4).
-      await api.startTuning(raceId)
+      // Straight into the Wind-Up window. There used to be a lobby screen here
+      // with a "Start Race!" button and three slots that permanently read
+      // "Waiting...", but nothing was ever waiting: bots are filled server-side
+      // by this very call, and the entry fee was already charged on join. It
+      // was a tap after the payment with no decision behind it.
+      await api.startTuning(race.raceId)
       setPhase('winding')
     } catch (err: any) {
       toast.error(err.message)
@@ -376,45 +372,6 @@ export default function RaceLobby() {
         )}
 
         {/* Phase 2: Lobby (waiting) */}
-        {phase === 'lobby' && (
-          <motion.div
-            key="lobby"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="text-center"
-          >
-            <h1 className="text-3xl font-bold mb-2">Race Lobby</h1>
-            <p className="text-gray-400 mb-8">{selectedFormat.name} — {raceId.slice(-8)}</p>
-
-            {/* 4 slots */}
-            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
-              {/* Player slot */}
-              <div className="bg-brand-surface border-2 border-brand-primary rounded-xl p-4 text-center">
-                <div className="text-3xl mb-2">{THEME.brand.mark}</div>
-                <p className="text-white font-semibold text-sm">{selectedRacer?.name}</p>
-                <p className="text-brand-primary text-xs">YOU</p>
-              </div>
-              {/* Bot slots */}
-              {[1, 2, 3].map(i => (
-                <div key={i} className="bg-brand-surface border border-brand-border rounded-xl p-4 text-center">
-                  <div className="text-3xl mb-2 opacity-30">&#x1f916;</div>
-                  <p className="text-gray-500 text-sm">Waiting...</p>
-                  <p className="text-gray-600 text-xs">BOT</p>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={handleStartRace}
-              disabled={loading}
-              className="px-8 py-3 bg-brand-primary text-brand-bg font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              {loading ? 'Filling with Bots...' : 'Start Race!'}
-            </button>
-          </motion.div>
-        )}
-
         {/* Wind-Up phase — skill decides the grid, not spending. */}
         {phase === 'winding' && address && raceId && (
           <WindUpPhase raceId={raceId} wallet={address} onLocked={() => void runRace()} />
