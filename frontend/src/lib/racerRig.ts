@@ -160,6 +160,9 @@ const COUNTER_FLIP = new Set<PartName>(['head'])
  *
  * Codes stay theme-neutral (common…legendary); Fair→Mint are labels in theme.ts.
  */
+/** Bots: the lowest rarity's surface. Never below ~0.4 saturation. */
+const BOT_FILTER = 'saturate(0.55) brightness(0.94) sepia(0.16)'
+
 const RARITY_FILTER: Record<string, string> = {
   // Dull scratched tin: desaturated, slightly darker, a touch of age.
   common: 'saturate(0.55) brightness(0.94) sepia(0.16)',
@@ -272,9 +275,13 @@ export function drawRacer(ctx: CanvasRenderingContext2D, rig: RacerRig, o: DrawO
   const [tw, th] = g.torso
 
   ctx.save()
-  // Bot dimming wins over rarity: a bot's job is to read as scenery, and a Mint
-  // bot glinting gold would pull the eye away from the racers that matter.
-  const filter = o.dimmed ? 'saturate(0.15) brightness(1.1)' : RARITY_FILTER[o.rarity ?? ''] ?? ''
+  // Bots read as LESS PAINTED than a player's racer, not as greyscale. This was
+  // saturate(0.15), written for a field that is mostly real players. Bots fill
+  // every empty slot, so a solo race is three quarters bots — and at 0.15 that
+  // meant three quarters of the screen had no colour in it at all. The portraits
+  // work because each toy owns a saturated colour; the race screen was
+  // suppressing exactly that, on most of the cast, every time.
+  const filter = o.dimmed ? BOT_FILTER : RARITY_FILTER[o.rarity ?? ''] ?? ''
   if (filter) ctx.filter = filter
   ctx.translate(o.x, o.y)
   // Lean into the direction of travel, applied OUTSIDE the mirror so the body

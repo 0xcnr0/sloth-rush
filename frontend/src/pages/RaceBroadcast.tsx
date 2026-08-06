@@ -58,6 +58,10 @@ const RACER_COLORS = ['#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D', '#E63946', '#2
 const laneDeck = new Image()
 laneDeck.src = '/art/lane-deck.webp'
 
+/** The finish line, hung across all four lanes. */
+const finishBanner = new Image()
+finishBanner.src = '/art/finish-banner.webp'
+
 const PALETTE = {
   wall: '#C9DFF5',
   wallAlt: '#BFD8F0',
@@ -101,8 +105,6 @@ export default function RaceBroadcast() {
 
   // Tactic mode state
   const [commentary, setCommentary] = useState<string | null>(null)
-  const [killFeed, setKillFeed] = useState<{ id: number; text: string; emoji: string; color: string }[]>([])
-  const killFeedIdRef = useRef(0)
   const [soundMuted, setSoundMuted] = useState(false)
   const prevLeaderRef = useRef<number | null>(null)
   const last100Shown = useRef(false)
@@ -262,18 +264,23 @@ export default function RaceBroadcast() {
       ctx.lineTo(SIDE_MARGIN, TOP_MARGIN + TRACK_HEIGHT)
       ctx.stroke()
 
-      const checkerSize = 8
-      const checkerX = SIDE_MARGIN + TRACK_WIDTH
-      for (let col = 0; col < 2; col++) {
-        for (let row = 0; row < Math.floor(TRACK_HEIGHT / checkerSize); row++) {
-          ctx.fillStyle = (row + col) % 2 === 0 ? PALETTE.ink : PALETTE.paper
-          ctx.fillRect(checkerX + col * checkerSize, TOP_MARGIN + row * checkerSize, checkerSize, checkerSize)
-        }
+      // Finish: a drawn chequered banner hung from a dowel, spanning all four
+      // lanes. This was a 16px-wide loop of alternating fillRect squares with
+      // the word FINISH above it — a legend in the margin rather than something
+      // in the scene. The dowel is allowed to poke above the track box, which
+      // is what the top margin is now for.
+      const bannerW = 34
+      const bannerX = SIDE_MARGIN + TRACK_WIDTH - bannerW * 0.45
+      if (finishBanner.complete && finishBanner.naturalWidth > 0) {
+        ctx.drawImage(
+          finishBanner,
+          bannerX, TOP_MARGIN - 10,
+          bannerW, TRACK_HEIGHT + 10
+        )
+      } else {
+        ctx.fillStyle = PALETTE.ink
+        ctx.fillRect(SIDE_MARGIN + TRACK_WIDTH, TOP_MARGIN, 6, TRACK_HEIGHT)
       }
-      ctx.fillStyle = PALETTE.ink
-      ctx.font = 'bold 10px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('FINISH', checkerX + checkerSize, TOP_MARGIN - 6)
 
       // Sort for ranking
       const sorted = [...frame.positions].sort((a, b) => b.distance - a.distance)
@@ -395,24 +402,6 @@ export default function RaceBroadcast() {
           sfxCollision()
         }
 
-        // Kill feed entry
-        // Event feed colours come from the archetype accent set, not from
-        // Tailwind's defaults — §5 keeps the environment neutral and spends
-        // colour on meaning.
-        const emojiMap: Record<string, { emoji: string; color: string }> = {
-          tactic_boost: { emoji: '\u{1F4A8}', color: '#4CAF6D' },
-          tactic_projectile: { emoji: '\u{1F41A}', color: '#E63946' },
-          mass_slow: { emoji: '\u{1F4A5}', color: '#E0A32E' },
-          rain: { emoji: '\u{1F327}\uFE0F', color: '#2A6FDB' },
-          luck_orb: { emoji: '\u{2728}', color: '#FFC93C' },
-          collision: { emoji: '\u{1F4A2}', color: '#E63946' },
-        }
-        const feedStyle = emojiMap[nearEvent.type] || { emoji: '\u{26A1}', color: '#7A7488' }
-        killFeedIdRef.current++
-        setKillFeed(prev => [
-          { id: killFeedIdRef.current, text: nearEvent.description, ...feedStyle },
-          ...prev,
-        ].slice(0, 5))
 
         // Canvas flash effect
         const flashColors: Record<string, string> = {
@@ -516,7 +505,6 @@ export default function RaceBroadcast() {
     }
     prevLeaderRef.current = null
     last100Shown.current = false
-    setKillFeed([])
     setEmotes([])
     setRacePhase('racing')
 
@@ -557,7 +545,16 @@ export default function RaceBroadcast() {
 
   // Trash talk phase: show for 5 seconds before race starts + entry SFX
   useEffect(() => {
-    if (!raceData?.gridPositions || racePhase !== 'trash_talk') return
+    if (racePhase !== 'trash_talk') return
+    // A race opened by direct link or after a refresh loads from the replay
+    // endpoint, which stores frames and events but no grid. The intro screen
+    // needs the grid, so it renders nothing — and because this effect used to
+    // bail on a missing grid, the phase never advanced either and the canvas
+    // stayed hidden behind `display: none`. The whole screen came up blank.
+    if (!raceData?.gridPositions) {
+      if (raceData?.frames?.length) setRacePhase('racing')
+      return
+    }
     // Skip trash talk in demo mode
     if (isDemo) {
       setRacePhase('racing')
@@ -834,27 +831,8 @@ export default function RaceBroadcast() {
 
       </div>
 
-      {/* Kill Feed Panel (outside canvas) */}
-      <div className="hidden lg:block w-48 space-y-1.5 pt-2">
-        <p className="text-brand-dust text-xs font-bold uppercase mb-2">Events</p>
-        <AnimatePresence>
-          {killFeed.map(item => (
-            <motion.div
-              key={item.id}
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 20, opacity: 0 }}
-              className="border border-brand-border rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
-            >
-              <span>{item.emoji}</span>
-              <span style={{ color: item.color }}>{item.text}</span>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
       </div>
 
-      {/* Tactic Mode Controls */}
       {/* Live standings */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
         {livePositions.map((pos, i) => (
@@ -900,7 +878,6 @@ export default function RaceBroadcast() {
         {raceFinished && raceData.finalOrder && (() => {
           // Compute stats from frames/events
           const frames: RaceFrame[] = raceData.frames || []
-          const events: RaceEvent[] = raceData.events || []
           const trackLen = raceData.trackLength || 1000
 
           // Max speed per racer
@@ -911,17 +888,6 @@ export default function RaceBroadcast() {
             }
           }
 
-          // Count boosts and projectiles per racer
-          const boostCount: Record<number, number> = {}
-          const projectileHitCount: Record<number, number> = {}
-          for (const e of events) {
-            if (e.type === 'tactic_boost') {
-              for (const id of e.affectedIds) boostCount[id] = (boostCount[id] || 0) + 1
-            }
-            if (e.type === 'tactic_projectile') {
-              if (e.affectedIds[0]) projectileHitCount[e.affectedIds[0]] = (projectileHitCount[e.affectedIds[0]] || 0) + 1
-            }
-          }
 
           // "Peki Ya" — find the closest loser to the winner
           const winner = raceData.finalOrder[0]
@@ -982,19 +948,6 @@ export default function RaceBroadcast() {
             }
           }
 
-          // MVP 4: "Tank" — Most hits taken and still finished
-          const hitCount: Record<number, number> = {}
-          for (const e of events) {
-            if (['tactic_projectile', 'mass_slow', 'collision'].includes(e.type)) {
-              for (const aid of e.affectedIds) hitCount[aid] = (hitCount[aid] || 0) + 1
-            }
-          }
-          let tankRacer: { id: number; name: string; hits: number } | null = null
-          for (const [idStr, hits] of Object.entries(hitCount)) {
-            if (hits > (tankRacer?.hits || 0)) {
-              tankRacer = { id: Number(idStr), name: names.get(Number(idStr)) || '', hits }
-            }
-          }
 
           const mvpAwards: { emoji: string; title: string; name: string; detail: string }[] = []
           if (bestClimber.gain > 0) {
@@ -1005,9 +958,6 @@ export default function RaceBroadcast() {
           }
           if (comebackKing) {
             mvpAwards.push({ emoji: '\u{1F451}', title: 'Comeback King', name: comebackKing.name, detail: `From P${comebackKing.worstPos} to top 2!` })
-          }
-          if (tankRacer && tankRacer.hits >= 1) {
-            mvpAwards.push({ emoji: '\u{1F6E1}\uFE0F', title: 'Tank', name: tankRacer.name, detail: `Took ${tankRacer.hits} hits and still finished!` })
           }
 
           return (
@@ -1049,8 +999,6 @@ export default function RaceBroadcast() {
                           <p className="text-brand-ink font-semibold">{fo.name}</p>
                           <p className="text-brand-dust text-xs">
                             Max: {(maxSpeeds[fo.id] || 0).toFixed(1)} u/t
-                            {(boostCount[fo.id] || 0) > 0 && ` | Boost: ${boostCount[fo.id]}`}
-                            {(projectileHitCount[fo.id] || 0) > 0 && ` | Projectile Throw hit: ${projectileHitCount[fo.id]}`}
                             {fo.isBot && ' | BOT'}
                           </p>
                         </div>
