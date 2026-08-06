@@ -140,7 +140,7 @@ export default function RaceLobby() {
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Connect your wallet to enter a race</p>
+        <p className="text-brand-dust">Connect your wallet to enter a race</p>
         <WalletConnect />
       </div>
     )
@@ -155,7 +155,7 @@ export default function RaceLobby() {
             <button
               onClick={() => setMainTab('create')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mainTab === 'create' ? 'bg-brand-primary/20 text-brand-primary' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                mainTab === 'create' ? 'bg-brand-primary/20 text-brand-primary' : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
               }`}
             >
               Create Race
@@ -163,7 +163,7 @@ export default function RaceLobby() {
             <button
               onClick={() => setMainTab('live')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mainTab === 'live' ? 'bg-brand-primary/20 text-brand-primary' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                mainTab === 'live' ? 'bg-brand-primary/20 text-brand-primary' : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
               }`}
             >
               Live Races
@@ -177,7 +177,7 @@ export default function RaceLobby() {
         <div className="max-w-3xl mx-auto px-4 pb-8">
           <div className="mb-6">
             <h2 className="text-2xl font-bold">Live Races</h2>
-            <p className="text-gray-400 text-sm mt-1">Watch races in progress</p>
+            <p className="text-brand-dust text-sm mt-1">Watch races in progress</p>
           </div>
 
           {liveLoading && <Spinner text="Loading active races..." />}
@@ -185,8 +185,8 @@ export default function RaceLobby() {
           {!liveLoading && liveRaces.length === 0 && (
             <div className="text-center py-16">
               <div className="text-5xl mb-4">{'\u{1F3C1}'}</div>
-              <p className="text-gray-400 mb-2">No active races right now</p>
-              <p className="text-gray-500 text-sm">Races appear here when in progress. Check back soon!</p>
+              <p className="text-brand-dust mb-2">No active races right now</p>
+              <p className="text-brand-dust text-sm">Races appear here when in progress. Check back soon!</p>
             </div>
           )}
 
@@ -205,10 +205,10 @@ export default function RaceLobby() {
                       <span className="text-xl">{THEME.brand.mark}</span>
                     </div>
                     <div>
-                      <p className="text-white font-semibold">
+                      <p className="text-brand-ink font-semibold">
                         {formatLabel(race.format) || 'Race'}
                       </p>
-                      <p className="text-gray-500 text-xs">
+                      <p className="text-brand-dust text-xs">
                         {race.participantCount || race.participants?.length || '?'} participants
                         {race.status && <span> &middot; {race.status}</span>}
                       </p>
@@ -252,19 +252,19 @@ export default function RaceLobby() {
               <div className="mb-6 p-4 bg-gradient-to-r from-brand-accent/20 to-brand-primary/20 border border-brand-accent/30 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white font-bold text-sm">Daily Race</p>
-                    <p className="text-gray-400 text-xs">
+                    <p className="text-brand-ink font-bold text-sm">Daily Race</p>
+                    <p className="text-brand-dust text-xs">
                       Weather: <span className="text-brand-primary font-semibold capitalize">{dailyRace.weather}</span>
                       {' \u2022 '}Daily Exhibition Race
                     </p>
-                    <p className="text-gray-500 text-[10px] mt-0.5">Free exhibition race with today's weather. Play as many times as you want.</p>
+                    <p className="text-brand-dust text-[10px] mt-0.5">Free exhibition race with today's weather. Play as many times as you want.</p>
                   </div>
                   <button
                     onClick={() => {
                       setSelectedFormat(FORMATS[0]) // Exhibition
                       setRaceId(dailyRace.raceId)
                     }}
-                    className="px-4 py-1.5 bg-brand-accent text-white font-bold rounded-lg text-sm cursor-pointer hover:bg-brand-accent/80"
+                    className="px-4 py-1.5 bg-brand-accent text-brand-ink font-bold rounded-lg text-sm cursor-pointer hover:bg-brand-accent/80"
                   >
                     Join Daily
                   </button>
@@ -276,10 +276,10 @@ export default function RaceLobby() {
             {racers.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">{THEME.brand.mark}</div>
-                <p className="text-gray-400 mb-4">You need a Racer to race</p>
+                <p className="text-brand-dust mb-4">You need a Racer to race</p>
                 <button
                   onClick={() => navigate('/collection')}
-                  className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl cursor-pointer"
+                  className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl cursor-pointer"
                 >
                   Go to {THEME.locations.home}
                 </button>
@@ -289,7 +289,7 @@ export default function RaceLobby() {
                 {/* Balance */}
 
                 {/* Format selection */}
-                <h2 className="text-lg font-semibold text-gray-300 mb-3">Select Race Format</h2>
+                <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">Select Race Format</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
                   {visibleFormats.map(fmt => (
                     <button
@@ -301,19 +301,19 @@ export default function RaceLobby() {
                           : 'border-brand-border bg-brand-surface hover:border-gray-500'
                       }`}
                     >
-                      <p className="text-white font-semibold">
+                      <p className="text-brand-ink font-semibold">
                         {fmt.name}
                         {fmt.id === 'demo_standard' && (
                           <span className="ml-2 px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] font-bold rounded">DEMO</span>
                         )}
                       </p>
-                      <p className="text-gray-500 text-sm mt-1">{fmt.desc}</p>
+                      <p className="text-brand-dust text-sm mt-1">{fmt.desc}</p>
                     </button>
                   ))}
                 </div>
 
                 {/* Racer selection */}
-                <h2 className="text-lg font-semibold text-gray-300 mb-3">Select Your Racer</h2>
+                <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">Select Your Racer</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
                   {racers.map(racer => (
                     <button
@@ -327,13 +327,13 @@ export default function RaceLobby() {
                     >
                       <span className="text-3xl">{THEME.brand.mark}</span>
                       <div className="text-left">
-                        <p className="text-white font-semibold flex items-center gap-2">
+                        <p className="text-brand-ink font-semibold flex items-center gap-2">
                           {racer.name}
                           {racer.type === 'free' && (
                             <span className="px-1.5 py-0.5 bg-brand-info/20 text-brand-info text-[10px] font-bold rounded">{THEME.tiers.free.toUpperCase()}</span>
                           )}
                         </p>
-                        <p className="text-gray-500 text-xs capitalize">
+                        <p className="text-brand-dust text-xs capitalize">
                           {racer.type === 'free' ? THEME.tiers.free : `${rarityLabel(racer.rarity)} ${archetypeLabel(racer.race)}`}
                         </p>
                       </div>
@@ -345,7 +345,7 @@ export default function RaceLobby() {
                 <button
                   onClick={handleCreateAndJoin}
                   disabled={!selectedRacer || loading}
-                  className="w-full py-3 bg-brand-primary text-brand-bg font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
+                  className="w-full py-3 bg-brand-primary text-brand-surface font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {loading ? 'Starting…' : 'Race'}
                 </button>

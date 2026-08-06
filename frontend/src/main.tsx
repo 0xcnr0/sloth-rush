@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit'
+import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit'
 import { Toaster } from 'react-hot-toast'
 import '@rainbow-me/rainbowkit/styles.css'
 import './index.css'
@@ -40,8 +40,17 @@ async function bootstrap() {
                 <App />
               </BrowserRouter>
             ) : (
-              // Standalone mode: RainbowKit for wallet connection UI
-              <RainbowKitProvider theme={darkTheme({ accentColor: '#22c55e' })}>
+              // Standalone mode: RainbowKit for wallet connection UI.
+              // The wallet modal is the one surface this app does not draw
+              // itself, so it has to be told the palette or it renders a dark
+              // sheet with a green button in the middle of a lit toy shelf.
+              <RainbowKitProvider
+                theme={lightTheme({
+                  accentColor: '#241A38',
+                  accentColorForeground: '#FFFDF7',
+                  borderRadius: 'large',
+                })}
+              >
                 <BrowserRouter>
                   <App />
                 </BrowserRouter>
@@ -50,9 +59,9 @@ async function bootstrap() {
           </QueryClientProvider>
         </WagmiProvider>
         <Toaster position="top-right" toastOptions={{
-          style: { background: '#1e293b', color: '#e2e8f0', border: '1px solid #334155' },
-          success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+          style: { background: '#FFFDF7', color: '#241A38', border: '1px solid #9AA6B2' },
+          success: { iconTheme: { primary: '#4CAF6D', secondary: '#FFFDF7' } },
+          error: { iconTheme: { primary: '#E63946', secondary: '#FFFDF7' } },
         }} />
       </ErrorBoundary>
     </StrictMode>,

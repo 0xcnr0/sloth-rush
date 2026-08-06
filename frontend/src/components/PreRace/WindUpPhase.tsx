@@ -142,7 +142,7 @@ export default function WindUpPhase({ raceId, wallet, onLocked }: Props) {
       className="text-center max-w-md mx-auto"
     >
       <h1 className="text-3xl font-bold mb-1">{THEME.race.windUp}</h1>
-      <p className="text-gray-400 mb-6 text-sm">
+      <p className="text-brand-dust mb-6 text-sm">
         Hold to wind the spring. Let go inside the band for a clean start.
       </p>
 
@@ -175,7 +175,7 @@ export default function WindUpPhase({ raceId, wallet, onLocked }: Props) {
         >
           {THEME.brand.mark}
         </motion.div>
-        <p className="text-white font-semibold">
+        <p className="text-brand-ink font-semibold">
           {stage === 'ready' && 'Hold to wind'}
           {stage === 'winding' && 'Let go to lock in'}
           {stage === 'locked' && (copy ? copy.label : 'Locked in')}
@@ -198,7 +198,7 @@ export default function WindUpPhase({ raceId, wallet, onLocked }: Props) {
         />
       </div>
 
-      <div className="mt-2 flex justify-between text-xs font-mono tabular-nums text-gray-400">
+      <div className="mt-2 flex justify-between text-xs font-mono tabular-nums text-brand-dust">
         <span>{Math.round(tension)}% tension</span>
         <span>{remainingMs === null ? '' : `${(remainingMs / 1000).toFixed(1)}s`}</span>
       </div>
@@ -210,12 +210,12 @@ export default function WindUpPhase({ raceId, wallet, onLocked }: Props) {
             <p className={`font-semibold ${copy.tone}`}>
               {copy.label} — {outcome!.tension.toFixed(0)}%
             </p>
-            <p className="text-gray-400 text-sm">{copy.note}</p>
+            <p className="text-brand-dust text-sm">{copy.note}</p>
           </>
         )}
       </div>
 
-      <p className="text-gray-600 text-xs mt-2">
+      <p className="text-brand-dust/70 text-xs mt-2">
         Full wind takes about {(fullWindMs / 1000).toFixed(1)}s. Everyone winds at the same time.
       </p>
     </motion.div>

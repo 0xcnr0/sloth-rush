@@ -64,7 +64,7 @@ export default function Guide() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">How to Play</h1>
-        <p className="text-gray-400 mt-1">Everything you need to know about {THEME.brand.name}</p>
+        <p className="text-brand-dust mt-1">Everything you need to know about {THEME.brand.name}</p>
       </div>
 
       {/* Quick Links */}
@@ -76,7 +76,7 @@ export default function Guide() {
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
               openSection === s.id
                 ? 'bg-brand-primary/20 text-brand-primary'
-                : 'text-gray-400 hover:text-white bg-brand-surface border border-brand-border hover:bg-white/5'
+                : 'text-brand-dust hover:text-brand-ink bg-brand-surface border border-brand-border hover:bg-brand-ink/5'
             }`}
           >
             {s.icon} {s.title}
@@ -96,7 +96,7 @@ export default function Guide() {
             }`}
           >
             <div className="p-6">
-              <h2 className="text-xl font-bold text-white mb-4">{section.icon} {section.title}</h2>
+              <h2 className="text-xl font-bold text-brand-ink mb-4">{section.icon} {section.title}</h2>
               <div className="space-y-4">
                 {section.content.map((item, i) => (
                   <motion.div
@@ -105,8 +105,8 @@ export default function Guide() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                   >
-                    <h3 className="text-white font-semibold mb-1">{item.q}</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">{item.a}</p>
+                    <h3 className="text-brand-ink font-semibold mb-1">{item.q}</h3>
+                    <p className="text-brand-dust text-sm leading-relaxed">{item.a}</p>
                   </motion.div>
                 ))}
               </div>
@@ -117,18 +117,18 @@ export default function Guide() {
 
       {/* CTA */}
       <div className="mt-8 bg-brand-surface border border-brand-primary/30 rounded-xl p-6 text-center">
-        <h3 className="text-white font-bold text-lg mb-2">Ready to race?</h3>
-        <p className="text-gray-400 text-sm mb-4">Mint your free racer and start racing today!</p>
+        <h3 className="text-brand-ink font-bold text-lg mb-2">Ready to race?</h3>
+        <p className="text-brand-dust text-sm mb-4">Mint your free racer and start racing today!</p>
         <div className="flex justify-center gap-3">
           <Link
             to="/mint"
-            className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors"
+            className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors"
           >
             Mint {THEME.tiers.free}
           </Link>
           <Link
             to="/race"
-            className="px-6 py-2.5 border border-brand-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors"
+            className="px-6 py-2.5 border border-brand-border text-brand-ink/80 rounded-xl hover:bg-brand-ink/5 transition-colors"
           >
             Enter Race
           </Link>

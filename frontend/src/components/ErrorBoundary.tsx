@@ -20,13 +20,13 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-          <div className="bg-slate-800 border border-red-500/30 rounded-xl p-8 max-w-md text-center">
+        <div className="min-h-screen bg-brand-surface flex items-center justify-center p-4">
+          <div className="bg-brand-ink/5 border border-red-500/30 rounded-xl p-8 max-w-md text-center">
             <h2 className="text-2xl font-bold text-red-400 mb-4">Something went wrong</h2>
-            <p className="text-gray-400 mb-6">An unexpected error occurred.</p>
+            <p className="text-brand-dust mb-6">An unexpected error occurred.</p>
             <button
               onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/'; }}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
+              className="bg-green-600 hover:bg-green-700 text-brand-ink px-6 py-2 rounded-lg"
             >
               Go to Home
             </button>

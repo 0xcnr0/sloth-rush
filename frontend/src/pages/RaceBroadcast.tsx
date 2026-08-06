@@ -36,13 +36,34 @@ interface FinalOrder {
   reward: number
 }
 
-const RACER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
+// The four locked archetype accents (ART_DIRECTION §3), reused as lane colours
+// so the stripes belong to the game rather than to Tailwind's default swatches.
+const RACER_COLORS = ['#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D', '#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D']
+// Tints of the same four accents, faint enough that the standings panel stays
+// neutral — §5 allows at most two accents to dominate a frame.
 const RACER_BG = [
-  'rgba(34,197,94,0.15)', 'rgba(59,130,246,0.15)',
-  'rgba(245,158,11,0.15)', 'rgba(168,85,247,0.15)',
-  'rgba(239,68,68,0.15)', 'rgba(6,182,212,0.15)',
-  'rgba(249,115,22,0.15)', 'rgba(236,72,153,0.15)'
+  'rgba(230,57,70,0.12)', 'rgba(42,111,219,0.12)',
+  'rgba(255,201,60,0.16)', 'rgba(76,175,109,0.12)',
+  'rgba(230,57,70,0.12)', 'rgba(42,111,219,0.12)',
+  'rgba(255,201,60,0.16)', 'rgba(76,175,109,0.12)',
 ]
+
+/**
+ * Canvas colours. The stylesheet's CSS variables cannot be read cheaply per
+ * frame, so ART_DIRECTION §5 is mirrored here — if one moves, move both.
+ */
+const PALETTE = {
+  wall: '#C9DFF5',
+  wallAlt: '#BFD8F0',
+  floor: '#E8C99B',
+  floorEdge: '#C9A97A',
+  grain: 'rgba(36, 26, 56, 0.10)',
+  shelf: '#9AA6B2',
+  ink: '#241A38',
+  paper: '#FFFDF7',
+  dust: '#7A7488',
+  gold: '#E0A32E',
+} as const
 
 export default function RaceBroadcast() {
   const { id } = useParams()
@@ -194,29 +215,49 @@ export default function RaceBroadcast() {
         const top = TOP_MARGIN + i * LANE_HEIGHT
         const ground = top + LANE_HEIGHT * GROUND_AT
 
-        // Sky, then the painted shelf the toys run along.
-        ctx.fillStyle = i % 2 === 0 ? '#101a2e' : '#0e1728'
+        // Wall behind the shelf, then the shelf itself. These are the locked
+        // ART_DIRECTION §5 colours; the lanes used to be #101a2e navy on #3a2f24
+        // brown, which is a night-time esports track, not a toy shelf in a lit
+        // room. Alternating lanes differ by a hair of brightness so the four
+        // read as separate shelves without the stripe becoming the loudest
+        // thing in the frame.
+        ctx.fillStyle = i % 2 === 0 ? PALETTE.wall : PALETTE.wallAlt
         ctx.fillRect(SIDE_MARGIN, top, TRACK_WIDTH, LANE_HEIGHT)
-        ctx.fillStyle = '#3a2f24'
-        ctx.fillRect(SIDE_MARGIN, ground, TRACK_WIDTH, LANE_HEIGHT - LANE_HEIGHT * GROUND_AT)
 
-        // Model-railway rail: dashed line along the running surface.
-        ctx.strokeStyle = 'rgba(255,255,255,0.10)'
+        const shelfTop = LANE_HEIGHT - LANE_HEIGHT * GROUND_AT
+        ctx.fillStyle = PALETTE.floor
+        ctx.fillRect(SIDE_MARGIN, ground, TRACK_WIDTH, shelfTop)
+        // Front edge of the shelf, darker, so the board reads as having depth.
+        ctx.fillStyle = PALETTE.floorEdge
+        ctx.fillRect(SIDE_MARGIN, ground + shelfTop - 4, TRACK_WIDTH, 4)
+
+        // Wood grain: a few long, faint strokes along the running direction.
+        ctx.strokeStyle = PALETTE.grain
         ctx.lineWidth = 1
-        ctx.setLineDash([7, 9])
+        for (let g = 0; g < 3; g++) {
+          const y = ground + 3 + g * ((shelfTop - 6) / 3)
+          ctx.beginPath()
+          ctx.moveTo(SIDE_MARGIN + 4, y)
+          ctx.lineTo(SIDE_MARGIN + TRACK_WIDTH - 4, y)
+          ctx.stroke()
+        }
+
+        // The line the toys stand on, in ink — the same outline weight the art
+        // uses, so the rig sits on the shelf instead of floating over it.
+        ctx.strokeStyle = PALETTE.ink
+        ctx.lineWidth = 1.5
         ctx.beginPath()
         ctx.moveTo(SIDE_MARGIN, ground)
         ctx.lineTo(SIDE_MARGIN + TRACK_WIDTH, ground)
         ctx.stroke()
-        ctx.setLineDash([])
 
         // Lane accent stripe — which lane is whose, at a glance (§10).
-        ctx.fillStyle = RACER_COLORS[i] || '#fff'
-        ctx.fillRect(SIDE_MARGIN, top, 3, LANE_HEIGHT)
+        ctx.fillStyle = RACER_COLORS[i] || PALETTE.ink
+        ctx.fillRect(SIDE_MARGIN, top, 4, LANE_HEIGHT)
       }
 
       // Start line (left) and chequered finish (right).
-      ctx.strokeStyle = '#374151'
+      ctx.strokeStyle = PALETTE.ink
       ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(SIDE_MARGIN, TOP_MARGIN)
@@ -227,11 +268,11 @@ export default function RaceBroadcast() {
       const checkerX = SIDE_MARGIN + TRACK_WIDTH
       for (let col = 0; col < 2; col++) {
         for (let row = 0; row < Math.floor(TRACK_HEIGHT / checkerSize); row++) {
-          ctx.fillStyle = (row + col) % 2 === 0 ? '#1a1a1a' : '#f5f5f5'
+          ctx.fillStyle = (row + col) % 2 === 0 ? PALETTE.ink : PALETTE.paper
           ctx.fillRect(checkerX + col * checkerSize, TOP_MARGIN + row * checkerSize, checkerSize, checkerSize)
         }
       }
-      ctx.fillStyle = '#f59e0b'
+      ctx.fillStyle = PALETTE.ink
       ctx.font = 'bold 10px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText('FINISH', checkerX + checkerSize, TOP_MARGIN - 6)
@@ -267,24 +308,29 @@ export default function RaceBroadcast() {
         phaseRef.current[pos.id] = phase + cadence(pos.speed * 2.2, RACER_HEIGHT) * 0.28
 
         // Rank above the racer, name and speed pinned to the lane's left edge.
-        ctx.fillStyle = rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : '#78716c'
+        // Rank badge: gold for the leader, then shelf grey. Outlined in ink so
+        // it holds against both the pale wall and the warm shelf.
+        ctx.fillStyle = rank === 1 ? PALETTE.gold : PALETTE.shelf
         ctx.beginPath()
         ctx.arc(cx, ground - RACER_HEIGHT - 10, 8, 0, Math.PI * 2)
         ctx.fill()
-        ctx.fillStyle = '#fff'
+        ctx.strokeStyle = PALETTE.ink
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.fillStyle = PALETTE.ink
         ctx.font = 'bold 10px ui-monospace, monospace'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
         ctx.fillText(String(rank), cx, ground - RACER_HEIGHT - 10)
 
         const name = names.get(pos.id) || '#' + pos.id
-        ctx.fillStyle = isBot ? '#6b7280' : '#e5e7eb'
+        ctx.fillStyle = isBot ? PALETTE.dust : PALETTE.ink
         ctx.font = 'bold 10px sans-serif'
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
         ctx.fillText(isBot ? `${name}  BOT` : name, SIDE_MARGIN + 8, top + 5)
 
-        ctx.fillStyle = '#6b7280'
+        ctx.fillStyle = PALETTE.dust
         ctx.font = '9px ui-monospace, monospace'
         ctx.fillText(pos.speed.toFixed(1) + ' u/t', SIDE_MARGIN + 8, top + 18)
       })
@@ -352,15 +398,18 @@ export default function RaceBroadcast() {
         }
 
         // Kill feed entry
+        // Event feed colours come from the archetype accent set, not from
+        // Tailwind's defaults — §5 keeps the environment neutral and spends
+        // colour on meaning.
         const emojiMap: Record<string, { emoji: string; color: string }> = {
-          tactic_boost: { emoji: '\u{1F4A8}', color: '#22c55e' },
-          tactic_projectile: { emoji: '\u{1F41A}', color: '#ef4444' },
-          mass_slow: { emoji: '\u{1F4A5}', color: '#f59e0b' },
-          rain: { emoji: '\u{1F327}\uFE0F', color: '#3b82f6' },
-          luck_orb: { emoji: '\u{2728}', color: '#a855f7' },
-          collision: { emoji: '\u{1F4A2}', color: '#ef4444' },
+          tactic_boost: { emoji: '\u{1F4A8}', color: '#4CAF6D' },
+          tactic_projectile: { emoji: '\u{1F41A}', color: '#E63946' },
+          mass_slow: { emoji: '\u{1F4A5}', color: '#E0A32E' },
+          rain: { emoji: '\u{1F327}\uFE0F', color: '#2A6FDB' },
+          luck_orb: { emoji: '\u{2728}', color: '#FFC93C' },
+          collision: { emoji: '\u{1F4A2}', color: '#E63946' },
         }
-        const feedStyle = emojiMap[nearEvent.type] || { emoji: '\u{26A1}', color: '#9ca3af' }
+        const feedStyle = emojiMap[nearEvent.type] || { emoji: '\u{26A1}', color: '#7A7488' }
         killFeedIdRef.current++
         setKillFeed(prev => [
           { id: killFeedIdRef.current, text: nearEvent.description, ...feedStyle },
@@ -527,7 +576,7 @@ export default function RaceBroadcast() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-400">Loading race...</div>
+        <div className="text-brand-dust">Loading race...</div>
       </div>
     )
   }
@@ -535,7 +584,7 @@ export default function RaceBroadcast() {
   if (!raceData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Race not found</p>
+        <p className="text-brand-dust">Race not found</p>
         <button onClick={() => navigate('/race')} className="text-brand-primary underline cursor-pointer">
           Back to Lobby
         </button>
@@ -549,18 +598,21 @@ export default function RaceBroadcast() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold">
-            <span className="text-brand-primary">LIVE</span> — Grand Projectile Throw Track
-            {isDemo && <span className="ml-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded">DEMO</span>}
+            {/* Track name comes from the theme. It read "Grand Projectile Throw
+                Track" — half the first theme's arena name, half the retired
+                tactic vocabulary — hardcoded on the race screen. */}
+            <span className="text-brand-danger">LIVE</span> — {THEME.locations.track}
+            {isDemo && <span className="ml-2 px-2 py-0.5 bg-brand-gold/20 text-brand-ink text-xs font-bold rounded">DEMO</span>}
           </h1>
           <div className="flex items-center gap-2">
-            <p className="text-gray-500 text-sm">Race {raceData.raceId?.slice(-8)}</p>
+            <p className="text-brand-dust text-sm">Race {raceData.raceId?.slice(-8)}</p>
             {raceData.weather && (() => {
               const w: Record<string, { emoji: string; label: string; color: string }> = {
-                sunny:  { emoji: '\u{2600}\uFE0F', label: 'Sunny', color: 'text-yellow-400' },
-                rainy:  { emoji: '\u{1F327}\uFE0F', label: 'Rainy', color: 'text-blue-400' },
-                windy:  { emoji: '\u{1F4A8}', label: 'Windy', color: 'text-teal-400' },
-                foggy:  { emoji: '\u{1F32B}\uFE0F', label: 'Foggy', color: 'text-gray-400' },
-                stormy: { emoji: '\u{26C8}\uFE0F', label: 'Stormy', color: 'text-red-400' },
+                sunny:  { emoji: '\u{2600}\uFE0F', label: 'Sunny', color: 'text-brand-gold' },
+                rainy:  { emoji: '\u{1F327}\uFE0F', label: 'Rainy', color: 'text-brand-info' },
+                windy:  { emoji: '\u{1F4A8}', label: 'Windy', color: 'text-brand-dust' },
+                foggy:  { emoji: '\u{1F32B}\uFE0F', label: 'Foggy', color: 'text-brand-dust' },
+                stormy: { emoji: '\u{26C8}\uFE0F', label: 'Stormy', color: 'text-brand-danger' },
               }
               const info = w[raceData.weather] || w.sunny
               return (
@@ -574,17 +626,14 @@ export default function RaceBroadcast() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => { const m = toggleMute(); setSoundMuted(m) }}
-            className="bg-brand-surface border border-brand-border rounded-lg px-2.5 py-2 text-lg cursor-pointer hover:bg-white/5 transition-colors"
+            className="bg-brand-surface border border-brand-border rounded-lg px-2.5 py-2 text-lg cursor-pointer hover:bg-brand-ink/5 transition-colors"
             title={soundMuted ? 'Unmute' : 'Mute'}
           >
             {soundMuted ? '\u{1F507}' : '\u{1F50A}'}
           </button>
           <div className="bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5">
-            <span className="text-gray-400 text-xs">PRIZE POOL</span>
-          </div>
-          <div className="bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5">
-            <span className="text-gray-400 text-xs">TICK</span>
-            <p className="text-white font-mono font-bold">{currentTick}</p>
+            <span className="text-brand-dust text-xs">TICK</span>
+            <p className="text-brand-ink font-mono font-bold">{currentTick}</p>
           </div>
         </div>
       </div>
@@ -615,13 +664,13 @@ export default function RaceBroadcast() {
                   className="text-center"
                 >
                   <div className="text-5xl mb-2">{THEME.brand.mark}</div>
-                  <p className="text-white font-bold text-sm mb-1">{gp.name}</p>
-                  <p className="text-gray-500 text-xs mb-2">P{gp.position}</p>
+                  <p className="text-brand-ink font-bold text-sm mb-1">{gp.name}</p>
+                  <p className="text-brand-dust text-xs mb-2">P{gp.position}</p>
                   <motion.div
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 1.0 + 0.5 }}
-                    className="bg-white text-brand-bg text-xs font-bold px-3 py-1.5 rounded-xl inline-block max-w-[160px]"
+                    className="bg-white text-brand-surface text-xs font-bold px-3 py-1.5 rounded-xl inline-block max-w-[160px]"
                   >
                     {(() => {
                       const talk = getTrashTalk(gp.racerRace)
@@ -637,7 +686,7 @@ export default function RaceBroadcast() {
               transition={{ delay: 4.5 }}
               className="text-center mt-4"
             >
-              <span className="text-gray-500 text-sm animate-pulse">Race starting...</span>
+              <span className="text-brand-dust text-sm animate-pulse">Race starting...</span>
             </motion.div>
           </motion.div>
         )}
@@ -647,7 +696,11 @@ export default function RaceBroadcast() {
       <div className="flex gap-3 mb-4" style={{ display: racePhase === 'trash_talk' ? 'none' : 'flex' }}>
       <div
         className="relative flex-1 border border-brand-border rounded-xl overflow-hidden"
-        style={{ background: 'linear-gradient(to top, #0a1a0a 0%, #0f2a0f 30%, #1a3a1a 60%, #2a5a2a 85%, #3a7a3a 100%)' }}
+        // The room behind the shelf: warm light near the floor, cooler toward
+        // the ceiling. This was a five-stop dark green gradient — grass and
+        // forest, left over from the first theme, and the reason the track kept
+        // reading as a night-time field even after the lanes were repainted.
+        style={{ background: 'linear-gradient(to top, #E8D9BC 0%, #DCE8F5 35%, #C9DFF5 100%)' }}
       >
         <canvas
           ref={canvasRef}
@@ -694,9 +747,9 @@ export default function RaceBroadcast() {
               className={`absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg font-bold text-sm ${
                 activeEvent.type.startsWith('tactic_')
                   ? activeEvent.type === 'tactic_boost'
-                    ? 'bg-brand-primary/90 text-brand-bg'
-                    : 'bg-brand-danger/90 text-white'
-                  : 'bg-brand-gold/90 text-brand-bg'
+                    ? 'bg-brand-primary/90 text-brand-surface'
+                    : 'bg-brand-danger/90 text-brand-ink'
+                  : 'bg-brand-gold/90 text-brand-surface'
               }`}
             >
               {activeEvent.description}
@@ -720,7 +773,7 @@ export default function RaceBroadcast() {
               className="absolute pointer-events-none"
               style={{ left: `${leftPct}%`, top: '20%', transform: 'translateX(-50%)' }}
             >
-              <div className="bg-white text-brand-bg text-xs font-bold px-3 py-1.5 rounded-xl rounded-bl-none shadow-lg max-w-[200px]">
+              <div className="bg-white text-brand-surface text-xs font-bold px-3 py-1.5 rounded-xl rounded-bl-none shadow-lg max-w-[200px]">
                 {speechBubble.text}
               </div>
             </motion.div>
@@ -769,7 +822,7 @@ export default function RaceBroadcast() {
 
       {/* Kill Feed Panel (outside canvas) */}
       <div className="hidden lg:block w-48 space-y-1.5 pt-2">
-        <p className="text-gray-500 text-xs font-bold uppercase mb-2">Events</p>
+        <p className="text-brand-dust text-xs font-bold uppercase mb-2">Events</p>
         <AnimatePresence>
           {killFeed.map(item => (
             <motion.div
@@ -795,7 +848,7 @@ export default function RaceBroadcast() {
             key={pos.id}
             className="flex items-center gap-3 rounded-xl p-3 border"
             style={{
-              backgroundColor: RACER_BG[i] || '#111827',
+              backgroundColor: RACER_BG[i] || 'transparent',
               borderColor: RACER_COLORS[i] || '#1f2937',
             }}
           >
@@ -803,8 +856,8 @@ export default function RaceBroadcast() {
               {i + 1}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-semibold text-sm truncate">{pos.name}</p>
-              <p className="text-gray-400 text-xs">
+              <p className="text-brand-ink font-semibold text-sm truncate">{pos.name}</p>
+              <p className="text-brand-dust text-xs">
                 {((pos.distance / (raceData.trackLength || 1000)) * 100).toFixed(0)}% — {pos.speed.toFixed(1)} u/t
               </p>
             </div>
@@ -817,8 +870,8 @@ export default function RaceBroadcast() {
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
           <div className="bg-brand-surface border border-brand-border rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
             <div className="text-5xl mb-4">{'\u26A0\uFE0F'}</div>
-            <h2 className="text-xl font-bold text-white mb-2">Wallet Disconnected</h2>
-            <p className="text-gray-400 text-sm mb-6">Reconnect your wallet to continue the race and receive your rewards.</p>
+            <h2 className="text-xl font-bold text-brand-ink mb-2">Wallet Disconnected</h2>
+            <p className="text-brand-dust text-sm mb-6">Reconnect your wallet to continue the race and receive your rewards.</p>
             <WalletConnect />
           </div>
         </div>
@@ -959,7 +1012,7 @@ export default function RaceBroadcast() {
 
                 {/* Standings table */}
                 <div className="bg-brand-surface border border-brand-border rounded-xl p-4 mb-6">
-                  <h3 className="text-gray-400 text-xs font-bold uppercase mb-3">Final Standings</h3>
+                  <h3 className="text-brand-dust text-xs font-bold uppercase mb-3">Final Standings</h3>
                   <div className="space-y-2">
                     {raceData.finalOrder.map((fo: FinalOrder, i: number) => (
                       <motion.div
@@ -972,11 +1025,11 @@ export default function RaceBroadcast() {
                         }`}
                       >
                         <span className={`text-xl font-extrabold w-8 ${
-                          i === 0 ? 'text-brand-gold' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-gray-500'
+                          i === 0 ? 'text-brand-gold' : i === 1 ? 'text-brand-ink/80' : i === 2 ? 'text-amber-600' : 'text-brand-dust'
                         }`}>{i + 1}.</span>
                         <div className="flex-1 text-left">
-                          <p className="text-white font-semibold">{fo.name}</p>
-                          <p className="text-gray-500 text-xs">
+                          <p className="text-brand-ink font-semibold">{fo.name}</p>
+                          <p className="text-brand-dust text-xs">
                             Max: {(maxSpeeds[fo.id] || 0).toFixed(1)} u/t
                             {(boostCount[fo.id] || 0) > 0 && ` | Boost: ${boostCount[fo.id]}`}
                             {(projectileHitCount[fo.id] || 0) > 0 && ` | Projectile Throw hit: ${projectileHitCount[fo.id]}`}
@@ -997,7 +1050,7 @@ export default function RaceBroadcast() {
                     className="bg-brand-accent/10 border border-brand-accent/30 rounded-xl p-4 mb-6"
                   >
                     <h3 className="text-brand-accent font-bold text-sm mb-2">What If...?</h3>
-                    <p className="text-gray-300 text-sm">
+                    <p className="text-brand-ink/80 text-sm">
                       {runnerUp.name} was only <span className="text-brand-gold font-bold">{gap} units</span> from the finish line.
                       {' A tighter wind could have taken Pole Position.'}
                     </p>
@@ -1012,7 +1065,7 @@ export default function RaceBroadcast() {
                     transition={{ delay: 0.8 }}
                     className="bg-brand-surface border border-brand-border rounded-xl p-4 mb-6"
                   >
-                    <h3 className="text-gray-400 text-xs font-bold uppercase mb-3 text-center">MVP Awards</h3>
+                    <h3 className="text-brand-dust text-xs font-bold uppercase mb-3 text-center">MVP Awards</h3>
                     <div className="grid grid-cols-2 gap-3">
                       {mvpAwards.map((award, i) => (
                         <motion.div
@@ -1024,8 +1077,8 @@ export default function RaceBroadcast() {
                         >
                           <div className="text-3xl mb-1">{award.emoji}</div>
                           <p className="text-brand-gold font-bold text-xs uppercase">{award.title}</p>
-                          <p className="text-white font-semibold text-sm mt-1">{award.name}</p>
-                          <p className="text-gray-400 text-xs">{award.detail}</p>
+                          <p className="text-brand-ink font-semibold text-sm mt-1">{award.name}</p>
+                          <p className="text-brand-dust text-xs">{award.detail}</p>
                         </motion.div>
                       ))}
                     </div>
@@ -1052,13 +1105,13 @@ export default function RaceBroadcast() {
                         navigate('/race', { state: { format: location.state?.format } })
                       } catch (err) { console.error('Race Again failed:', err); navigate('/race') }
                     }}
-                    className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-bg font-black rounded-xl text-lg hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30"
+                    className="px-8 py-3 bg-brand-gold text-brand-ink font-black rounded-xl text-lg hover:brightness-105 transition-all cursor-pointer border-2 border-brand-ink"
                   >
                     Race Again
                   </button>
                   <button
                     onClick={() => navigate('/collection')}
-                    className="px-6 py-2.5 border border-brand-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 border border-brand-border text-brand-ink/80 rounded-xl hover:bg-brand-ink/5 transition-colors cursor-pointer"
                   >
                     Back to {THEME.locations.home}
                   </button>

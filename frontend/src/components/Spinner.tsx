@@ -19,7 +19,7 @@ export default function Spinner({ text = 'Loading...', size = 'md', fullPage = f
       >
         {THEME.brand.mark}
       </motion.div>
-      {text && <p className="text-gray-400 text-sm">{text}</p>}
+      {text && <p className="text-brand-dust text-sm">{text}</p>}
     </div>
   )
 

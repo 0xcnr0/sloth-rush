@@ -68,7 +68,7 @@ export default function Mint() {
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Connect your wallet to mint a {THEME.tiers.free}</p>
+        <p className="text-brand-dust">Connect your wallet to mint a {THEME.tiers.free}</p>
         <WalletConnect />
       </div>
     )
@@ -87,12 +87,12 @@ export default function Mint() {
           >
             <div className="text-7xl mb-6">{THEME.brand.mark}</div>
             <h1 className="text-3xl font-bold mb-2">Mint Your {THEME.tiers.free}</h1>
-            <p className="text-gray-400 mb-8 max-w-md">
+            <p className="text-brand-dust mb-8 max-w-md">
               Every wallet gets one {THEME.tiers.free}. Mint yours and upgrade it to a {THEME.tiers.pro} to start racing!
             </p>
             <button
               onClick={handleMint}
-              className="px-8 py-3 bg-brand-primary text-brand-bg font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors cursor-pointer"
+              className="px-8 py-3 bg-brand-primary text-brand-surface font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors cursor-pointer"
             >
               Mint {THEME.tiers.free}
             </button>
@@ -114,7 +114,7 @@ export default function Mint() {
             >
               {THEME.brand.mark}
             </motion.div>
-            <p className="text-xl text-gray-300">Minting your racer...</p>
+            <p className="text-xl text-brand-ink/80">Minting your racer...</p>
           </motion.div>
         )}
 
@@ -137,12 +137,12 @@ export default function Mint() {
             <h2 className="text-3xl font-bold text-brand-primary mb-2">
               {racer.name}
             </h2>
-            <p className="text-gray-400 mb-6">Your {THEME.tiers.free} has been minted!</p>
+            <p className="text-brand-dust mb-6">Your {THEME.tiers.free} has been minted!</p>
 
             <div className="bg-brand-surface border border-brand-border rounded-xl p-6 mb-6 inline-block">
               <div className="text-6xl mb-3">{THEME.brand.mark}</div>
-              <p className="text-white font-semibold">{racer.name}</p>
-              <p className="text-gray-500 text-sm">{THEME.tiers.free} #{racer.id}</p>
+              <p className="text-brand-ink font-semibold">{racer.name}</p>
+              <p className="text-brand-dust text-sm">{THEME.tiers.free} #{racer.id}</p>
             </div>
 
             {onchainMint.hash && (
@@ -161,7 +161,7 @@ export default function Mint() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 onClick={() => navigate('/collection')}
-                className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
+                className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
               >
                 Go to {THEME.locations.home}
               </button>
@@ -178,10 +178,10 @@ export default function Mint() {
           >
             <div className="text-6xl mb-4">&#x2714;&#xfe0f;</div>
             <h2 className="text-2xl font-bold mb-2">Already Minted</h2>
-            <p className="text-gray-400 mb-6">This wallet already has a {THEME.tiers.free}.</p>
+            <p className="text-brand-dust mb-6">This wallet already has a {THEME.tiers.free}.</p>
             <button
               onClick={() => navigate('/collection')}
-              className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
+              className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
             >
               View Your {THEME.locations.home}
             </button>
@@ -197,10 +197,10 @@ export default function Mint() {
           >
             <div className="text-6xl mb-4">&#x274c;</div>
             <h2 className="text-2xl font-bold text-brand-danger mb-2">Mint Failed</h2>
-            <p className="text-gray-400 mb-6">{error}</p>
+            <p className="text-brand-dust mb-6">{error}</p>
             <button
               onClick={() => setState('idle')}
-              className="px-6 py-2.5 border border-brand-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+              className="px-6 py-2.5 border border-brand-border text-brand-ink/80 rounded-xl hover:bg-brand-ink/5 transition-colors cursor-pointer"
             >
               Try Again
             </button>

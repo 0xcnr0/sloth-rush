@@ -50,14 +50,14 @@ export default function GridReveal({ entries }: { entries: GridEntry[] }) {
                     'bg-brand-surface border-brand-border'
                   }`}
                 >
-                  <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-brand-gold' : 'text-gray-500'}`}>
+                  <span className={`text-2xl font-extrabold w-8 ${i === 0 ? 'text-brand-gold' : 'text-brand-dust'}`}>
                     P{gp.position}
                   </span>
                   <span className="text-2xl">
                     {(gp.race ? THEME.archetypes[gp.race]?.emoji : undefined) ?? THEME.brand.mark}
                   </span>
                   <div className="flex-1 text-left">
-                    <p className="text-white font-semibold">{gp.name}</p>
+                    <p className="text-brand-ink font-semibold">{gp.name}</p>
                     {/* The tension IS the reveal. Everyone wound in secret; this
                         is the moment it becomes public, so showing only the
                         finishing order throws away the drama the phase built. */}
@@ -70,7 +70,7 @@ export default function GridReveal({ entries }: { entries: GridEntry[] }) {
                           style={{ width: `${Math.min(100, gp.tension ?? 0)}%` }}
                         />
                       </div>
-                      <span className="font-mono text-xs tabular-nums text-gray-500 w-8 text-right">
+                      <span className="font-mono text-xs tabular-nums text-brand-dust w-8 text-right">
                         {Math.round(gp.tension ?? 0)}%
                       </span>
                     </div>
@@ -90,7 +90,7 @@ export default function GridReveal({ entries }: { entries: GridEntry[] }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 3 }}
-              className="text-gray-400 mt-8"
+              className="text-brand-dust mt-8"
             >
               Starting race...
             </motion.p>

@@ -38,7 +38,7 @@ export default function Profile() {
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Connect your wallet to view your profile</p>
+        <p className="text-brand-dust">Connect your wallet to view your profile</p>
         <WalletConnect />
       </div>
     )
@@ -48,7 +48,7 @@ export default function Profile() {
 
   if (!profile) return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <p className="text-gray-400">Could not load profile data</p>
+      <p className="text-brand-dust">Could not load profile data</p>
     </div>
   )
 
@@ -59,7 +59,7 @@ export default function Profile() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Profile</h1>
-        <p className="text-gray-500 text-sm mt-1 font-mono">
+        <p className="text-brand-dust text-sm mt-1 font-mono">
           {address?.slice(0, 6)}...{address?.slice(-4)}
         </p>
       </div>
@@ -68,11 +68,11 @@ export default function Profile() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {[
           { label: 'XP', value: String(profile.xp), color: 'text-purple-400' },
-          { label: 'Total Races', value: String(profile.totalRaces), color: 'text-white' },
+          { label: 'Total Races', value: String(profile.totalRaces), color: 'text-brand-ink' },
           { label: 'Win Rate', value: `${winRate}%`, color: 'text-yellow-400' },
           { label: 'Total Wins', value: String(profile.totalWins), color: 'text-brand-primary' },
           { label: 'Login Days', value: String(profile.loginDays), color: 'text-blue-400' },
-          { label: 'Creatures', value: `${profile.freeRacerCount + profile.racerCount}`, color: 'text-white' },
+          { label: 'Creatures', value: `${profile.freeRacerCount + profile.racerCount}`, color: 'text-brand-ink' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -81,7 +81,7 @@ export default function Profile() {
             transition={{ delay: i * 0.05 }}
             className="bg-brand-surface border border-brand-border rounded-xl p-4 text-center"
           >
-            <p className="text-gray-500 text-xs mb-1">{stat.label}</p>
+            <p className="text-brand-dust text-xs mb-1">{stat.label}</p>
             <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
           </motion.div>
         ))}
@@ -97,7 +97,7 @@ export default function Profile() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-              tab === t.id ? 'bg-brand-primary/20 text-brand-primary' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              tab === t.id ? 'bg-brand-primary/20 text-brand-primary' : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
             }`}
           >
             {t.label}
@@ -148,11 +148,11 @@ function ReferralSection({ wallet }: { wallet: string }) {
 
   return (
     <div className="mt-8 bg-brand-surface border border-brand-border rounded-xl p-6">
-      <h3 className="text-white font-bold text-lg mb-4">Referrals</h3>
+      <h3 className="text-brand-ink font-bold text-lg mb-4">Referrals</h3>
       {code ? (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="flex-1 bg-white/5 rounded-lg px-3 py-2 font-mono text-sm text-white">{link}</div>
+            <div className="flex-1 bg-brand-ink/5 rounded-lg px-3 py-2 font-mono text-sm text-brand-ink">{link}</div>
             <button
               onClick={async () => {
                 await navigator.clipboard.writeText(link!)
@@ -165,18 +165,18 @@ function ReferralSection({ wallet }: { wallet: string }) {
           </div>
           {stats && (
             <div className="flex gap-4 text-sm">
-              <span className="text-gray-400">Referrals: <span className="text-white font-bold">{stats.totalReferrals}</span></span>
+              <span className="text-brand-dust">Referrals: <span className="text-brand-ink font-bold">{stats.totalReferrals}</span></span>
             </div>
           )}
-          <p className="text-gray-500 text-xs">Share your link and bring a friend to the track.</p>
+          <p className="text-brand-dust text-xs">Share your link and bring a friend to the track.</p>
         </div>
       ) : (
         <div className="text-center">
-          <p className="text-gray-400 text-sm mb-3">Generate your referral link to invite friends</p>
+          <p className="text-brand-dust text-sm mb-3">Generate your referral link to invite friends</p>
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="px-6 py-2 bg-brand-primary text-black font-bold rounded-lg hover:bg-brand-primary/90 transition-colors cursor-pointer disabled:opacity-50"
+            className="px-6 py-2 bg-brand-primary text-brand-surface font-bold rounded-lg hover:bg-brand-primary/90 transition-colors cursor-pointer disabled:opacity-50"
           >
             {generating ? 'Generating...' : 'Generate Referral Link'}
           </button>
@@ -201,8 +201,8 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
 
   if (races.length === 0) return (
     <div className="bg-brand-surface border border-brand-border rounded-xl p-12 text-center">
-      <p className="text-gray-400 text-lg mb-2">No races yet</p>
-      <p className="text-gray-500 text-sm">Enter a race from the Race lobby to get started</p>
+      <p className="text-brand-dust text-lg mb-2">No races yet</p>
+      <p className="text-brand-dust text-sm">Enter a race from the Race lobby to get started</p>
     </div>
   )
 
@@ -211,7 +211,7 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-brand-border text-gray-400">
+            <tr className="border-b border-brand-border text-brand-dust">
               <th className="text-left px-4 py-3 font-medium">Date</th>
               <th className="text-left px-4 py-3 font-medium">Format</th>
               <th className="text-left px-4 py-3 font-medium">Racer</th>
@@ -223,23 +223,23 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
             {races.map((race: any, i: number) => (
               <tr
                 key={race.raceId + i}
-                className={`border-b border-brand-border/50 hover:bg-white/5 transition-colors ${i === races.length - 1 ? 'border-b-0' : ''}`}
+                className={`border-b border-brand-border/50 hover:bg-brand-ink/5 transition-colors ${i === races.length - 1 ? 'border-b-0' : ''}`}
               >
-                <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
+                <td className="px-4 py-3 text-brand-ink/80 whitespace-nowrap">
                   {new Date(race.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </td>
-                <td className="px-4 py-3 text-gray-300">{formatLabel(race.format)}</td>
-                <td className="px-4 py-3 text-white font-medium">{race.racerName}</td>
+                <td className="px-4 py-3 text-brand-ink/80">{formatLabel(race.format)}</td>
+                <td className="px-4 py-3 text-brand-ink font-medium">{race.racerName}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className={race.position === 1 ? 'text-yellow-400 font-bold' : race.position === 2 ? 'text-gray-300 font-bold' : race.position === 3 ? 'text-orange-400 font-bold' : 'text-gray-500'}>
+                  <span className={race.position === 1 ? 'text-yellow-400 font-bold' : race.position === 2 ? 'text-brand-ink/80 font-bold' : race.position === 3 ? 'text-orange-400 font-bold' : 'text-brand-dust'}>
                     {race.position === 1 ? '1st' : race.position === 2 ? '2nd' : race.position === 3 ? '3rd' : `${race.position}th`}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
                   {race.reward > 0 ? (
-                    <span className="text-gray-500">—</span>
+                    <span className="text-brand-dust">—</span>
                   ) : (
-                    <span className="text-gray-500">0</span>
+                    <span className="text-brand-dust">0</span>
                   )}
                 </td>
               </tr>
@@ -275,8 +275,8 @@ function InventorySection({ wallet }: { wallet: string }) {
 
   if (allItems.length === 0) return (
     <div className="bg-brand-surface border border-brand-border rounded-xl p-12 text-center">
-      <p className="text-gray-400 text-lg mb-2">No items yet</p>
-      <p className="text-gray-500 text-sm">Buy cosmetics and accessories from the Shop</p>
+      <p className="text-brand-dust text-lg mb-2">No items yet</p>
+      <p className="text-brand-dust text-sm">Buy cosmetics and accessories from the Shop</p>
     </div>
   )
 
@@ -285,7 +285,7 @@ function InventorySection({ wallet }: { wallet: string }) {
     epic: 'bg-purple-500/20 text-purple-400',
     rare: 'bg-blue-500/20 text-blue-400',
     uncommon: 'bg-green-500/20 text-green-400',
-    common: 'bg-gray-500/20 text-gray-400',
+    common: 'bg-gray-500/20 text-brand-dust',
   }
 
   return (
@@ -298,7 +298,7 @@ function InventorySection({ wallet }: { wallet: string }) {
           className="bg-brand-surface border border-brand-border rounded-xl p-4"
         >
           <div className="text-3xl text-center mb-2">{item.icon || (item.itemType === 'cosmetic' ? '\u{1F3A8}' : '\u{2699}\uFE0F')}</div>
-          <h3 className="text-white font-bold text-sm text-center">{item.name}</h3>
+          <h3 className="text-brand-ink font-bold text-sm text-center">{item.name}</h3>
           {item.rarity && (
             <p className="text-center mt-1">
               <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${RARITY_BADGE[item.rarity] || RARITY_BADGE.common}`}>
@@ -306,11 +306,11 @@ function InventorySection({ wallet }: { wallet: string }) {
               </span>
             </p>
           )}
-          <p className="text-gray-500 text-xs text-center mt-2">
+          <p className="text-brand-dust text-xs text-center mt-2">
             {item.equippedOn ? `Equipped on ${item.equippedOn}` : 'Not equipped'}
           </p>
           {item.purchasedAt && (
-            <p className="text-gray-600 text-[10px] text-center mt-1">
+            <p className="text-brand-dust/70 text-[10px] text-center mt-1">
               Bought {new Date(item.purchasedAt).toLocaleDateString()}
             </p>
           )}
@@ -333,11 +333,11 @@ function SettingsSection() {
 
   return (
     <div className="mt-8 bg-brand-surface border border-brand-border rounded-xl p-6">
-      <h3 className="text-white font-bold text-lg mb-4">Settings</h3>
+      <h3 className="text-brand-ink font-bold text-lg mb-4">Settings</h3>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-gray-300 font-medium text-sm">Sound Effects</p>
-          <p className="text-gray-500 text-xs">Toggle race sounds and UI audio</p>
+          <p className="text-brand-ink/80 font-medium text-sm">Sound Effects</p>
+          <p className="text-brand-dust text-xs">Toggle race sounds and UI audio</p>
         </div>
         <button
           onClick={toggleSound}

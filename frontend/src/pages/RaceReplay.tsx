@@ -80,7 +80,7 @@ export default function RaceReplay() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-400">Loading replay...</div>
+        <div className="text-brand-dust">Loading replay...</div>
       </div>
     )
   }
@@ -89,10 +89,10 @@ export default function RaceReplay() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 text-center">
         <div className="text-6xl mb-4">{'\u{1F4FC}'}</div>
-        <p className="text-gray-400 mb-4">{error || 'Replay not found'}</p>
+        <p className="text-brand-dust mb-4">{error || 'Replay not found'}</p>
         <button
           onClick={() => navigate(-1)}
-          className="px-6 py-2.5 bg-brand-surface border border-brand-border text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+          className="px-6 py-2.5 bg-brand-surface border border-brand-border text-brand-ink rounded-xl hover:bg-brand-ink/5 transition-colors cursor-pointer"
         >
           Go Back
         </button>
@@ -116,11 +116,11 @@ export default function RaceReplay() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Race Replay</h1>
-          <p className="text-gray-400 mt-1">Race #{id}</p>
+          <p className="text-brand-dust mt-1">Race #{id}</p>
         </div>
         <button
           onClick={() => navigate(-1)}
-          className="px-4 py-2 border border-brand-border text-gray-300 rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm"
+          className="px-4 py-2 border border-brand-border text-brand-ink/80 rounded-xl hover:bg-brand-ink/5 transition-colors cursor-pointer text-sm"
         >
           Back
         </button>
@@ -136,8 +136,8 @@ export default function RaceReplay() {
             return (
               <div key={pos.id}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-white text-sm font-semibold">{name}</span>
-                  <span className="text-gray-400 text-xs">{pct.toFixed(0)}% | {pos.speed?.toFixed(1)} u/t</span>
+                  <span className="text-brand-ink text-sm font-semibold">{name}</span>
+                  <span className="text-brand-dust text-xs">{pct.toFixed(0)}% | {pos.speed?.toFixed(1)} u/t</span>
                 </div>
                 <div className="relative h-6 bg-brand-bg rounded-full overflow-hidden">
                   <motion.div
@@ -158,7 +158,7 @@ export default function RaceReplay() {
         </div>
 
         {/* Frame counter */}
-        <div className="mt-4 text-center text-gray-500 text-xs">
+        <div className="mt-4 text-center text-brand-dust text-xs">
           Frame {currentFrame + 1} / {totalFrames}
           {frameData?.tick !== undefined && <span> (Tick {frameData.tick})</span>}
         </div>
@@ -169,20 +169,20 @@ export default function RaceReplay() {
         <div className="flex items-center gap-3 mb-3">
           <button
             onClick={playing ? pause : play}
-            className="px-5 py-2 bg-brand-primary text-brand-bg font-bold rounded-lg hover:bg-brand-primary/90 transition-colors cursor-pointer text-sm"
+            className="px-5 py-2 bg-brand-primary text-brand-surface font-bold rounded-lg hover:bg-brand-primary/90 transition-colors cursor-pointer text-sm"
           >
             {playing ? 'Pause' : currentFrame >= totalFrames - 1 ? 'Replay' : 'Play'}
           </button>
 
           <button
             onClick={() => { if (playing) pause(); setCurrentFrame(prev => Math.max(0, prev - 1)) }}
-            className="px-3 py-2 bg-brand-bg text-gray-400 hover:text-white rounded-lg cursor-pointer text-sm font-semibold"
+            className="px-3 py-2 bg-brand-bg text-brand-dust hover:text-brand-ink rounded-lg cursor-pointer text-sm font-semibold"
           >
             &lt;
           </button>
           <button
             onClick={() => { if (playing) pause(); setCurrentFrame(prev => Math.min(totalFrames - 1, prev + 1)) }}
-            className="px-3 py-2 bg-brand-bg text-gray-400 hover:text-white rounded-lg cursor-pointer text-sm font-semibold"
+            className="px-3 py-2 bg-brand-bg text-brand-dust hover:text-brand-ink rounded-lg cursor-pointer text-sm font-semibold"
           >
             &gt;
           </button>
@@ -194,8 +194,8 @@ export default function RaceReplay() {
                 onClick={() => setSpeed(s)}
                 className={`px-3 py-2 rounded-lg font-semibold text-xs cursor-pointer transition-colors ${
                   speed === s
-                    ? 'bg-brand-accent text-white'
-                    : 'bg-brand-bg text-gray-400 hover:text-white'
+                    ? 'bg-brand-accent text-brand-ink'
+                    : 'bg-brand-bg text-brand-dust hover:text-brand-ink'
                 }`}
               >
                 {s}x
@@ -221,7 +221,7 @@ export default function RaceReplay() {
 
       {/* Events feed */}
       <div className="bg-brand-surface border border-brand-border rounded-xl p-4">
-        <h3 className="text-gray-400 text-xs font-bold uppercase mb-3">Event Feed</h3>
+        <h3 className="text-brand-dust text-xs font-bold uppercase mb-3">Event Feed</h3>
         <div className="max-h-48 overflow-y-auto space-y-1.5">
           {events.filter((e: any) => e.tick <= (frameData?.tick ?? 0)).reverse().map((e: any, i: number) => (
             <div
@@ -229,15 +229,15 @@ export default function RaceReplay() {
               className={`text-xs px-3 py-1.5 rounded-lg ${
                 e.tick === frameData?.tick
                   ? 'bg-brand-primary/10 text-brand-primary'
-                  : 'text-gray-500'
+                  : 'text-brand-dust'
               }`}
             >
-              <span className="text-gray-600 mr-2">[T{e.tick}]</span>
+              <span className="text-brand-dust/70 mr-2">[T{e.tick}]</span>
               {e.description}
             </div>
           ))}
           {events.length === 0 && (
-            <p className="text-gray-500 text-xs">No events recorded for this race.</p>
+            <p className="text-brand-dust text-xs">No events recorded for this race.</p>
           )}
         </div>
       </div>
@@ -249,7 +249,7 @@ export default function RaceReplay() {
           animate={{ opacity: 1, y: 0 }}
           className="mt-4 bg-brand-surface border border-brand-border rounded-xl p-4"
         >
-          <h3 className="text-gray-400 text-xs font-bold uppercase mb-3">Final Standings</h3>
+          <h3 className="text-brand-dust text-xs font-bold uppercase mb-3">Final Standings</h3>
           <div className="space-y-2">
             {finalOrder.map((fo: any, i: number) => (
               <div
@@ -259,9 +259,9 @@ export default function RaceReplay() {
                 }`}
               >
                 <span className={`font-bold w-6 ${
-                  i === 0 ? 'text-brand-primary' : 'text-gray-500'
+                  i === 0 ? 'text-brand-primary' : 'text-brand-dust'
                 }`}>{i + 1}.</span>
-                <span className="text-white font-semibold text-sm flex-1">{fo.name}</span>
+                <span className="text-brand-ink font-semibold text-sm flex-1">{fo.name}</span>
               </div>
             ))}
           </div>

@@ -45,34 +45,34 @@ export default function Invite() {
         className="bg-brand-surface border border-brand-border rounded-2xl p-8 max-w-md w-full text-center"
       >
         <div className="text-5xl mb-4">&#x1F9B5;</div>
-        <h1 className="text-2xl font-bold text-white mb-2">You've Been Invited!</h1>
-        <p className="text-gray-400 text-sm mb-6">
+        <h1 className="text-2xl font-bold text-brand-ink mb-2">You've Been Invited!</h1>
+        <p className="text-brand-dust text-sm mb-6">
           A friend invited you to Racer Rush. Connect your wallet and mint a racer to get started.
         </p>
 
         {!isConnected ? (
           <div className="space-y-4">
-            <p className="text-gray-500 text-xs">Connect your wallet first</p>
+            <p className="text-brand-dust text-xs">Connect your wallet first</p>
             <WalletConnect />
           </div>
         ) : applied ? (
           <div className="space-y-4">
             <div className="bg-brand-primary/10 border border-brand-primary/30 rounded-xl p-4">
               <p className="text-brand-primary font-bold">Referral Applied!</p>
-              <p className="text-gray-400 text-xs mt-1">Your friend has been rewarded</p>
+              <p className="text-brand-dust text-xs mt-1">Your friend has been rewarded</p>
             </div>
             <button
               onClick={() => navigate('/mint')}
-              className="w-full bg-brand-primary text-black font-bold py-3 rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
+              className="w-full bg-brand-primary text-brand-surface font-bold py-3 rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
             >
               Mint Your Racer
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-white/5 rounded-xl p-3">
-              <p className="text-gray-500 text-xs mb-1">Referral Code</p>
-              <p className="text-white font-mono font-bold">{code}</p>
+            <div className="bg-brand-ink/5 rounded-xl p-3">
+              <p className="text-brand-dust text-xs mb-1">Referral Code</p>
+              <p className="text-brand-ink font-mono font-bold">{code}</p>
             </div>
 
             {error && (
@@ -82,14 +82,14 @@ export default function Invite() {
             <button
               onClick={handleApply}
               disabled={applying}
-              className="w-full bg-brand-primary text-black font-bold py-3 rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full bg-brand-primary text-brand-surface font-bold py-3 rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer disabled:opacity-50"
             >
               {applying ? 'Applying...' : 'Apply Referral & Continue'}
             </button>
 
             <button
               onClick={() => navigate('/mint')}
-              className="w-full text-gray-500 text-sm hover:text-white transition-colors cursor-pointer"
+              className="w-full text-brand-dust text-sm hover:text-brand-ink transition-colors cursor-pointer"
             >
               Skip and go to Mint
             </button>

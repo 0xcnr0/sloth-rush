@@ -31,12 +31,12 @@ export default function DevPreview() {
   )
 
   return (
-    <div className="min-h-screen bg-brand-bg text-white p-4">
+    <div className="min-h-screen bg-brand-bg text-brand-ink p-4">
       <header className="mb-4">
-        <p className="text-xs tracking-[0.16em] uppercase text-gray-500">
+        <p className="text-xs tracking-[0.16em] uppercase text-brand-dust">
           {THEME.brand.name} — dev preview
         </p>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-brand-dust text-sm mt-1">
           Components with stub props, no wallet required. Dev builds only.
         </p>
       </header>
@@ -50,7 +50,7 @@ export default function DevPreview() {
             className={`px-4 py-2 rounded-full border-2 text-sm font-semibold min-h-11 ${
               panel === p
                 ? 'bg-brand-primary border-brand-primary text-black'
-                : 'border-brand-border text-gray-300'
+                : 'border-brand-border text-brand-ink/80'
             }`}
           >
             {p}
@@ -68,9 +68,9 @@ export default function DevPreview() {
         <div className="space-y-3">
           {visibleFormats.map(f => (
             <div key={f.id} className="rounded-xl border-2 border-brand-border bg-brand-surface p-4">
-              <p className="text-white font-bold">{f.name}</p>
-              <p className="text-gray-400 text-sm mt-1">{f.desc}</p>
-              <p className="text-gray-600 text-xs mt-2">id: {f.id}</p>
+              <p className="text-brand-ink font-bold">{f.name}</p>
+              <p className="text-brand-dust text-sm mt-1">{f.desc}</p>
+              <p className="text-brand-dust/70 text-xs mt-2">id: {f.id}</p>
             </div>
           ))}
         </div>
@@ -88,8 +88,8 @@ export default function DevPreview() {
           ] as const).map(([code, rarity]) => (
             <div key={code} className="rounded-xl border-2 border-brand-border bg-brand-surface p-3">
               <RacerPortrait archetype={code} rarity={rarity} height={170} />
-              <p className="text-white text-sm font-semibold mt-2">{archetypeLabel(code)}</p>
-              <p className="text-gray-400 text-xs">{rarityLabel(rarity)}</p>
+              <p className="text-brand-ink text-sm font-semibold mt-2">{archetypeLabel(code)}</p>
+              <p className="text-brand-dust text-xs">{rarityLabel(rarity)}</p>
             </div>
           ))}
         </div>

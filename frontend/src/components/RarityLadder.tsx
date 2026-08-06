@@ -64,7 +64,7 @@ export default function RarityLadder() {
 
   return (
     <div>
-      <p className="text-gray-400 text-sm mb-3">
+      <p className="text-brand-dust text-sm mb-3">
         {THEME.brand.name} — Fair to Mint. Top row large, bottom row at race scale.
       </p>
       <canvas ref={ref} className="w-full rounded-xl bg-[#101a2e]" style={{ aspectRatio: '3 / 2' }} />

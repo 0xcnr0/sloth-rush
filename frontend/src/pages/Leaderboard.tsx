@@ -14,7 +14,7 @@ type LeaderboardEntry = {
 }
 
 const RARITY_COLORS: Record<string, string> = {
-  common: 'text-gray-400',
+  common: 'text-brand-dust',
   uncommon: 'text-green-400',
   rare: 'text-blue-400',
   epic: 'text-purple-400',
@@ -70,7 +70,7 @@ export default function Leaderboard() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-2">Leaderboard</h1>
-      <p className="text-gray-400 mb-6">Season 1 Rankings</p>
+      <p className="text-brand-dust mb-6">Season 1 Rankings</p>
 
       {/* My Rank Card */}
       {myRank && (
@@ -80,11 +80,11 @@ export default function Leaderboard() {
           className="bg-brand-surface border border-brand-primary/30 rounded-xl p-4 mb-6 flex items-center justify-between"
         >
           <div>
-            <p className="text-gray-400 text-xs">Your Ranking</p>
-            <p className="text-white font-bold text-xl">#{myRank.rank}</p>
+            <p className="text-brand-dust text-xs">Your Ranking</p>
+            <p className="text-brand-ink font-bold text-xl">#{myRank.rank}</p>
           </div>
           <div className="text-right">
-            <p className="text-gray-400 text-xs">Race Points</p>
+            <p className="text-brand-dust text-xs">Race Points</p>
             <p className="text-brand-primary font-bold text-xl">{myRank.total_rp} RP</p>
           </div>
         </motion.div>
@@ -102,7 +102,7 @@ export default function Leaderboard() {
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors cursor-pointer ${
               mainTab === tab.id
                 ? 'bg-brand-primary/20 text-brand-primary border border-brand-primary'
-                : 'bg-brand-surface border border-brand-border text-gray-500 hover:text-white'
+                : 'bg-brand-surface border border-brand-border text-brand-dust hover:text-brand-ink'
             }`}
           >
             {tab.label}
@@ -123,9 +123,9 @@ export default function Leaderboard() {
                     ? l === 'bronze'
                       ? 'bg-orange-500/20 text-orange-400 border border-orange-500'
                       : l === 'silver'
-                      ? 'bg-gray-400/20 text-gray-300 border border-gray-400'
+                      ? 'bg-gray-400/20 text-brand-ink/80 border border-gray-400'
                       : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500'
-                    : 'bg-brand-surface border border-brand-border text-gray-500 hover:text-white'
+                    : 'bg-brand-surface border border-brand-border text-brand-dust hover:text-brand-ink'
                 }`}
               >
                 {l === 'bronze' ? `Bronze (${THEME.tiers.free})` : l === 'silver' ? `Silver (${THEME.tiers.pro})` : 'Gold (Tier 2+)'}
@@ -148,11 +148,11 @@ export default function Leaderboard() {
               {careerEntries.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-4xl mb-3">{'\u{1F4CA}'}</div>
-                  <p className="text-gray-400">No career stats yet.</p>
+                  <p className="text-brand-dust">No career stats yet.</p>
                 </div>
               ) : (
                 <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 border-b border-brand-border text-xs text-gray-500 font-semibold">
+                  <div className="grid grid-cols-[3rem_1fr_5rem_5rem_5rem] gap-2 px-4 py-2 border-b border-brand-border text-xs text-brand-dust font-semibold">
                     <span>#</span>
                     <span>Racer</span>
                     <span className="text-right">Races</span>
@@ -169,14 +169,14 @@ export default function Leaderboard() {
                         i < careerEntries.length - 1 ? 'border-b border-brand-border/50' : ''
                       } ${entry.wallet === address ? 'bg-brand-primary/5' : ''}`}
                     >
-                      <span className={`font-bold ${i === 0 ? 'text-brand-primary' : 'text-gray-500'}`}>
+                      <span className={`font-bold ${i === 0 ? 'text-brand-primary' : 'text-brand-dust'}`}>
                         {i + 1}
                       </span>
-                      <span className={`text-sm truncate ${entry.wallet === address ? 'text-brand-primary font-bold' : 'text-white'}`}>
+                      <span className={`text-sm truncate ${entry.wallet === address ? 'text-brand-primary font-bold' : 'text-brand-ink'}`}>
                         {entry.racer_name || truncateWallet(entry.wallet)}
                       </span>
-                      <span className="text-right text-gray-300 text-sm">{entry.total_races || 0}</span>
-                      <span className="text-right text-gray-300 text-sm">{entry.total_wins || 0}</span>
+                      <span className="text-right text-brand-ink/80 text-sm">{entry.total_races || 0}</span>
+                      <span className="text-right text-brand-ink/80 text-sm">{entry.total_wins || 0}</span>
                       <span className="text-right text-brand-primary font-bold text-sm">{entry.total_earnings || 0}</span>
                     </motion.div>
                   ))}
@@ -184,11 +184,11 @@ export default function Leaderboard() {
               )}
 
               {/* Hall of Fame Section */}
-              <h2 className="text-xl font-bold mt-8 mb-4 text-white">Hall of Fame</h2>
+              <h2 className="text-xl font-bold mt-8 mb-4 text-brand-ink">Hall of Fame</h2>
               {hofEntries.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-3">{'\u{1F3C6}'}</div>
-                  <p className="text-gray-400">The Hall of Fame is empty. Legends are yet to be made!</p>
+                  <p className="text-brand-dust">The Hall of Fame is empty. Legends are yet to be made!</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -204,8 +204,8 @@ export default function Leaderboard() {
                         {i + 1}
                       </div>
                       <div className="flex-1">
-                        <p className="text-white font-bold">{entry.racer_name || entry.name || 'Unknown'}</p>
-                        <p className="text-gray-500 text-xs">
+                        <p className="text-brand-ink font-bold">{entry.racer_name || entry.name || 'Unknown'}</p>
+                        <p className="text-brand-dust text-xs">
                           {entry.achievement || entry.season || 'Season Champion'}
                           {entry.wallet && <span> &middot; {truncateWallet(entry.wallet)}</span>}
                         </p>
@@ -233,14 +233,14 @@ export default function Leaderboard() {
       return (
         <div className="text-center py-12">
           <div className="text-4xl mb-3">{emptyIcon}</div>
-          <p className="text-gray-400">No racers yet. Be the first!</p>
+          <p className="text-brand-dust">No racers yet. Be the first!</p>
         </div>
       )
     }
 
     return (
       <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[3rem_1fr_1fr_5rem] gap-2 px-4 py-2 border-b border-brand-border text-xs text-gray-500 font-semibold">
+        <div className="grid grid-cols-[3rem_1fr_1fr_5rem] gap-2 px-4 py-2 border-b border-brand-border text-xs text-brand-dust font-semibold">
           <span>#</span>
           <span>Racer</span>
           <span>Racer</span>
@@ -258,15 +258,15 @@ export default function Leaderboard() {
           >
             <span className={`font-bold ${
               entry.rank === 1 ? 'text-brand-gold' :
-              entry.rank === 2 ? 'text-gray-300' :
-              entry.rank === 3 ? 'text-orange-400' : 'text-gray-500'
+              entry.rank === 2 ? 'text-brand-ink/80' :
+              entry.rank === 3 ? 'text-orange-400' : 'text-brand-dust'
             }`}>
               {entry.rank <= 3 ? ['', '\u{1F947}', '\u{1F948}', '\u{1F949}'][entry.rank] : entry.rank}
             </span>
-            <span className={`text-sm truncate ${entry.wallet === userAddress ? 'text-brand-primary font-bold' : 'text-white'}`}>
+            <span className={`text-sm truncate ${entry.wallet === userAddress ? 'text-brand-primary font-bold' : 'text-brand-ink'}`}>
               {truncateWallet(entry.wallet)}
             </span>
-            <span className={`text-sm truncate ${RARITY_COLORS[entry.rarity] || 'text-gray-400'}`}>
+            <span className={`text-sm truncate ${RARITY_COLORS[entry.rarity] || 'text-brand-dust'}`}>
               {entry.racer_name}
             </span>
             <span className="text-right text-brand-primary font-bold text-sm">{entry.total_rp}</span>

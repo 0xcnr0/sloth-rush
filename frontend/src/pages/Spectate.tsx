@@ -40,14 +40,14 @@ export default function Spectate() {
     if (s === 'racing' || s === 'simulated') return 'text-green-400'
     if (s === 'tuning') return 'text-yellow-400'
     if (s === 'lobby') return 'text-blue-400'
-    return 'text-gray-400'
+    return 'text-brand-dust'
   }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Spectate</h1>
-        <p className="text-gray-400 mt-1">Watch live races at the {THEME.locations.track}</p>
+        <p className="text-brand-dust mt-1">Watch live races at the {THEME.locations.track}</p>
       </div>
 
       {loading && (
@@ -63,8 +63,8 @@ export default function Spectate() {
           className="text-center py-12"
         >
           <div className="text-6xl mb-4">{'\u{1F3C1}'}</div>
-          <p className="text-gray-400 text-lg mb-2">No active races right now</p>
-          <p className="text-gray-500 text-sm mb-4">Start one from the Race Lobby and it will show up here.</p>
+          <p className="text-brand-dust text-lg mb-2">No active races right now</p>
+          <p className="text-brand-dust text-sm mb-4">Start one from the Race Lobby and it will show up here.</p>
           <button
             onClick={() => navigate('/race')}
             className="px-6 py-2.5 bg-brand-primary/20 text-brand-primary font-semibold rounded-lg hover:bg-brand-primary/30 transition-colors cursor-pointer text-sm"
@@ -89,10 +89,10 @@ export default function Spectate() {
                   <span className="text-xl">{'\u{1F3CE}'}</span>
                 </div>
                 <div>
-                  <p className="text-white font-semibold">
+                  <p className="text-brand-ink font-semibold">
                     {formatLabel(race.format) || 'Race'}
                   </p>
-                  <p className="text-gray-500 text-xs">
+                  <p className="text-brand-dust text-xs">
                     {race.participantCount || race.participants?.length || '?'} racers
                     {race.status && <span className={`ml-1 ${statusColor(race.status)}`}> &middot; {race.status}</span>}
                   </p>
@@ -117,8 +117,8 @@ export default function Spectate() {
       )}
 
       <div className="mt-8 bg-brand-surface border border-brand-border rounded-xl p-5">
-        <h3 className="text-white font-semibold mb-2">How Spectating Works</h3>
-        <div className="text-gray-400 text-sm space-y-1">
+        <h3 className="text-brand-ink font-semibold mb-2">How Spectating Works</h3>
+        <div className="text-brand-dust text-sm space-y-1">
           <p>Active races refresh every 5 seconds.</p>
           <p>Click "Watch" to follow the live standings and event log.</p>
           <p>Spectating is free and does not affect the race.</p>

@@ -1,21 +1,42 @@
 @import "tailwindcss";
 
+/*
+ * The palette is docs/ART_DIRECTION.md §5, which until now existed only in the
+ * document. The app shipped Tailwind's defaults — near-black navy, green-500,
+ * purple-500 — while the art was being drawn for a bright, warm shelf: heavy
+ * dark outlines, saturated toon paint, a sunny showcase. Toys painted for a
+ * toy shelf were being rendered on a crypto dashboard, and that mismatch, not
+ * taste, is why the game looked wrong.
+ *
+ * ART_DIRECTION also constrains the environment: at most two accent colours can
+ * dominate a frame, the surroundings stay neutral, and the accents live on the
+ * racers. So the UI is deliberately ink-on-paper with one warm action colour —
+ * the four archetype accents (#E63946 / #2A6FDB / #FFC93C / #4CAF6D) belong to
+ * the toys and must not be spent on buttons.
+ */
 @theme {
-  --color-brand-primary: #22c55e;
-  --color-brand-bg: #0a0e17;
-  --color-brand-surface: #111827;
-  --color-brand-border: #1f2937;
-  --color-brand-gold: #f59e0b;
-  --color-brand-accent: #a855f7;
-  --color-brand-info: #3b82f6;
-  --color-brand-danger: #ef4444;
+  /* Environment — §5 */
+  --color-brand-bg: #C9DFF5;      /* wall: the light blue behind the shelf */
+  --color-brand-surface: #FFFDF7; /* paper: cards, panels */
+  --color-brand-floor: #E8C99B;   /* floor: warm wood, the track runs on this */
+  --color-brand-border: #9AA6B2;  /* shelf: edges and dividers */
+  --color-brand-ink: #241A38;     /* ink: outlines and primary text */
+  --color-brand-dust: #7A7488;    /* dust: secondary text */
+
+  /* Actions. Ink on paper is the primary; gold is reserved for a win. */
+  --color-brand-primary: #241A38;
+  --color-brand-gold: #E0A32E;
+  --color-brand-accent: #2A6FDB;
+  --color-brand-info: #2A6FDB;
+  --color-brand-danger: #E63946;
+
   --font-family-display: "Inter", system-ui, sans-serif;
 }
 
 body {
   margin: 0;
   background-color: var(--color-brand-bg);
-  color: white;
+  color: var(--color-brand-ink);
   font-family: var(--font-family-display);
   min-height: 100vh;
 }

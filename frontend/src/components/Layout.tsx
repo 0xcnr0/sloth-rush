@@ -48,7 +48,7 @@ export default function Layout() {
           <div className="flex items-center gap-6">
             {/* Hamburger button - mobile only */}
             <button
-              className="sm:hidden p-3 text-gray-400 hover:text-white"
+              className="sm:hidden p-3 text-brand-dust hover:text-brand-ink"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? '\u2715' : '\u2630'}
@@ -64,7 +64,7 @@ export default function Layout() {
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     location.pathname === item.path
                       ? 'bg-brand-primary/20 text-brand-primary'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
                   }`}
                 >
                   {item.label}
@@ -91,10 +91,10 @@ export default function Layout() {
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
         <div className="sm:hidden fixed inset-0 z-50 bg-black/80" onClick={() => setMobileMenuOpen(false)}>
-          <div className="bg-slate-900 w-64 h-full p-4 border-r border-slate-700" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-brand-surface w-64 h-full p-4 border-r border-slate-700" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <span className="text-xl font-bold text-green-400">{THEME.brand.nameUpper}</span>
-              <button onClick={() => setMobileMenuOpen(false)} className="text-gray-400 text-xl">{'\u2715'}</button>
+              <button onClick={() => setMobileMenuOpen(false)} className="text-brand-dust text-xl">{'\u2715'}</button>
             </div>
             <nav className="flex flex-col gap-2">
               {NAV_ITEMS.map((item) => (
@@ -105,7 +105,7 @@ export default function Layout() {
                   className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center ${
                     location.pathname === item.path
                       ? 'bg-green-600/20 text-green-400'
-                      : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                      : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
                   }`}
                 >
                   {item.label}
@@ -113,9 +113,9 @@ export default function Layout() {
               ))}
             </nav>
             <div className="mt-4 pt-4 border-t border-slate-700 flex flex-col gap-2">
-              <Link to="/mint" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">Mint</Link>
-              {FEATURES.profile && <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">Profile</Link>}
-              <Link to="/guide" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-slate-800 transition-colors min-h-[44px] flex items-center">How to Play</Link>
+              <Link to="/mint" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5 transition-colors min-h-[44px] flex items-center">Mint</Link>
+              {FEATURES.profile && <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5 transition-colors min-h-[44px] flex items-center">Profile</Link>}
+              <Link to="/guide" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5 transition-colors min-h-[44px] flex items-center">How to Play</Link>
             </div>
             {address && (
               <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
@@ -136,14 +136,14 @@ export default function Layout() {
       </main>
 
       <footer className="border-t border-brand-border py-4 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-gray-500 text-xs">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-brand-dust text-xs">
           <span>{THEME.brand.name} — {THEME.brand.description}</span>
           <div className="flex items-center gap-4">
-            <Link to="/mint" className="hover:text-white transition-colors">Mint</Link>
-            <Link to="/guide" className="hover:text-white transition-colors">How to Play</Link>
-            {FEATURES.profile && <Link to="/profile" className="hover:text-white transition-colors">Profile</Link>}
-            <a href="https://twitter.com/WindUpRush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Twitter</a>
-            <a href="https://discord.gg/winduprush" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Discord</a>
+            <Link to="/mint" className="hover:text-brand-ink transition-colors">Mint</Link>
+            <Link to="/guide" className="hover:text-brand-ink transition-colors">How to Play</Link>
+            {FEATURES.profile && <Link to="/profile" className="hover:text-brand-ink transition-colors">Profile</Link>}
+            <a href="https://twitter.com/WindUpRush" target="_blank" rel="noopener noreferrer" className="hover:text-brand-ink transition-colors">Twitter</a>
+            <a href="https://discord.gg/winduprush" target="_blank" rel="noopener noreferrer" className="hover:text-brand-ink transition-colors">Discord</a>
           </div>
         </div>
       </footer>

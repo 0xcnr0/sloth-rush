@@ -97,8 +97,8 @@ export default function OnboardingTutorial() {
             {currentStep.icon}
           </motion.div>
 
-          <h2 className="text-2xl font-bold text-white mb-2">{currentStep.title}</h2>
-          <p className="text-gray-400 text-sm mb-6">{currentStep.description}</p>
+          <h2 className="text-2xl font-bold text-brand-ink mb-2">{currentStep.title}</h2>
+          <p className="text-brand-dust text-sm mb-6">{currentStep.description}</p>
 
           {/* Progress dots */}
           <div className="flex items-center justify-center gap-2 mb-6">
@@ -115,7 +115,7 @@ export default function OnboardingTutorial() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleSkip}
-              className="flex-1 py-2.5 text-gray-500 hover:text-white transition-colors text-sm cursor-pointer"
+              className="flex-1 py-2.5 text-brand-dust hover:text-brand-ink transition-colors text-sm cursor-pointer"
             >
               Skip
             </button>
@@ -123,13 +123,13 @@ export default function OnboardingTutorial() {
               <>
                 <button
                   onClick={handleCTA}
-                  className="flex-1 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer text-sm"
+                  className="flex-1 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer text-sm"
                 >
                   {currentStep.cta}
                 </button>
                 <button
                   onClick={handleNext}
-                  className="flex-1 py-2.5 bg-brand-surface border border-brand-border text-white font-semibold rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm"
+                  className="flex-1 py-2.5 bg-brand-surface border border-brand-border text-brand-ink font-semibold rounded-xl hover:bg-brand-ink/5 transition-colors cursor-pointer text-sm"
                 >
                   Next
                 </button>
@@ -137,7 +137,7 @@ export default function OnboardingTutorial() {
             ) : (
               <button
                 onClick={handleSkip}
-                className="flex-[2] py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer text-sm"
+                className="flex-[2] py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer text-sm"
               >
                 {currentStep.cta}
               </button>

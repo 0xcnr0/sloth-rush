@@ -33,14 +33,14 @@ export default function Landing() {
             flag it, and nobody loaded the page. */}
         <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-4">
           <span className="text-brand-primary">{BRAND_HEAD}</span>{' '}
-          <span className="text-white">{BRAND_TAIL}</span>
+          <span className="text-brand-ink">{BRAND_TAIL}</span>
         </h1>
 
-        <p className="text-xl text-gray-400 mb-2 font-medium">
+        <p className="text-xl text-brand-dust mb-2 font-medium">
           {THEME.brand.tagline}
         </p>
 
-        <p className="text-gray-500 mb-10 max-w-md mx-auto">
+        <p className="text-brand-dust mb-10 max-w-md mx-auto">
           Mint a wind-up toy, race it, and it gets better at racing.
           Every race is a deterministic simulation you can verify yourself.
         </p>
@@ -50,20 +50,20 @@ export default function Landing() {
             <>
               <Link
                 to="/mint"
-                className="px-8 py-3 bg-brand-primary text-brand-bg font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors"
+                className="px-8 py-3 bg-brand-primary text-brand-surface font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors"
               >
                 Mint {THEME.tiers.free}
               </Link>
               <Link
                 to="/collection"
-                className="px-8 py-3 border border-brand-border text-gray-300 rounded-xl text-lg hover:bg-white/5 transition-colors"
+                className="px-8 py-3 border border-brand-border text-brand-ink/80 rounded-xl text-lg hover:bg-brand-ink/5 transition-colors"
               >
                 View {THEME.locations.home}
               </Link>
             </>
           ) : (
             <div className="flex flex-col items-center gap-3">
-              <p className="text-gray-500 text-sm">Connect your wallet to get started</p>
+              <p className="text-brand-dust text-sm">Connect your wallet to get started</p>
               <WalletConnect />
             </div>
           )}
@@ -87,8 +87,8 @@ export default function Landing() {
             className="bg-brand-surface border border-brand-border rounded-xl p-6 text-center"
           >
             <div className="text-3xl mb-3" dangerouslySetInnerHTML={{ __html: f.icon }} />
-            <h3 className="text-white font-semibold mb-1">{f.title}</h3>
-            <p className="text-gray-500 text-sm">{f.desc}</p>
+            <h3 className="text-brand-ink font-semibold mb-1">{f.title}</h3>
+            <p className="text-brand-dust text-sm">{f.desc}</p>
           </div>
         ))}
       </motion.div>

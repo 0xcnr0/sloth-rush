@@ -18,7 +18,7 @@ const EVOLUTION_PATH_ICONS: Record<string, string> = {
 }
 
 const RARITY_COLORS: Record<string, string> = {
-  common: 'bg-gray-600 text-gray-200',
+  common: 'bg-gray-600 text-brand-ink',
   uncommon: 'bg-green-600 text-green-100',
   rare: 'bg-blue-600 text-blue-100',
   epic: 'bg-purple-600 text-purple-100',
@@ -178,7 +178,7 @@ export default function Collection() {
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-400">Connect your wallet to view your collection</p>
+        <p className="text-brand-dust">Connect your wallet to view your collection</p>
         <WalletConnect />
       </div>
     )
@@ -194,7 +194,7 @@ export default function Collection() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Your {THEME.locations.home}</h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-brand-dust mt-1">
             {racers.length === 0 ? 'No racers yet' : `${racers.length} creature${racers.length > 1 ? 's' : ''}`}
           </p>
         </div>
@@ -204,10 +204,10 @@ export default function Collection() {
       {racers.length === 0 && (
         <div className="text-center py-20">
           <div className="text-6xl mb-4">&#x1f3da;&#xfe0f;</div>
-          <p className="text-gray-400 mb-4">Your collection is empty</p>
+          <p className="text-brand-dust mb-4">Your collection is empty</p>
           <button
             onClick={() => navigate('/mint')}
-            className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
+            className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
           >
             Mint Your First Racer
           </button>
@@ -217,19 +217,19 @@ export default function Collection() {
       {/* Free Racer Card — Full Featured */}
       {freeRacer && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-300 mb-3">{THEME.tiers.free}</h2>
+          <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">{THEME.tiers.free}</h2>
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             {/* Header */}
             <div className="flex items-center gap-4 mb-4">
               <div className="text-5xl">{THEME.brand.mark}</div>
               <div className="flex-1">
-                <p className="text-white font-semibold text-lg">{freeRacer.name}</p>
-                <p className="text-gray-500 text-sm">{THEME.tiers.free} #{freeRacer.id}</p>
+                <p className="text-brand-ink font-semibold text-lg">{freeRacer.name}</p>
+                <p className="text-brand-dust text-sm">{THEME.tiers.free} #{freeRacer.id}</p>
               </div>
               <button
                 onClick={handleUpgrade}
                 disabled={upgradeState !== 'idle'}
-                className="px-4 py-2 bg-brand-accent text-white font-bold rounded-xl text-sm hover:bg-brand-accent/90 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                className="px-4 py-2 bg-brand-accent text-brand-ink font-bold rounded-xl text-sm hover:bg-brand-accent/90 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
               >
                 Upgrade — $3
               </button>
@@ -246,9 +246,9 @@ export default function Collection() {
                 { label: 'LCK', val: freeRacer.lck },
               ].map(s => (
                 <div key={s.label} className="bg-brand-bg rounded px-1 py-1">
-                  <span className="text-gray-500">{s.label} </span>
-                  <span className="text-white font-bold">{Number(s.val || 0) % 1 === 0 ? (s.val || 0) : Number(s.val || 0).toFixed(1)}</span>
-                  <span className="text-gray-600 text-[10px]">/15</span>
+                  <span className="text-brand-dust">{s.label} </span>
+                  <span className="text-brand-ink font-bold">{Number(s.val || 0) % 1 === 0 ? (s.val || 0) : Number(s.val || 0).toFixed(1)}</span>
+                  <span className="text-brand-dust/70 text-[10px]">/15</span>
                 </div>
               ))}
             </div>
@@ -264,7 +264,7 @@ export default function Collection() {
               <button
                 onClick={() => handleQuickDemoRace(freeRacer.id)}
                 disabled={demoLoading === freeRacer.id}
-                className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-bg text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
+                className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-surface text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
               >
                 {demoLoading === freeRacer.id ? 'Starting Race...' : '\u26A1 Quick Race'}
               </button>
@@ -278,14 +278,14 @@ export default function Collection() {
 
             {/* Upgrade Section */}
             <div className="mt-4 pt-4 border-t border-brand-border">
-              <p className="text-gray-400 text-xs text-center mb-3">Upgrade to unlock all race formats</p>
+              <p className="text-brand-dust text-xs text-center mb-3">Upgrade to unlock all race formats</p>
             </div>
           </div>
 
           {/* Free Upgrade Path */}
           {upgradeProgress && (
             <div className="mt-4 bg-brand-bg border border-brand-border rounded-xl p-5">
-              <p className="text-gray-400 text-sm mb-3 text-center">...or upgrade for free by completing milestones</p>
+              <p className="text-brand-dust text-sm mb-3 text-center">...or upgrade for free by completing milestones</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: 'XP', current: upgradeProgress.xp, target: upgradeProgress.requirements.xp },
@@ -297,7 +297,7 @@ export default function Collection() {
                   const done = item.current >= item.target
                   return (
                     <div key={item.label} className="text-center">
-                      <p className={`text-xs font-semibold mb-1 ${done ? 'text-brand-primary' : 'text-gray-400'}`}>
+                      <p className={`text-xs font-semibold mb-1 ${done ? 'text-brand-primary' : 'text-brand-dust'}`}>
                         {done ? '\u2705 ' : ''}{item.label}
                       </p>
                       <div className="w-full bg-brand-border rounded-full h-1.5 mb-1">
@@ -306,7 +306,7 @@ export default function Collection() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <p className="text-[10px] text-gray-500">{item.current}/{item.target}</p>
+                      <p className="text-[10px] text-brand-dust">{item.current}/{item.target}</p>
                     </div>
                   )
                 })}
@@ -315,7 +315,7 @@ export default function Collection() {
                 <button
                   onClick={handleFreeUpgrade}
                   disabled={upgradeState !== 'idle'}
-                  className="w-full mt-4 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
+                  className="w-full mt-4 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   Free Upgrade!
                 </button>
@@ -330,7 +330,7 @@ export default function Collection() {
       {/* Racer Cards */}
       {racerList.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-300 mb-3">Racers</h2>
+          <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">Racers</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {racerList.map((racer) => (
               <div
@@ -346,25 +346,25 @@ export default function Collection() {
                           onChange={e => setEditName(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleRename(racer.id); if (e.key === 'Escape') setEditingId(null) }}
                           maxLength={20}
-                          className="bg-brand-bg border border-brand-primary rounded px-2 py-0.5 text-white text-sm w-32 outline-none"
+                          className="bg-brand-bg border border-brand-primary rounded px-2 py-0.5 text-brand-ink text-sm w-32 outline-none"
                           autoFocus
                         />
                         <button onClick={() => handleRename(racer.id)} className="text-brand-primary text-xs cursor-pointer">&#x2714;</button>
-                        <button onClick={() => setEditingId(null)} className="text-gray-500 text-xs cursor-pointer">&#x2716;</button>
+                        <button onClick={() => setEditingId(null)} className="text-brand-dust text-xs cursor-pointer">&#x2716;</button>
                       </div>
                     ) : (
-                      <p className="text-white font-bold text-lg flex items-center gap-1.5">
+                      <p className="text-brand-ink font-bold text-lg flex items-center gap-1.5">
                         {racer.name}
                         <button
                           onClick={() => { setEditingId(racer.id); setEditName(racer.name) }}
-                          className="text-gray-500 hover:text-brand-primary transition-colors cursor-pointer"
+                          className="text-brand-dust hover:text-brand-primary transition-colors cursor-pointer"
                           title="Rename"
                         >
                           &#x270F;&#xFE0F;
                         </button>
                       </p>
                     )}
-                    <p className="text-gray-500 text-xs">
+                    <p className="text-brand-dust text-xs">
                       Racer #{racer.id}
                       {racer.tier && racer.tier > 1 && (
                         <span className="ml-1 text-yellow-400" title={`Tier ${racer.tier}`}>
@@ -400,7 +400,7 @@ export default function Collection() {
                 )}
                 {streaks[racer.id] && streaks[racer.id].current_losses >= 3 && (
                   <div className="text-center mb-1">
-                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-gray-700/50 text-gray-400">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-gray-700/50 text-brand-dust">
                       &#x1F622; Needs some motivation!
                     </span>
                   </div>
@@ -416,7 +416,7 @@ export default function Collection() {
 
                 {/* archetypeLabel, not the raw code: the card says "Jetster",
                     never "speedster" (CLAUDE.md §0). */}
-                <p className="text-gray-400 text-xs text-center mb-3">
+                <p className="text-brand-dust text-xs text-center mb-3">
                   {archetypeLabel(racer.race)}
                 </p>
 
@@ -430,8 +430,8 @@ export default function Collection() {
                     { label: 'LCK', val: racer.lck },
                   ].map(s => (
                     <div key={s.label} className="bg-brand-bg rounded px-1 py-1">
-                      <span className="text-gray-500">{s.label} </span>
-                      <span className="text-white font-bold">{Number(s.val) % 1 === 0 ? s.val : Number(s.val).toFixed(1)}</span>
+                      <span className="text-brand-dust">{s.label} </span>
+                      <span className="text-brand-ink font-bold">{Number(s.val) % 1 === 0 ? s.val : Number(s.val).toFixed(1)}</span>
                     </div>
                   ))}
                 </div>
@@ -458,7 +458,7 @@ export default function Collection() {
                 })()}
 
                 {streaks[racer.id] && streaks[racer.id].total_races > 0 && (
-                  <div className="flex items-center justify-center gap-3 mt-2 text-xs text-gray-500">
+                  <div className="flex items-center justify-center gap-3 mt-2 text-xs text-brand-dust">
                     <span>{streaks[racer.id].total_races} races</span>
                     <span>{streaks[racer.id].total_wins} wins</span>
                     <span>Best: {streaks[racer.id].max_wins}&#x1F525;</span>
@@ -480,7 +480,7 @@ export default function Collection() {
                   <button
                     onClick={() => handleQuickDemoRace(racer.id)}
                     disabled={demoLoading === racer.id}
-                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-bg text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
+                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-surface text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
                   >
                     {demoLoading === racer.id ? 'Starting Race...' : '\u26A1 Quick Race'}
                   </button>
@@ -522,7 +522,7 @@ export default function Collection() {
                     className="text-6xl mb-4"
                   >&#x1f4b3;</motion.div>
                   <p className="text-xl font-bold mb-2">Processing Payment</p>
-                  <p className="text-gray-400">Simulating $3 USDC payment...</p>
+                  <p className="text-brand-dust">Simulating $3 USDC payment...</p>
                 </>
               )}
 
@@ -539,7 +539,7 @@ export default function Collection() {
                     className="text-4xl mb-4"
                   >&#x1f525;</motion.div>
                   <p className="text-xl font-bold mb-2 text-orange-400">Burning {THEME.tiers.free}...</p>
-                  <p className="text-gray-400">Your racer is evolving!</p>
+                  <p className="text-brand-dust">Your racer is evolving!</p>
                 </>
               )}
 
@@ -557,7 +557,7 @@ export default function Collection() {
                     <RacerPortrait height={150} />
                   </motion.div>
                   <p className="text-xl font-bold mb-2 text-brand-accent">Revealing Rarity...</p>
-                  <p className="text-gray-400">Chainlink VRF determining your racer...</p>
+                  <p className="text-brand-dust">Chainlink VRF determining your racer...</p>
                 </>
               )}
 
@@ -571,13 +571,13 @@ export default function Collection() {
                   >
                     <RacerPortrait archetype={newRacer.race} rarity={newRacer.rarity} height={190} />
                   </motion.div>
-                  <h2 className="text-2xl font-bold text-white mb-2">{newRacer.name}</h2>
+                  <h2 className="text-2xl font-bold text-brand-ink mb-2">{newRacer.name}</h2>
                   {/* rarityLabel, not the raw code: the player is told "Mint",
                       never "legendary" (CLAUDE.md §0). */}
                   <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold uppercase mb-4 ${RARITY_COLORS[newRacer.rarity] || ''}`}>
                     {rarityLabel(newRacer.rarity)}
                   </span>
-                  <p className="text-gray-400 text-sm mb-2">
+                  <p className="text-brand-dust text-sm mb-2">
                     {archetypeLabel(newRacer.race)}
                   </p>
                   {onchainUpgrade.hash && (
@@ -594,7 +594,7 @@ export default function Collection() {
                   )}
                   <button
                     onClick={closeReveal}
-                    className="px-6 py-2.5 bg-brand-primary text-brand-bg font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
+                    className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
                   >
                     View in {THEME.locations.home}
                   </button>
