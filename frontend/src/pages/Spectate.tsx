@@ -90,7 +90,7 @@ export default function Spectate() {
                 </div>
                 <div>
                   <p className="text-white font-semibold">
-                    {formatLabel(race.format || 'standard')} Race
+                    {formatLabel(race.format) || 'Race'}
                   </p>
                   <p className="text-gray-500 text-xs">
                     {race.participantCount || race.participants?.length || '?'} racers

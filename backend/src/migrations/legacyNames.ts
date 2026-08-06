@@ -91,6 +91,25 @@ export const RETIRED_MECHANIC_MIGRATIONS: string[] = [
   `ALTER TABLE races ADD CONSTRAINT races_status_check CHECK(status IN ('lobby', 'tuning', 'racing', 'finished'))`,
   `DROP INDEX IF EXISTS idx_predictions_race`,
   `DROP TABLE IF EXISTS predictions`,
+
+  // --- Tune-Up's last column, and the Sprint/Endurance split ---
+  // Renaming a table does not rename its CHECK constraints, and neither does
+  // adding a value to one: the old constraint has to be dropped by name first
+  // or every insert of a new format is rejected while the migration log still
+  // reads clean. That failure mode has already cost this project once.
+  `ALTER TABLE IF EXISTS races DROP COLUMN IF EXISTS max_tune`,
+  // Added nullable on purpose. Every row that exists when the column appears
+  // predates the Sprint/Endurance split and was raced at the old 2800, so NULL
+  // is exactly the marker for "historical" — and backfilling only NULLs makes
+  // the statement safe to re-run, which it will be, on every boot. An
+  // unconditional UPDATE here would quietly reset live races to 2800 forever
+  // after, and a WHERE on format would miss archived exhibitions.
+  `ALTER TABLE IF EXISTS races ADD COLUMN IF NOT EXISTS track_length INTEGER`,
+  `UPDATE races SET track_length = 2800 WHERE track_length IS NULL`,
+  `ALTER TABLE races ALTER COLUMN track_length SET DEFAULT 1600`,
+  `ALTER TABLE races ALTER COLUMN track_length SET NOT NULL`,
+  `ALTER TABLE races DROP CONSTRAINT IF EXISTS races_format_check`,
+  `ALTER TABLE races ADD CONSTRAINT races_format_check CHECK(format IN ('exhibition', 'sprint', 'endurance', 'standard', 'grand_prix', 'tactic', 'gp_qualify', 'gp_final'))`,
 ];
 
 /**

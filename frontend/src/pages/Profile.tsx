@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { CUR, rarityLabel } from '../config/theme'
+import { CUR, rarityLabel, formatLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 interface ProfileData {
@@ -224,14 +224,6 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
     </div>
   )
 
-  const FORMAT_LABELS: Record<string, string> = {
-    exhibition: 'Exhibition',
-    standard: 'Standard',
-    tactic: 'Tactic',
-    gp_qualify: 'GP Qualify',
-    gp_final: 'GP Final',
-  }
-
   return (
     <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
@@ -254,7 +246,7 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
                 <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                   {new Date(race.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </td>
-                <td className="px-4 py-3 text-gray-300">{FORMAT_LABELS[race.format] || race.format}</td>
+                <td className="px-4 py-3 text-gray-300">{formatLabel(race.format)}</td>
                 <td className="px-4 py-3 text-white font-medium">{race.racerName}</td>
                 <td className="px-4 py-3 text-center">
                   <span className={race.position === 1 ? 'text-yellow-400 font-bold' : race.position === 2 ? 'text-gray-300 font-bold' : race.position === 3 ? 'text-orange-400 font-bold' : 'text-gray-500'}>

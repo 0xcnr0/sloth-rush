@@ -125,6 +125,17 @@ export const THEME = {
     collision: 'Collision',
   } as Record<string, string>,
 
+  /**
+   * Race formats. Code says `sprint` / `endurance`; the two differ only in
+   * distance, and the blurbs say which stat that distance rewards, because a
+   * player choosing between them is really choosing which racer they own.
+   */
+  raceFormats: {
+    exhibition: { name: 'Practice Run', blurb: 'Free. No entry, no reward.' },
+    sprint: { name: 'Sprint', blurb: 'Short track. Top speed wins.' },
+    endurance: { name: 'Endurance', blurb: 'Long track. The spring has to last.' },
+  } as Record<string, { name: string; blurb: string }>,
+
   /** Tactic-mode actions. Code says `boost` / `projectile`. */
   tactics: {
     boost: 'Turbo Wind',
@@ -317,6 +328,24 @@ export function archetypeLabel(archetype: string | undefined | null): string {
 /** Accent colour for an archetype code. */
 export function archetypeAccent(archetype: string | undefined | null): string | undefined {
   return archetype ? THEME.archetypes[archetype]?.accent : undefined
+}
+
+/**
+ * Display label for a race format code. Retired formats still appear in race
+ * history, so this has to answer for them too rather than leaking `gp_final`
+ * onto a results screen.
+ */
+export function formatLabel(format: string | undefined | null): string {
+  if (!format) return ''
+  if (THEME.raceFormats[format]) return THEME.raceFormats[format].name
+  const retired: Record<string, string> = {
+    standard: 'Standard Race',
+    grand_prix: 'Grand Prix',
+    gp_qualify: 'Grand Prix — Qualifier',
+    gp_final: 'Grand Prix — Final',
+    tactic: 'Tactic Challenge',
+  }
+  return retired[format] || ''
 }
 
 /** Display label for a passive code. */

@@ -128,10 +128,41 @@ OFFCHAIN (Server):
 
 > **Wind-Up Fazı, Tune-Up / Sealed Bid mekaniğinin yerine geçmiştir.** Eski mekanik 10 saniyelik gizli para harcamasıydı ve grid pozisyonunu para belirliyordu. Artık grid'i beceri belirliyor. `docs/REBRAND_AND_VISUAL_PLAN.md` §3.3 hâlâ Tune-Up'ı anlatıyor — **o bölüm eskidir, bu karar onu geçersiz kılar.**
 
-### Taktik Mod (V1 MVP — Sadeleştirilmiş)
-- Sadece 2 aksiyon: **Turbo Wind** (100 SPRING) + **Marble Toss** (250 SPRING)
-- **Sabit fiyat** — GDA (Gradual Dutch Auction) V2'ye ertelendi
-- Wind Guard (kalkan) ve şans item'ı V2'de eklenir
+### Yarış Formatları (V1 — iki mesafe, aynı ücret)
+
+V1'de iki ücretli format var ve **tek farkları mesafe.** Bu bilinçli: ikinci bir
+format ancak farklı bir soru soruyorsa yerini hak eder, ve ölçülen tek kaldıraç
+mesafe. İkisi de 50 SPRING — Endurance daha pahalı olsaydı oyuncu cüzdanına göre
+seçerdi, sahip olduğu oyuncağa göre değil.
+
+| Format | Mesafe | Süre | Neyi ödüllendirir |
+|---|---|---|---|
+| **Practice Run** | 1.600 | ~24s | Ücretsiz, ödül yok |
+| **Sprint** | 1.600 | ~24s | En yüksek SPD kazanır |
+| **Endurance** | 3.200 | ~48s | Dengeli dağılım kazanır |
+
+Sayılar tahminden değil ölçümden geldi: `backend/src/simulation/distanceLever.check.ts`
+ve `fatigueSweep.ts`. Mesafe sabitleri `backend/src/simulation/formats.ts`'te;
+etiketler `theme.ts`'te.
+
+> **"Uzun pisti STA kazanır" yanlış bir cümle.** Uzun pistte saf hızcının
+> kaybettiğini saf dayanıklı değil, **dengeli** yarışçı alıyor (55/55). STA hızı
+> korur, tek başına kazanmaz — SPD taban para birimidir. `distanceLever.check.ts`
+> bunu çıktısında açıkça yazar.
+
+### Taktik Mod ve Grand Prix — V1'den çıkarıldı
+
+İkisi de `frontend/src/config/features.ts`'te **sert kapalı** (hostname'e bağlı
+değil), sunucu tarafında da `/api/race/create` bu formatları 400 ile reddeder.
+Ama çıkarılma sebepleri farklı ve bu fark önemli:
+
+- **Grand Prix: kapsam.** İki aşamalı bir format, yeni bir karar üretmiyordu.
+- **Taktik Mod: bozuktu.** Oyuncu yarışı izlerken aksiyon gönderiyor, istemci
+  `simulateRace`'i yeniden çağırıyor ve yarış sıfırdan, farklı bir sonuçla
+  baştan başlıyordu. Önde giden oyuncu boost'a basıp yarışın yeniden
+  başladığını görüyordu. Çalışması için simülasyonun parça parça çözülmesi ve
+  aksiyonların ileri bir tick'e kuyruklanması gerekir; motor yarışı tek geçişte
+  hesaplıyor. **Bu düzeltilmeden açılmamalı.**
 
 ### İzleyici — Salt İzleme
 - İzleyici sadece izler, **hiçbir etkileşimi yoktur**
@@ -206,12 +237,11 @@ Aşağıdaki değerler **koddan okundu** (`backend/src/routes/racer.ts`), tasar�
 
 ```
 Yarış Giriş Ücretleri:
-- Exhibition:    Ücretsiz
-- Standard Race: 50 SPRING
-- Grand Prix:    150 SPRING
-- Taktik Meydan: 75 SPRING
+- Practice Run:  Ücretsiz
+- Sprint:        50 SPRING
+- Endurance:     50 SPRING
 
-Günlük Ücretsiz Yarış: 1 Standard Race / wallet (yarışçı sayısından bağımsız)
+Günlük Ücretsiz Yarış: 1 ücretli yarış / wallet (yarışçı sayısından bağımsız)
 
 Upgrade Paketi:
 - Upgrade ücreti: $3 USDC (onchain)
@@ -375,7 +405,7 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 2. Showcase upgrade ($3 USDC mock + burn + mint)
 3. Rarity reveal animasyonu (VRF veya mock)
 4. Toybox sayfası (koleksiyon görüntüleme)
-5. Standard Race yarış akışı (tek pist: Diorama Speedway)
+5. Sprint ve Endurance yarış akışı (tek pist: Diorama Speedway, iki mesafe)
 6. Wind-Up fazı UI (beceri bazlı grid belirleme)
 7. Grid gösterimi
 8. Broadcast görünüm (4 yatay şerit, yarış animasyonu)
@@ -383,7 +413,6 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 10. Prize pool dağıtımı
 
 ### BONUS:
-- Taktik Mod (Turbo Wind + Marble Toss)
 - Training sistemi
 - Güçlendirici satın alma
 - Aksesuar sistemi
@@ -398,7 +427,8 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 - **Üreme sistemi YOK** — tamamen çıkarıldı
 - **Seyirci bahsi/tahmini YOK** — V1'de de V2'de de yok, kaldırıldı
 - **Lonca sistemi V2'de** — V1'de yok
-- **GDA fiyat motoru V2'de** — V1 sabit fiyat
+- **GDA fiyat motoru V2'de** — V1'de taktik aksiyon yok
+- **Gizli statlar YOK** — V2 adayı olarak not edildi, V1'de alınmadı
 - **Double-or-Nothing rövanş iptal** — yerine sade "Rematch" (aynı ücret, çarpan yok)
 - Botlar UI'da "BOT" etiketiyle gösterilir, ödül kazanamaz
 - Daily free race wallet başına 1 — yarışçı sayısından bağımsız

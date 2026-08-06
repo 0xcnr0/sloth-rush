@@ -35,8 +35,18 @@ export const FEATURES = {
   evolution: !MVP_MODE,  // Hide in MVP
   miniGames: !MVP_MODE,  // Hide in MVP
   quests: true,           // Always on
-  grandPrix: !MVP_MODE,  // Hide in MVP
-  tacticRace: !MVP_MODE, // Hide in MVP
+  // OFF everywhere, not hidden-in-MVP, and the difference matters.
+  //
+  // tacticRace is BROKEN, not deferred. The client submits an action during
+  // playback and then re-runs simulateRace, which restarts the race from tick 0
+  // with a different outcome — a player leading a race taps boost and watches it
+  // begin again. Making it work needs the simulation resolved in batches with
+  // actions queued onto a future tick; the engine computes the whole race in one
+  // pass and does not assume otherwise. Do not switch this on without that.
+  //
+  // grandPrix is cut from v1 for scope: a second staged format, no new decision.
+  grandPrix: false,
+  tacticRace: false,
   spectate: true,        // Always on — demo badge shown in MVP
   replay: true,           // Always on
   profile: true,          // Always on

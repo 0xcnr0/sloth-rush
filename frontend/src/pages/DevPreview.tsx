@@ -3,7 +3,8 @@ import WindUpPhase from '../components/PreRace/WindUpPhase'
 import GridReveal from '../components/PreRace/GridReveal'
 import RarityLadder from '../components/RarityLadder'
 import RacerPortrait from '../components/RacerPortrait'
-import { rarityLabel, archetypeLabel } from '../config/theme'
+import { visibleFormats } from './RaceLobby'
+import { rarityLabel, archetypeLabel, CUR } from '../config/theme'
 import { THEME } from '../config/theme'
 
 /**
@@ -18,11 +19,16 @@ import { THEME } from '../config/theme'
  *
  * It is registered only when import.meta.env.DEV is true, so it never ships.
  */
-const PANELS = ['wind-up', 'grid-reveal', 'rarity', 'portraits'] as const
+const PANELS = ['wind-up', 'grid-reveal', 'rarity', 'portraits', 'formats'] as const
 type Panel = (typeof PANELS)[number]
 
 export default function DevPreview() {
-  const [panel, setPanel] = useState<Panel>('wind-up')
+  // Initial panel comes from the hash (`/dev#formats`) so a screenshot can be
+  // taken of one directly — the capture tool loads a URL, it cannot click.
+  const fromHash = window.location.hash.slice(1) as Panel
+  const [panel, setPanel] = useState<Panel>(
+    PANELS.includes(fromHash) ? fromHash : 'wind-up'
+  )
 
   return (
     <div className="min-h-screen bg-brand-bg text-white p-4">
@@ -53,6 +59,25 @@ export default function DevPreview() {
       </nav>
 
       {panel === 'rarity' && <RarityLadder />}
+
+      {panel === 'formats' && (
+        // The lobby's format cards sit behind a connected wallet, so a broken
+        // label or a format that quietly vanished could not be seen without
+        // minting first. This is the filtered list — what a player actually
+        // sees: one free, two paid at the same price differing only in distance.
+        <div className="space-y-3">
+          {visibleFormats.map(f => (
+            <div key={f.id} className="rounded-xl border-2 border-brand-border bg-brand-surface p-4">
+              <p className="text-white font-bold">{f.name}</p>
+              <p className="text-gray-400 text-sm mt-1">{f.desc}</p>
+              <p className="text-brand-primary text-sm font-bold mt-2">
+                {f.fee > 0 ? `${f.fee} ${CUR} Entry` : 'Free'}
+              </p>
+              <p className="text-gray-600 text-xs mt-2">id: {f.id}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {panel === 'portraits' && (
         // One per archetype, each on a different rung, so both axes are visible

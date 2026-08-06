@@ -773,7 +773,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
     await runTest("A27: Standard race full flow", "Happy Path", async () => {
       // Create
       const createRes = await tapi("POST", "/api/race/create", {
-        format: "standard",
+        format: "sprint",
       });
       assert(createRes.status === 200 || createRes.status === 201, "create race");
       const raceId = createRes.data.raceId;
@@ -1084,9 +1084,9 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
   );
 
   results.push(
-    await runTest("B05: Free racer joins standard race -> 400", "Edge Cases", async () => {
+    await runTest("B05: Free racer joins paid race -> 400", "Edge Cases", async () => {
       const createRes = await tapi("POST", "/api/race/create", {
-        format: "standard",
+        format: "sprint",
       });
       const raceId = createRes.data.raceId;
       const res = await tapi("POST", "/api/race/join", {
@@ -1434,11 +1434,11 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
   );
 
   results.push(
-    await runTest("E05: Race entry fee correct (50 coins standard)", "Economy", async () => {
-      // Create standard race and track balance delta
+    await runTest("E05: Race entry fee correct (50 coins sprint)", "Economy", async () => {
+      // Create a paid race and track balance delta
       const balBefore = (await tapi("GET", `/api/racer/coin/${WALLET_A}`)).data.balance;
       const createRes = await tapi("POST", "/api/race/create", {
-        format: "standard",
+        format: "sprint",
       });
       const raceId = createRes.data.raceId;
       const joinRes = await tapi("POST", "/api/race/join", {
@@ -1543,7 +1543,7 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
   results.push(
     await runTest("F02: Standard full flow", "Race Logic", async () => {
       const createRes = await tapi("POST", "/api/race/create", {
-        format: "standard",
+        format: "sprint",
       });
       const raceId = createRes.data.raceId;
 
@@ -1568,48 +1568,48 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
   );
 
   results.push(
-    await runTest("F03: Tactic full flow", "Race Logic", async () => {
-      const createRes = await tapi("POST", "/api/race/create", {
-        format: "tactic",
-      });
-      const raceId = createRes.data.raceId;
+    await runTest("F03: Sprint and Endurance run different distances", "Race Logic", async () => {
+      // The whole point of having two paid formats. If they simulate to the
+      // same track length the second one is decoration, and this test is the
+      // only thing standing between that and a shipped build.
+      const run = async (format: string) => {
+        const createRes = await tapi("POST", "/api/race/create", { format });
+        assertStatus(createRes, 201);
+        const raceId = createRes.data.raceId;
+        await tapi("POST", "/api/race/join", {
+          raceId,
+          racerId: ctx.racerIdA,
+          wallet: WALLET_A,
+        });
+        await tapi("POST", "/api/race/start-tuning", { raceId });
+        const simRes = await tapi("POST", "/api/race/simulate", { raceId });
+        assertStatus(simRes, 200);
+        return simRes.data;
+      };
 
-      await tapi("POST", "/api/race/join", {
-        raceId,
-        racerId: ctx.racerIdA,
-        wallet: WALLET_A,
-      });
+      const sprint = await run("sprint");
+      const endurance = await run("endurance");
 
-      await tapi("POST", "/api/race/start-tuning", { raceId });
-      // Check GDA prices
-      const pricesRes = await tapi("GET", `/api/race/${raceId}/prices?tick=0`);
-      assertStatus(pricesRes, 200);
-      assert(pricesRes.data.boostPrice != null, "boostPrice should exist");
-      assert(pricesRes.data.projectilePrice != null, "projectilePrice should exist");
-
-      // Submit action
-      const actionRes = await tapi("POST", "/api/race/action", {
-        raceId,
-        wallet: WALLET_A,
-        racerId: ctx.racerIdA,
-        actionType: "boost",
-        tick: 50,
-      });
-      assertStatus(actionRes, 200);
-
-      const simRes = await tapi("POST", "/api/race/simulate", { raceId });
-      assertStatus(simRes, 200);
+      assert(
+        endurance.trackLength > sprint.trackLength,
+        `endurance should be longer: ${endurance.trackLength} vs ${sprint.trackLength}`
+      );
+      assert(
+        endurance.totalTicks > sprint.totalTicks,
+        `endurance should take longer: ${endurance.totalTicks} vs ${sprint.totalTicks} ticks`
+      );
     })
   );
 
   results.push(
-    await runTest("F04: GP create", "Race Logic", async () => {
-      const res = await tapi("POST", "/api/race/gp/create", {});
-      assert(res.status === 200 || res.status === 201, "gp create");
-      assert(
-        res.data.qualifyRaceId != null || res.data.gpId != null,
-        "should return qualifying race ID"
-      );
+    await runTest("F04: Retired formats are refused by the server", "Race Logic", async () => {
+      // Cut means cut. Hiding a format behind a UI flag leaves the endpoint
+      // open, and an endpoint that still creates Grand Prix races is a feature
+      // that still has to work.
+      for (const format of ["grand_prix", "tactic", "standard"]) {
+        const res = await tapi("POST", "/api/race/create", { format });
+        assert(res.status === 400, `${format} should be refused, got ${res.status}`);
+      }
     })
   );
 

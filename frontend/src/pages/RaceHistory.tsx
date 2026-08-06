@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { CUR } from '../config/theme'
+import { CUR, formatLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 interface RaceEntry {
@@ -14,14 +14,6 @@ interface RaceEntry {
   reward: number
   racerName: string
   createdAt: string
-}
-
-const FORMAT_LABELS: Record<string, string> = {
-  exhibition: 'Exhibition',
-  standard: 'Standard',
-  tactic: 'Tactic',
-  gp_qualify: 'GP Qualify',
-  gp_final: 'GP Final',
 }
 
 function positionBadge(pos: number): string {
@@ -118,7 +110,7 @@ export default function RaceHistory() {
                     <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                       {new Date(race.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
-                    <td className="px-4 py-3 text-gray-300">{FORMAT_LABELS[race.format] || race.format}</td>
+                    <td className="px-4 py-3 text-gray-300">{formatLabel(race.format)}</td>
                     <td className="px-4 py-3 text-white font-medium">{race.racerName}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={positionColor(race.position)}>{positionBadge(race.position)}</span>

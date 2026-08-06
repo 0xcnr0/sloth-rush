@@ -49,7 +49,7 @@ export const api = {
 
   // Race endpoints
   createRace: (wallet: string, racerId: number, format: string = 'standard') =>
-    request<{ raceId: string; format: string; entryFee: number; maxTune: number; status: string }>(
+    request<{ raceId: string; format: string; entryFee: number; trackLength: number; status: string }>(
       '/race/create',
       { method: 'POST', body: JSON.stringify({ wallet, racerId: racerId, format }) }
     ),

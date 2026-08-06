@@ -141,9 +141,11 @@ export async function initDB() {
     CREATE TABLE IF NOT EXISTS races (
       id TEXT PRIMARY KEY,
       status TEXT NOT NULL DEFAULT 'lobby' CHECK(status IN ('lobby', 'tuning', 'racing', 'finished')),
-      format TEXT NOT NULL DEFAULT 'standard' CHECK(format IN ('exhibition', 'standard', 'grand_prix', 'tactic', 'gp_qualify', 'gp_final')),
+      format TEXT NOT NULL DEFAULT 'sprint' CHECK(format IN ('exhibition', 'sprint', 'endurance', 'standard', 'grand_prix', 'tactic', 'gp_qualify', 'gp_final')),
       entry_fee INTEGER NOT NULL DEFAULT 50,
-      max_tune INTEGER NOT NULL DEFAULT 100,
+      -- Distance this race was run over. Recorded per race rather than looked
+      -- up from the format, so retuning a format never rewrites history.
+      track_length INTEGER NOT NULL DEFAULT 1600,
       -- Generated when the Wind-Up window opens, not at simulate time: the
       -- Safe Wind jitter is derived from it, so it has to exist before anyone
       -- winds. Reused by the simulation so the whole race is one seed.

@@ -5,25 +5,33 @@ import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { THEME, CUR, rarityLabel, archetypeLabel } from '../config/theme'
+import { THEME, CUR, rarityLabel, archetypeLabel, formatLabel } from '../config/theme'
 import WindUpPhase from '../components/PreRace/WindUpPhase'
 import GridReveal from '../components/PreRace/GridReveal'
 import Spinner from '../components/Spinner'
 import { FEATURES } from '../config/features'
 
-type Phase = 'select' | 'lobby' | 'winding' | 'reveal' | 'starting' | 'gp_break'
+type Phase = 'select' | 'lobby' | 'winding' | 'reveal' | 'starting'
+
+// Sprint and Endurance cost the same and differ only in distance — the choice
+// is which racer you own, not how much you are willing to spend. Entry fees and
+// distances are the backend's (backend/src/simulation/formats.ts); the labels
+// are the theme's. This list only says which of them the lobby offers.
+const fmt = (id: string, fee: number) => ({
+  id,
+  fee,
+  name: THEME.raceFormats[id].name,
+  desc: THEME.raceFormats[id].blurb,
+})
 
 const FORMATS = [
-  { id: 'exhibition', name: 'Exhibition', fee: 0, maxTune: 0, desc: 'Free practice race' },
-  { id: 'demo_standard', name: 'Demo Standard', fee: 0, maxTune: 100, desc: 'Quick 20s demo race' },
-  { id: 'standard', name: 'Standard Race', fee: 50, maxTune: 100, desc: `50 ${CUR} entry, win big` },
-  { id: 'grand_prix', name: 'Grand Prix', fee: 150, maxTune: 300, desc: 'Multi-round championship' },
-  { id: 'tactic', name: 'Tactic Challenge', fee: 75, maxTune: 150, desc: `Use ${THEME.tactics.boost} & ${THEME.tactics.projectile} mid-race!` },
+  fmt('exhibition', 0),
+  { id: 'demo_standard', fee: 0, name: 'Demo Race', desc: 'Quick 20s demo race' },
+  fmt('sprint', 50),
+  fmt('endurance', 50),
 ]
 
-const visibleFormats = FORMATS.filter(f => {
-  if (f.id === 'grand_prix' && !FEATURES.grandPrix) return false
-  if (f.id === 'tactic' && !FEATURES.tacticRace) return false
+export const visibleFormats = FORMATS.filter(f => {
   if (f.id === 'demo_standard' && !FEATURES.demoRace) return false
   return true
 })
@@ -44,9 +52,6 @@ export default function RaceLobby() {
   const [raceId, setRaceId] = useState('')
   const [gridPositions, setGridPositions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [gpQualifyId, setGpQualifyId] = useState('')
-  const [gpQualifiers, setGpQualifiers] = useState<any[]>([])
-  const [gpBreakCountdown, setGpBreakCountdown] = useState(30)
   const [dailyRace, setDailyRace] = useState<{ raceId: string; weather: string; date: string } | null>(null)
 
   // Load creatures (racers + free racers)
@@ -64,17 +69,10 @@ export default function RaceLobby() {
     api.getDailyRace().then(setDailyRace).catch((err) => { console.error('Failed to load daily race:', err) })
   }, [])
 
-  // Filter creatures based on format: exhibition → all, others → racers only, GP → tier gate
+  // Free formats take any racer; paid formats are for upgraded racers only.
   useEffect(() => {
-    if (selectedFormat.id === 'exhibition' || selectedFormat.id === 'demo_standard') {
+    if (selectedFormat.fee === 0) {
       setRacers(allCreatures)
-    } else if (selectedFormat.id === 'grand_prix') {
-      // GP: no free racers, Gold GP (fee > 150) requires tier >= 2
-      setRacers(allCreatures.filter((s: any) => {
-        if (s.type === 'free') return false
-        if (selectedFormat.fee > 150 && (s.tier || 0) < 2) return false
-        return true
-      }))
     } else {
       setRacers(allCreatures.filter((s: any) => s.type === 'pro'))
     }
@@ -100,24 +98,13 @@ export default function RaceLobby() {
     if (!address || !selectedRacer) return
     setLoading(true)
     try {
-      if (selectedFormat.id === 'grand_prix') {
-        // GP flow: create GP, join qualifying
-        const gp = await api.createGP()
-        setGpQualifyId(gp.qualifyRaceId)
-        setRaceId(gp.qualifyRaceId)
+      const apiFormat = selectedFormat.id === 'demo_standard' ? 'exhibition' : selectedFormat.id
+      const race = await api.createRace(address, selectedRacer.id, apiFormat)
+      setRaceId(race.raceId)
 
-        const joined = await api.joinRace(gp.qualifyRaceId, selectedRacer.id, address)
-        setCoinBalance(joined.newBalance)
-        setPhase('lobby')
-      } else {
-        const apiFormat = selectedFormat.id === 'demo_standard' ? 'exhibition' : selectedFormat.id
-        const race = await api.createRace(address, selectedRacer.id, apiFormat)
-        setRaceId(race.raceId)
-
-        const joined = await api.joinRace(race.raceId, selectedRacer.id, address)
-        setCoinBalance(joined.newBalance)
-        setPhase('lobby')
-      }
+      const joined = await api.joinRace(race.raceId, selectedRacer.id, address)
+      setCoinBalance(joined.newBalance)
+      setPhase('lobby')
     } catch (err: any) {
       toast.error(err.message)
     }
@@ -148,45 +135,14 @@ export default function RaceLobby() {
       setGridPositions(result.gridPositions)
       setPhase('reveal')
 
-      if (gpQualifyId && raceId === gpQualifyId) {
-        // GP qualifying done — go to break phase, then straight into the final
-        setTimeout(async () => {
-          try {
-            const advanced = await api.advanceGP(gpQualifyId)
-            setGpQualifiers(advanced.qualifiers)
-            setPhase('gp_break')
-            let t = 30
-            const interval = setInterval(() => {
-              t--
-              setGpBreakCountdown(t)
-              if (t <= 0) {
-                clearInterval(interval)
-                void runGpFinal(advanced.finalRaceId)
-              }
-            }, 1000)
-          } catch (err: any) {
-            toast.error(err.message)
-          }
-        }, 4000)
-      } else {
-        const isDemoNav = selectedFormat.id === 'demo_standard'
-        setTimeout(() => {
-          navigate(`/race/${raceId}`, { state: { raceResult: result, format: isDemoNav ? 'exhibition' : selectedFormat.id, racerId: selectedRacer?.id, demo: isDemoNav } })
-        }, 4000)
-      }
+      const isDemoNav = selectedFormat.id === 'demo_standard'
+      setTimeout(() => {
+        navigate(`/race/${raceId}`, { state: { raceResult: result, format: isDemoNav ? 'exhibition' : selectedFormat.id, racerId: selectedRacer?.id, demo: isDemoNav } })
+      }, 4000)
     } catch (err: any) {
       toast.error(err.message)
     }
     setLoading(false)
-  }
-
-  async function runGpFinal(finalRaceId: string) {
-    try {
-      const result = await api.simulateRace(finalRaceId)
-      navigate(`/race/${finalRaceId}`, { state: { raceResult: result, format: 'gp_final', racerId: selectedRacer?.id } })
-    } catch (err: any) {
-      toast.error(err.message)
-    }
   }
 
   if (!isConnected) {
@@ -258,7 +214,7 @@ export default function RaceLobby() {
                     </div>
                     <div>
                       <p className="text-white font-semibold">
-                        {race.format ? race.format.charAt(0).toUpperCase() + race.format.slice(1) : 'Standard'} Race
+                        {formatLabel(race.format) || 'Race'}
                       </p>
                       <p className="text-gray-500 text-xs">
                         {race.participantCount || race.participants?.length || '?'} participants
@@ -324,18 +280,6 @@ export default function RaceLobby() {
               </div>
             )}
 
-            {/* Upcoming GP Banner */}
-            {FEATURES.grandPrix && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-amber-500/30 rounded-xl">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{'\u{1F3C6}'}</span>
-                <div>
-                  <p className="text-white font-bold text-sm">Upcoming Grand Prix</p>
-                  <p className="text-gray-400 text-xs">Grand Prix races unlock as more players join. Stay tuned!</p>
-                </div>
-              </div>
-            </div>
-            )}
 
             {racers.length === 0 ? (
               <div className="text-center py-16">
@@ -479,47 +423,6 @@ export default function RaceLobby() {
         {/* Grid Reveal */}
         {phase === 'reveal' && <GridReveal entries={gridPositions} />}
 
-        {/* GP Break Phase */}
-        {phase === 'gp_break' && (
-          <motion.div
-            key="gp_break"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="text-center"
-          >
-            <motion.h1
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              className="text-3xl font-extrabold text-brand-gold mb-4"
-            >
-              ELIMINATION COMPLETE!
-            </motion.h1>
-            <p className="text-gray-400 mb-6">Finalists determined. Final starts in {gpBreakCountdown}s...</p>
-
-            <div className="text-6xl font-extrabold text-white mb-8">{gpBreakCountdown}</div>
-
-            <div className="max-w-md mx-auto space-y-2 mb-6">
-              {gpQualifiers.map((q: any, i: number) => (
-                <motion.div
-                  key={q.id}
-                  initial={{ x: -40, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: i * 0.3 }}
-                  className={`flex items-center gap-3 p-3 rounded-lg ${
-                    i === 0 ? 'bg-brand-gold/10 border border-brand-gold' : 'bg-brand-surface border border-brand-border'
-                  }`}
-                >
-                  <span className={`font-bold w-8 ${i === 0 ? 'text-brand-gold' : 'text-gray-500'}`}>{i + 1}.</span>
-                  <span className="text-white font-semibold">{q.name}</span>
-                  {q.isBot && <span className="text-gray-600 text-xs">BOT</span>}
-                </motion.div>
-              ))}
-            </div>
-
-            <p className="text-brand-accent text-sm font-bold">FINAL = TACTIC MODE + GDA PRICING + CHAOS MODE!</p>
-          </motion.div>
-        )}
 
       </AnimatePresence>
     </div>

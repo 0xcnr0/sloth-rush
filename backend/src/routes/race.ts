@@ -13,6 +13,7 @@ import {
   safeWindDisplayBand,
   safeWindThreshold,
 } from "../simulation/windUp";
+import { raceFormat, isPlayableFormat, DEFAULT_FORMAT } from "../simulation/formats";
 import { awardXP, XP_AMOUNTS } from "../xp";
 import { isValidWallet } from "../middleware/validateWallet";
 import { recordRaceResultOnchain } from "../lib/onchain";
@@ -148,28 +149,28 @@ function generateSeed(): string {
 // POST /api/race/create — Create a new race
 router.post("/create", async (req: Request, res: Response) => {
   try {
-    const { format = "standard" } = req.body;
+    const { format = DEFAULT_FORMAT } = req.body;
 
-    const fees: Record<string, { entry: number; maxTune: number }> = {
-      exhibition: { entry: 0, maxTune: 0 },
-      standard: { entry: 50, maxTune: 100 },
-      grand_prix: { entry: 150, maxTune: 300 },
-      tactic: { entry: 75, maxTune: 150 },
-    };
-
-    const raceConfig = fees[format] || fees.standard;
+    if (!isPlayableFormat(format)) {
+      return res.status(400).json({ error: "Unknown race format" });
+    }
+    const raceConfig = raceFormat(format);
     const raceId = generateRaceId();
 
+    // track_length is stored on the row, not looked up at simulate time: a
+    // finished race is replayed from history, and if the format's distance is
+    // ever retuned every archived replay would silently re-run at a length it
+    // was never raced at.
     await query(
-      "INSERT INTO races (id, format, entry_fee, max_tune) VALUES ($1, $2, $3, $4)",
-      [raceId, format, raceConfig.entry, raceConfig.maxTune]
+      "INSERT INTO races (id, format, entry_fee, track_length) VALUES ($1, $2, $3, $4)",
+      [raceId, format, raceConfig.entry, raceConfig.trackLength]
     );
 
     res.status(201).json({
       raceId,
       format,
       entryFee: raceConfig.entry,
-      maxTune: raceConfig.maxTune,
+      trackLength: raceConfig.trackLength,
       status: "lobby",
     });
   } catch (err) {
@@ -842,7 +843,10 @@ router.post("/simulate", async (req: Request, res: Response) => {
     // from a single value. Only fall back if the phase was somehow skipped.
     const seed = race.seed || generateSeed();
     const isChaosMode = race.format === "gp_final";
-    const result = simulateRace(gridded, seed, tacticActions, isChaosMode);
+    // The row wins over the format table so replays stay faithful; rows created
+    // before track_length existed fall back to their format's distance.
+    const trackLength = race.track_length ?? raceFormat(race.format).trackLength;
+    const result = simulateRace(gridded, seed, tacticActions, isChaosMode, trackLength);
 
     // Calculate prize pool distribution
     const isExhibition = race.format === "exhibition";
@@ -1120,6 +1124,9 @@ router.post("/simulate", async (req: Request, res: Response) => {
       })),
       totalPrizePool: totalEntryFees,
       trackLength: result.trackLength,
+      // Raw tick count, not animFrames.length — the frames are downsampled for
+      // playback, so they cannot answer "did this race take longer".
+      totalTicks: result.totalTicks,
       weather: result.weather,
     });
   } catch (err) {
@@ -1244,8 +1251,8 @@ router.post("/gp/create", async (req: Request, res: Response) => {
     const qualifyId = `${raceId}_q`;
 
     await query(
-      "INSERT INTO races (id, format, entry_fee, max_tune, status) VALUES ($1, 'gp_qualify', 150, 300, 'lobby')",
-      [qualifyId]
+      "INSERT INTO races (id, format, entry_fee, track_length, status) VALUES ($1, 'gp_qualify', 150, $2, 'lobby')",
+      [qualifyId, raceFormat('gp_qualify').trackLength]
     );
 
     const finalId = `${raceId}_f`;
@@ -1289,8 +1296,8 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
     // Create final race (tactic mode with GDA)
     const finalId = qualifyRaceId.replace("_q", "_f");
     await query(
-      "INSERT INTO races (id, format, entry_fee, max_tune, status) VALUES ($1, 'gp_final', 0, 300, 'tuning')",
-      [finalId]
+      "INSERT INTO races (id, format, entry_fee, track_length, status) VALUES ($1, 'gp_final', 0, $2, 'tuning')",
+      [finalId, raceFormat('gp_final').trackLength]
     );
 
     // Move top 4 to final
@@ -1378,8 +1385,8 @@ router.get("/daily", async (req: Request, res: Response) => {
     // Create daily race (exhibition format, auto-created)
     const raceId = `daily_${today}_${crypto.randomBytes(4).toString("hex")}`;
     await query(
-      "INSERT INTO races (id, format, entry_fee, max_tune, status) VALUES ($1, 'exhibition', 0, 0, 'lobby')",
-      [raceId]
+      "INSERT INTO races (id, format, entry_fee, track_length, status) VALUES ($1, 'exhibition', 0, $2, 'lobby')",
+      [raceId, raceFormat('exhibition').trackLength]
     );
     await query(
       "INSERT INTO daily_races (race_date, race_id) VALUES ($1, $2)",
