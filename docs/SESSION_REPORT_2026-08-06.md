@@ -32,6 +32,13 @@ cd contracts && npx hardhat test → 4 passing
 | `9813b6b` | Jetster / Waddler / Chomper üretildi; rig geometrisi arketip başına |
 | `1ec3cad` | `/dev` bileşen galerisi |
 | `5c6d4a4` | CLAUDE.md durumu güncellendi |
+| `f4c8436` | Jetster'ın kolları / Tinbot'un bacakları ayrıştırıldı |
+| `6d6cf07` | Grid Reveal artık gerilimi ve kopan yayı gösteriyor |
+| `b80932f` | Rarity görünür oldu — Fair→Mint malzeme katmanı |
+| `e08f6f2` | Wind-Up uçları QA süitine girdi (89 → 93) |
+| `9598920` | Upgrade reveal yarışçıyı gösteriyor; rarity kodu sızıntısı kapandı |
+| `80203eb` | Koleksiyon kartlarında portre; ikinci kod sızıntısı kapandı |
+| `9764825` | Ham kod render'ını yakalayan lint kuralı + üç sızıntı daha |
 
 ## Bulunan gerçek hatalar
 
@@ -42,8 +49,11 @@ Hepsi kapılar yeşilken duruyordu. Ortak sebep: **her kapı bir şey ölçmüyo
 3. **Uygulama dev sunucusunda hiç açılmıyordu.** `safe-buffer` boot'ta patlıyor, sayfa boş. Kimse dev'i açıp bakmadığı için görülmemiş.
 4. **İstemci `band` değerlerini yanlış varsayıyordu** (`overwound` vs sunucunun `over`'ı). Sonuç paneli her kopmayan yarışta boş çıkacaktı. Tip kontrolü yakalayamaz; ucu çağırmak gerekti.
 5. **Yarış tuvali hâlâ ilk temanın dikey ağaç pistini çiziyordu.** Emoji değiştirme işi sanılmıştı — pistin kendisi yanlıştı.
+6. **Dört ekranda oyuncuya ham kod gösteriliyordu** — upgrade reveal, koleksiyon rozeti, shop, profil. "legendary" yazıyordu, "Mint" yazması gerekiyordu. Tema decoupling kodda tutuyor, son bir santimde sızıyordu.
+7. **Grid Reveal hiçbir şey açıklamıyordu.** Sunucu `tension` ve `snapped` döndürüyordu, ekran ikisini de yok sayıyordu — fazın on saniye boyunca kurduğu gerilim çöpe gidiyordu.
+8. **Wind-Up uçlarının QA kapsaması sıfırdı.** Band uyuşmazlığı tam bu boşluktan geçmişti.
 
-Buna karşılık dört kalıcı kontrol eklendi: `tools/typecheck.sh` (sahiplik ayrımıyla), `lint:vocab`'in sembol kuralı, `tools/screenshot.mjs`, ve `/dev` galerisi.
+Buna karşılık altı kalıcı kontrol eklendi: `tools/typecheck.sh` (sahiplik ayrımıyla), `lint:vocab`'e **sembol** ve **ham kod** kuralları, `tools/screenshot.mjs`, `/dev` galerisi (4 panel), ve QA süitine 4 Wind-Up testi (89 → 93).
 
 ## Kendi hatalarım
 
@@ -73,4 +83,10 @@ Buna karşılık dört kalıcı kontrol eklendi: `tools/typecheck.sh` (sahiplik 
 
 ## Harcanan
 
-Meshy: 1250 → **1110** kredi (bu oturumun tamamı, dört arketip dahil). 140 kredi.
+Meshy: 1250 → **1110** kredi (dört arketip dahil). 140 kredi.
+
+## Ayrıca yapılanlar
+
+- **Rarity artık görünür.** ART_DIRECTION §6'nın malzeme merdiveni, Rive yerine tuval filtresi olarak: Fair donuk tin, Good temel, Excellent parlak, Near Mint metale çekilmiş, Mint sıcak. Rarity hiç stat vermiyor, yani görünmezse hiç yok demekti.
+- **Grid Reveal fazın ödemesini yapıyor** — gerilim çubukları, arketip simgeleri, kopan yay için "SPRING WENT".
+- **`RacerPortrait`** — yarışçı upgrade reveal'de ve koleksiyon kartlarında yarıştaki rig'in aynısıyla çiziliyor. Koleksiyon için `still` modu var: bir düzine kart bir düzine animasyon döngüsü açmasın.
