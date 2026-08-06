@@ -1,19 +1,9 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { query, getOne, getAll, runTransaction } from "../db";
-import { simulateRace, RacerStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
-import {
-  WIND_UP_TUNING,
-  botSigmaForSkill,
-  botTension,
-  boundHold,
-  orderGrid,
-  overwindDrainMultiplier,
-  resolveWind,
-  safeWindDisplayBand,
-  safeWindThreshold,
-} from "../simulation/windUp";
+import { simulateRace, RacerStats, TacticAction, mulberry32, seedFromString, TICKS_PER_SECOND } from "../simulation/engine";
 import { raceFormat, isPlayableFormat, DEFAULT_FORMAT } from "../simulation/formats";
+import { isSchedulable, earliestSchedulableTick, ITEM_TUNING, type ScheduledItem, type ItemCode } from "../simulation/items";
 import { tierForStats, totalStats } from "../simulation/evolution";
 import { awardXP, XP_AMOUNTS } from "../xp";
 import { isValidWallet } from "../middleware/validateWallet";
@@ -202,9 +192,17 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
+    // The loadout is the pre-race decision. It replaces the Wind-Up phase: that
+    // asked the player to hold a button accurately, which is a reflex test, not
+    // a choice. Two items out of two types is a small question with a real
+    // answer — press for yourself, or press against whoever is winning.
+    const requested: string[] = Array.isArray(req.body.loadout) ? req.body.loadout : [];
+    const valid = requested.filter((c) => c === "boost" || c === "hinder").slice(0, ITEM_TUNING.perRacer);
+    while (valid.length < ITEM_TUNING.perRacer) valid.push(valid.length === 0 ? "boost" : "hinder");
+
     await query(
-      "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot) VALUES ($1, $2, $3, 0)",
-      [raceId, parsedRacerId, wallet]
+      "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot, loadout) VALUES ($1, $2, $3, 0, $4)",
+      [raceId, parsedRacerId, wallet, valid.join(",")]
     );
 
     res.json({
@@ -219,14 +217,12 @@ router.post("/join", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/race/start-tuning — Close the lobby, fill with bots, and open the
-// Wind-Up window. See docs/WIND_UP_PHASE.md.
+// POST /api/race/start — Close the lobby, fill with bots, set the grid from the
+// seed, and start the clock the reveal frontier is measured against.
 //
-// The race seed is generated HERE rather than at simulate time, because each
-// racer's Safe Wind threshold is jittered from it (§9). The threshold has to
-// exist before anyone can wind, and the simulation later reuses the same seed
-// so the whole race — grid and result — verifies from one value.
-router.post("/start-tuning", async (req: Request, res: Response) => {
+// The seed is generated here rather than at simulate time so that the grid and
+// the result both verify from one value.
+router.post("/start", async (req: Request, res: Response) => {
   try {
     const { raceId } = req.body;
 
@@ -286,40 +282,55 @@ router.post("/start-tuning", async (req: Request, res: Response) => {
     const seed = race.seed || generateSeed();
 
     await query(
-      "UPDATE races SET status = 'tuning', seed = $1, tuning_opened_at = NOW() WHERE id = $2",
+      "UPDATE races SET status = 'racing', seed = $1, started_at = NOW() WHERE id = $2",
       [seed, raceId]
     );
 
-    // Bots wind immediately — they have no window to wait through. Their
-    // tension is sampled from the race seed, so it is fixed the moment the
-    // window opens and cannot drift with when the finalizer happens to run.
-    const botRows = await getAll(
-      `SELECT rp.racer_id, r.sta
-       FROM race_participants rp JOIN racers r ON rp.racer_id = r.id
-       WHERE rp.race_id = $1 AND rp.is_bot = 1`,
+    // Grid order comes from the seed. The Wind-Up phase used to decide it by
+    // measuring a held button; that phase is gone, and a seeded shuffle keeps
+    // the grid verifiable without asking the player to pass a reflex test
+    // before every race.
+    const allRows = await getAll(
+      "SELECT racer_id FROM race_participants WHERE race_id = $1 ORDER BY racer_id",
       [raceId]
     );
-    for (const bot of botRows) {
-      const safeWind = safeWindThreshold(Number(bot.sta) || 10, seed, bot.racer_id);
-      const sigma = botSigmaForSkill(botSkills[bot.racer_id] ?? 0.5);
-      const tension = botTension(safeWind, sigma, seed, bot.racer_id);
-      // A bot at the clamp ceiling has effectively overwound to breaking point.
-      const snapped = tension >= WIND_UP_TUNING.botMaxTension;
+    const gridRng = mulberry32(seedFromString(seed + ":grid"));
+    const order = allRows.map((r: any) => r.racer_id);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(gridRng() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    for (let i = 0; i < order.length; i++) {
       await query(
-        `UPDATE race_participants
-         SET wind_tension = $1, wind_snapped = $2, wind_locked = 1
-         WHERE race_id = $3 AND racer_id = $4`,
-        [tension, snapped ? 1 : 0, raceId, bot.racer_id]
+        "UPDATE race_participants SET grid_position = $1 WHERE race_id = $2 AND racer_id = $3",
+        [i + 1, raceId, order[i]]
       );
+    }
+
+    const botRows = await getAll(
+      "SELECT racer_id FROM race_participants WHERE race_id = $1 AND is_bot = 1",
+      [raceId]
+    );
+
+    // Bots use both items at seeded moments. They are not smart about it — the
+    // point is that a bot lane is not visibly inert while the player's is.
+    for (const bot of botRows) {
+      const r = mulberry32(seedFromString(seed + ":botitems:" + bot.racer_id));
+      for (const code of ["boost", "hinder"] as const) {
+        const tick = Math.floor(60 + r() * 240);
+        await query(
+          "INSERT INTO race_items (race_id, racer_id, wallet, code, tick) VALUES ($1, $2, $3, $4, $5)",
+          [raceId, bot.racer_id, `bot_${bot.racer_id}`, code, tick]
+        );
+      }
     }
 
     res.json({
       raceId,
-      status: "tuning",
+      status: "racing",
       botsAdded: botsNeeded,
-      phaseDurationMs: WIND_UP_TUNING.phaseDurationMs,
-      fullWindMs: WIND_UP_TUNING.fullWindMs,
-      opensAt: new Date().toISOString(),
+      startedAt: new Date().toISOString(),
+      tickRate: TICKS_PER_SECOND,
     });
   } catch (err) {
     console.error("POST /start-tuning error:", err);
@@ -327,278 +338,130 @@ router.post("/start-tuning", async (req: Request, res: Response) => {
   }
 });
 
-type WindContext =
-  | { ok: false; error: string; status: number }
-  | { ok: true; race: any; participant: any };
 
-/** Loads a race plus the caller's participant row, or explains why not. */
-async function loadWindContext(raceId: string, wallet: string): Promise<WindContext> {
-  const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
-  if (!race) return { ok: false, error: "race not found", status: 404 };
-  if (race.status !== "tuning") {
-    return { ok: false, error: "race is not in the wind-up phase", status: 400 };
-  }
-  const participant = await getOne(
-    "SELECT * FROM race_participants WHERE race_id = $1 AND wallet = $2",
-    [raceId, wallet]
-  );
-  if (!participant) return { ok: false, error: "not a participant in this race", status: 403 };
-  return { ok: true, race, participant };
-}
-
-/** Milliseconds the wind-up window has been open. */
-function windowElapsedMs(race: any): number {
-  if (!race.tuning_opened_at) return 0;
-  return Date.now() - new Date(race.tuning_opened_at).getTime();
-}
-
-// POST /api/race/wind/start — The player pressed and began winding.
-//
-// The server timestamps the press itself. The client never sends a tension or a
-// duration: an input mechanic scored from client-reported numbers is trivially
-// forged, so the hold is measured entirely between this call and the release
-// (§9). Network latency makes it slightly imprecise, never exploitable.
-router.post("/wind/start", async (req: Request, res: Response) => {
-  try {
-    const { raceId, wallet } = req.body;
-    if (!raceId || !wallet) {
-      res.status(400).json({ error: "raceId and wallet required" });
-      return;
-    }
-    if (!isValidWallet(wallet as string)) {
-      res.status(400).json({ error: "Invalid wallet address format" });
-      return;
-    }
-
-    const ctx = await loadWindContext(raceId, wallet);
-    if (!ctx.ok) {
-      res.status(ctx.status).json({ error: ctx.error });
-      return;
-    }
-    const { race, participant } = ctx;
-
-    if (participant.wind_locked) {
-      res.status(409).json({ error: "already locked in for this race" });
-      return;
-    }
-    if (windowElapsedMs(race) > WIND_UP_TUNING.phaseDurationMs) {
-      res.status(400).json({ error: "the wind-up window has closed" });
-      return;
-    }
-    // Re-pressing without releasing would otherwise restart the hold and hand
-    // out free tension; the first press is the one that counts.
-    if (participant.wind_pressed_at) {
-      res.json({ raceId, alreadyWinding: true });
-      return;
-    }
-
-    await query(
-      "UPDATE race_participants SET wind_pressed_at = NOW() WHERE id = $1",
-      [participant.id]
-    );
-
-    const racer = await getOne("SELECT sta FROM racers WHERE id = $1", [participant.racer_id]);
-    res.json({
-      raceId,
-      winding: true,
-      // The player sees an approximate band, never the exact line (§9).
-      safeWindBand: safeWindDisplayBand(Number(racer?.sta) || 10),
-      fullWindMs: WIND_UP_TUNING.fullWindMs,
-      windowRemainingMs: Math.max(0, WIND_UP_TUNING.phaseDurationMs - windowElapsedMs(race)),
-    });
-  } catch (err) {
-    console.error("POST /wind/start error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// POST /api/race/wind/release — The player let go. The client reports how long
-// it held; the server bounds that by the window it observed and locks it in.
-router.post("/wind/release", async (req: Request, res: Response) => {
-  try {
-    const { raceId, wallet } = req.body;
-    if (!raceId || !wallet) {
-      res.status(400).json({ error: "raceId and wallet required" });
-      return;
-    }
-    if (!isValidWallet(wallet as string)) {
-      res.status(400).json({ error: "Invalid wallet address format" });
-      return;
-    }
-
-    const ctx = await loadWindContext(raceId, wallet);
-    if (!ctx.ok) {
-      res.status(ctx.status).json({ error: ctx.error });
-      return;
-    }
-    const { race, participant } = ctx;
-
-    if (participant.wind_locked) {
-      res.status(409).json({ error: "already locked in for this race" });
-      return;
-    }
-    if (!participant.wind_pressed_at) {
-      res.status(400).json({ error: "not winding — press before releasing" });
-      return;
-    }
-
-    // The client sends how long it held (a duration from performance.now(), not a
-    // timestamp — monotonic, no clock sync, immune to the user's system clock).
-    // The server bounds it by the window it observed between press and release.
-    //
-    // Stamping both ends server-side instead would close forgery but tax latency:
-    // a player on a slow connection would lose tension they actually earned, in a
-    // mechanic sold as purely skill-based. Bounding keeps the honest player whole
-    // while making invented time impossible. Claiming LESS than you held stays
-    // possible; what defends against that is the Safe Wind threshold being
-    // jittered per race and shown only approximately. See docs/WIND_UP_PHASE.md §9.
-    const observedMs = Date.now() - new Date(participant.wind_pressed_at).getTime();
-    const holdMs = boundHold(Number(req.body?.heldMs), observedMs);
-
-    const racer = await getOne("SELECT sta FROM racers WHERE id = $1", [participant.racer_id]);
-    const safeWind = safeWindThreshold(Number(racer?.sta) || 10, race.seed, participant.racer_id);
-    const outcome = resolveWind(holdMs, safeWind);
-
-    await query(
-      `UPDATE race_participants
-       SET wind_tension = $1, wind_snapped = $2, wind_locked = 1
-       WHERE id = $3`,
-      [outcome.tension, outcome.snapped ? 1 : 0, participant.id]
-    );
-
-    res.json({
-      raceId,
-      tension: outcome.tension,
-      band: outcome.band,
-      snapped: outcome.snapped,
-      holdMs,
-      locked: true,
-    });
-  } catch (err) {
-    console.error("POST /wind/release error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
+// POST /api/race/simulate — Run the race simulation
 /**
- * Resolve everyone who has not locked in, order the grid and move the race to
- * 'racing'. Idempotent: a race already past 'tuning' is left alone.
- *
- * Called explicitly by the client when the countdown ends, and defensively by
- * /simulate so a race can never reach the starting line with an unresolved grid.
+ * How far into the race the server has committed. Derived from the server clock
+ * and the tick rate — never from anything the client says, because this number
+ * is the only thing stopping an item from being scheduled onto a tick the
+ * player has already watched.
  */
-async function finalizeWindUp(raceId: string): Promise<void> {
-  const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
-  if (!race || race.status !== "tuning") return;
-
-  const seed: string = race.seed || generateSeed();
-  if (!race.seed) {
-    await query("UPDATE races SET seed = $1 WHERE id = $2", [seed, raceId]);
-  }
-
-  const participants = await getAll(
-    `SELECT rp.*, r.sta
-     FROM race_participants rp JOIN racers r ON rp.racer_id = r.id
-     WHERE rp.race_id = $1`,
-    [raceId]
-  );
-
-  for (const p of participants) {
-    if (p.wind_locked) continue;
-
-    // Someone who pressed and never released is treated as holding until the
-    // window shut. Someone who never touched the screen gets zero tension and
-    // no penalty — declining to wind is a weak but legitimate play (§4).
-    let holdMs = 0;
-    if (p.wind_pressed_at) {
-      const pressedAt = new Date(p.wind_pressed_at).getTime();
-      const windowClosesAt = race.tuning_opened_at
-        ? new Date(race.tuning_opened_at).getTime() + WIND_UP_TUNING.phaseDurationMs
-        : Date.now();
-      holdMs = Math.max(0, Math.min(Date.now(), windowClosesAt) - pressedAt);
-    }
-
-    const safeWind = safeWindThreshold(Number(p.sta) || 10, seed, p.racer_id);
-    const outcome = resolveWind(holdMs, safeWind);
-    await query(
-      `UPDATE race_participants
-       SET wind_tension = $1, wind_snapped = $2, wind_locked = 1
-       WHERE id = $3`,
-      [outcome.tension, outcome.snapped ? 1 : 0, p.id]
-    );
-    p.wind_tension = outcome.tension;
-    p.wind_snapped = outcome.snapped ? 1 : 0;
-  }
-
-  // Highest tension takes pole; snapped springs go to the back; ties break on
-  // the seed so the order is reproducible rather than dependent on row order.
-  const ordered = orderGrid(
-    participants.map((p: any) => ({
-      racerId: p.racer_id,
-      tension: p.wind_tension || 0,
-      snapped: p.wind_snapped === 1,
-      rowId: p.id,
-    })),
-    seed
-  );
-
-  for (let i = 0; i < ordered.length; i++) {
-    await query("UPDATE race_participants SET grid_position = $1 WHERE id = $2", [
-      i + 1,
-      ordered[i].rowId,
-    ]);
-  }
-
-  await query("UPDATE races SET status = 'racing' WHERE id = $1", [raceId]);
+function revealedTick(race: any): number {
+  if (!race?.started_at) return 0;
+  const elapsedMs = Date.now() - new Date(race.started_at).getTime();
+  return Math.max(0, Math.floor((elapsedMs / 1000) * TICKS_PER_SECOND));
 }
 
-// POST /api/race/close-tuning — Shut the window and reveal the grid.
-router.post("/close-tuning", async (req: Request, res: Response) => {
+// GET /api/race/:id/items — what this racer has left and when it may be used.
+router.get("/:id/items", async (req: Request, res: Response) => {
   try {
-    const { raceId } = req.body;
-    if (!raceId) {
-      res.status(400).json({ error: "raceId required" });
-      return;
-    }
-
-    const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
+    const { id } = req.params;
+    const racerId = parseInt(String(req.query.racerId), 10);
+    const race = await getOne("SELECT * FROM races WHERE id = $1", [id]);
     if (!race) {
       res.status(404).json({ error: "race not found" });
       return;
     }
-
-    await finalizeWindUp(raceId);
-
-    // The reveal: all four tensions become visible at once, never before.
-    const grid = await getAll(
-      `SELECT rp.racer_id, rp.grid_position, rp.wind_tension, rp.wind_snapped,
-              rp.is_bot, rp.wallet, r.name
-       FROM race_participants rp JOIN racers r ON rp.racer_id = r.id
-       WHERE rp.race_id = $1
-       ORDER BY rp.grid_position ASC`,
-      [raceId]
+    const participant = await getOne(
+      "SELECT loadout FROM race_participants WHERE race_id = $1 AND racer_id = $2",
+      [id, racerId]
     );
-
+    if (!participant) {
+      res.status(404).json({ error: "racer is not in this race" });
+      return;
+    }
+    const used = await getAll(
+      "SELECT code FROM race_items WHERE race_id = $1 AND racer_id = $2",
+      [id, racerId]
+    );
+    const loadout: string[] = String(participant.loadout || "").split(",").filter(Boolean);
+    const remaining = [...loadout];
+    for (const u of used) {
+      const i = remaining.indexOf(u.code);
+      if (i >= 0) remaining.splice(i, 1);
+    }
+    const frontier = revealedTick(race);
     res.json({
-      raceId,
-      status: "racing",
-      grid: grid.map((g: any) => ({
-        racerId: g.racer_id,
-        name: g.name,
-        wallet: g.wallet,
-        isBot: g.is_bot === 1,
-        position: g.grid_position,
-        tension: g.wind_tension,
-        snapped: g.wind_snapped === 1,
-      })),
+      loadout,
+      remaining,
+      revealedTick: frontier,
+      earliestTick: earliestSchedulableTick(frontier),
+      durationTicks: ITEM_TUNING.durationTicks,
     });
   } catch (err) {
-    console.error("POST /close-tuning error:", err);
+    console.error("GET /:id/items error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST /api/race/simulate — Run the race simulation
+// POST /api/race/item — deploy one item from the loadout.
+//
+// The tick is chosen by the SERVER, not the client: it is the first tick past
+// the reveal frontier. A client-supplied tick would let a player drop an item
+// into a moment they have already seen, which is exactly the thing that made
+// the old Tactic Mode restart the race.
+router.post("/item", async (req: Request, res: Response) => {
+  try {
+    const { raceId, racerId, wallet, code } = req.body;
+    if (!raceId || !racerId || !wallet || !code) {
+      res.status(400).json({ error: "raceId, racerId, wallet and code required" });
+      return;
+    }
+    if (code !== "boost" && code !== "hinder") {
+      res.status(400).json({ error: "unknown item" });
+      return;
+    }
+    if (!isValidWallet(wallet)) {
+      res.status(400).json({ error: "Invalid wallet address format" });
+      return;
+    }
+
+    const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
+    if (!race || race.status !== "racing") {
+      res.status(400).json({ error: "race is not running" });
+      return;
+    }
+
+    const participant = await getOne(
+      "SELECT loadout FROM race_participants WHERE race_id = $1 AND racer_id = $2 AND wallet = $3",
+      [raceId, parseInt(String(racerId), 10), wallet]
+    );
+    if (!participant) {
+      res.status(403).json({ error: "not your racer in this race" });
+      return;
+    }
+
+    const used = await getAll(
+      "SELECT code FROM race_items WHERE race_id = $1 AND racer_id = $2",
+      [raceId, parseInt(String(racerId), 10)]
+    );
+    const loadout: string[] = String(participant.loadout || "").split(",").filter(Boolean);
+    const carried = loadout.filter((c) => c === code).length;
+    const spent = used.filter((u: any) => u.code === code).length;
+    if (spent >= carried) {
+      res.status(400).json({ error: "no more of that item" });
+      return;
+    }
+
+    const frontier = revealedTick(race);
+    const tick = earliestSchedulableTick(frontier);
+    if (!isSchedulable(tick, frontier)) {
+      res.status(400).json({ error: "cannot schedule into the past" });
+      return;
+    }
+
+    await query(
+      "INSERT INTO race_items (race_id, racer_id, wallet, code, tick) VALUES ($1, $2, $3, $4, $5)",
+      [raceId, parseInt(String(racerId), 10), wallet, code, tick]
+    );
+
+    res.json({ deployed: true, code, tick, revealedTick: frontier });
+  } catch (err) {
+    console.error("POST /item error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/simulate", async (req: Request, res: Response) => {
   try {
     const { raceId } = req.body;
@@ -609,13 +472,10 @@ router.post("/simulate", async (req: Request, res: Response) => {
       return;
     }
 
-    // A race must never reach the starting line with an unresolved grid. If the
-    // client never called close-tuning (or crashed mid-phase), resolve it here.
-    await finalizeWindUp(raceId);
     const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
 
-    // Grid order was decided by the Wind-Up phase; read it back rather than
-    // re-deriving it, so the reveal the player saw is the grid that races.
+    // Grid order was written from the seed when the race started; read it back
+    // rather than re-deriving it here.
     const participants = await getAll(
       `SELECT rp.*, s.name, s.race, s.rarity, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
        FROM race_participants rp
@@ -629,8 +489,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
     // empty map rather than threading a removal through the whole builder.
     const accessoryBonuses: Record<number, Record<string, number>> = {};
 
-    // Grid positions are already persisted by the Wind-Up finalizer; backfill
-    // only if something upstream left them null.
+    // Grid positions are persisted at start; backfill only if something
+    // upstream left them null.
     for (let index = 0; index < participants.length; index++) {
       const p = participants[index];
       if (p.grid_position == null) {
@@ -640,12 +500,6 @@ router.post("/simulate", async (req: Request, res: Response) => {
 
     const gridded: RacerStats[] = participants.map((p: any, index: number) => {
       const bonus = accessoryBonuses[p.racer_id] || {};
-      // Recompute the wind-up consequences from the locked tension and the
-      // race seed. Nothing is trusted from the client and nothing extra is
-      // stored: the same seed always reproduces the same penalties.
-      const safeWind = safeWindThreshold(Number(p.sta) || 10, race.seed || "", p.racer_id);
-      const snapped = p.wind_snapped === 1;
-      const staminaDrainMultiplier = overwindDrainMultiplier(p.wind_tension || 0, safeWind);
       return {
         archetype: p.race,
         rarity: p.rarity,
@@ -661,11 +515,19 @@ router.post("/simulate", async (req: Request, res: Response) => {
         lck: p.lck + (bonus.lck || 0),
         gridPosition: p.grid_position ?? index + 1,
         passive: p.passive || undefined,
-        windTension: p.wind_tension || 0,
-        staminaDrainMultiplier,
-        startStaminaFactor: snapped ? WIND_UP_TUNING.snapStaminaFactor : 1,
       };
     });
+
+    // Items deployed so far. The list plus the seed is the whole input to the
+    // simulation, which is what lets this endpoint be called repeatedly during
+    // a race and keep returning the same frames for the part already shown.
+    const itemRows = await getAll(
+      "SELECT racer_id, code, tick FROM race_items WHERE race_id = $1 ORDER BY tick, id",
+      [raceId]
+    );
+    const items: ScheduledItem[] = itemRows.map((r: any) => ({
+      racerId: r.racer_id, code: r.code as ItemCode, tick: r.tick,
+    }));
 
     // Tactic Mode is cut, so no race carries actions. The engine still accepts
     // them; passing an empty list keeps that path exercised by the type system
@@ -680,7 +542,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
     // The row wins over the format table so replays stay faithful; rows created
     // before track_length existed fall back to their format's distance.
     const trackLength = race.track_length ?? raceFormat(race.format).trackLength;
-    const result = simulateRace(gridded, seed, tacticActions, isChaosMode, trackLength);
+    const result = simulateRace(gridded, seed, tacticActions, isChaosMode, trackLength, items);
 
     // No prize pool. Finishing order is recorded and drives stat growth,
     // streaks and the leaderboard; it does not move a balance.

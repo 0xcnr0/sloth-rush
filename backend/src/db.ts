@@ -128,22 +128,40 @@ export async function initDB() {
 
     CREATE TABLE IF NOT EXISTS races (
       id TEXT PRIMARY KEY,
-      status TEXT NOT NULL DEFAULT 'lobby' CHECK(status IN ('lobby', 'tuning', 'racing', 'finished')),
+      status TEXT NOT NULL DEFAULT 'lobby' CHECK(status IN ('lobby', 'racing', 'finished')),
       format TEXT NOT NULL DEFAULT 'sprint' CHECK(format IN ('exhibition', 'sprint', 'endurance', 'standard', 'grand_prix', 'tactic', 'gp_qualify', 'gp_final')),
       entry_fee INTEGER NOT NULL DEFAULT 50,
       -- Distance this race was run over. Recorded per race rather than looked
       -- up from the format, so retuning a format never rewrites history.
       track_length INTEGER NOT NULL DEFAULT 1600,
-      -- Generated when the Wind-Up window opens, not at simulate time: the
-      -- Safe Wind jitter is derived from it, so it has to exist before anyone
-      -- winds. Reused by the simulation so the whole race is one seed.
+      -- One seed per race: the grid order and the whole simulation come from it,
+      -- so a finished race can be reproduced by anyone holding it.
       seed TEXT,
-      -- Server clock at the moment the Wind-Up window opened.
+      -- Server clock at the moment the race started running. The reveal
+      -- frontier is derived from this and the tick rate rather than from
+      -- anything the client reports, so an item can never be scheduled onto a
+      -- tick the player has already watched.
+      started_at TIMESTAMP,
       tuning_opened_at TIMESTAMP,
       result_hash TEXT,
       winner_wallet TEXT,
       created_at TIMESTAMP DEFAULT NOW(),
       finished_at TIMESTAMP
+    );
+
+    -- Items deployed during a race. The list, with the seed, is the entire
+    -- input to the simulation — see simulation/items.ts for why that is enough
+    -- to keep the race deterministic while still accepting live input.
+    CREATE TABLE IF NOT EXISTS race_items (
+      id SERIAL PRIMARY KEY,
+      race_id TEXT NOT NULL,
+      racer_id INTEGER NOT NULL,
+      wallet TEXT NOT NULL,
+      code TEXT NOT NULL CHECK(code IN ('boost', 'hinder')),
+      -- The tick the effect starts on. Always ahead of the reveal frontier at
+      -- the moment of submission.
+      tick INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS race_participants (
@@ -152,15 +170,10 @@ export async function initDB() {
       racer_id INTEGER NOT NULL,
       wallet TEXT NOT NULL,
       is_bot INTEGER DEFAULT 0,
-      -- Skill-derived spring tension from the pre-race Wind-Up phase (0-100).
-      wind_tension INTEGER DEFAULT 0 CHECK(wind_tension >= 0 AND wind_tension <= 100),
-      -- When the player began winding. Written by the server on press, never
-      -- supplied by the client — the hold is measured from the server clock.
-      wind_pressed_at TIMESTAMP,
-      -- A snapped spring clamps to tension 100, so it needs its own flag.
-      wind_snapped INTEGER DEFAULT 0,
-      -- Set when the phase resolves, so finalizing twice is a no-op.
-      wind_locked INTEGER DEFAULT 0,
+      -- The two items this racer carries into the race, chosen before the start.
+      -- Stored as the codes themselves rather than a count of each, so the
+      -- order the player picked is preserved and the column reads as what it is.
+      loadout TEXT NOT NULL DEFAULT 'boost,hinder',
       grid_position INTEGER,
       finish_position INTEGER,
       reward INTEGER DEFAULT 0,
@@ -378,6 +391,7 @@ export async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_race_points_wallet_season ON race_points(wallet, season);
     CREATE INDEX IF NOT EXISTS idx_gp_points_wallet_season ON gp_points(wallet, season);
     CREATE INDEX IF NOT EXISTS idx_races_status ON races(status);
+    CREATE INDEX IF NOT EXISTS idx_race_items_race ON race_items(race_id);
     CREATE INDEX IF NOT EXISTS idx_daily_races_date ON daily_races(race_date);
     CREATE INDEX IF NOT EXISTS idx_feedback_wallet ON feedback(wallet);
     CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);

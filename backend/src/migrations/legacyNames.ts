@@ -131,7 +131,23 @@ export const RETIRED_MECHANIC_MIGRATIONS: string[] = [
   `DROP TABLE IF EXISTS accessories`,
   `DROP TABLE IF EXISTS racer_equipment`,
   `DROP TABLE IF EXISTS user_accessories`,
-  `DROP TABLE IF EXISTS user_accessories`,
+
+  // --- the Wind-Up phase, retired ---
+  // Replaced by an item loadout chosen before the race and deployed during it.
+  // The phase measured how long a button was held; the loadout asks a question
+  // the player can actually answer, and the timing of a deployment is where the
+  // skill went.
+  `ALTER TABLE IF EXISTS race_participants ADD COLUMN IF NOT EXISTS loadout TEXT NOT NULL DEFAULT 'boost,hinder'`,
+  `ALTER TABLE IF EXISTS races ADD COLUMN IF NOT EXISTS started_at TIMESTAMP`,
+  `ALTER TABLE IF EXISTS race_participants DROP COLUMN IF EXISTS wind_tension`,
+  `ALTER TABLE IF EXISTS race_participants DROP COLUMN IF EXISTS wind_pressed_at`,
+  `ALTER TABLE IF EXISTS race_participants DROP COLUMN IF EXISTS wind_snapped`,
+  `ALTER TABLE IF EXISTS race_participants DROP COLUMN IF EXISTS wind_locked`,
+  `ALTER TABLE IF EXISTS races DROP COLUMN IF EXISTS tuning_opened_at`,
+  // `status = 'tuning'` was the Wind-Up window. Races now go lobby -> racing.
+  `ALTER TABLE races DROP CONSTRAINT IF EXISTS races_status_check`,
+  `UPDATE races SET status = 'racing' WHERE status = 'tuning'`,
+  `ALTER TABLE races ADD CONSTRAINT races_status_check CHECK(status IN ('lobby', 'racing', 'finished'))`,
   `DROP TABLE IF EXISTS tactic_actions`,
 ];
 

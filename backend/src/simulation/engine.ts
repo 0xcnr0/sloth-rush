@@ -5,11 +5,10 @@
  * This engine will be open-sourced for anyone-can-verify.
  */
 
-import { WIND_UP_TUNING, poleAccelerationBonus } from "./windUp";
 import { itemMultiplier, type ScheduledItem } from "./items";
 
 // Seeded PRNG (mulberry32) — deterministic random from seed
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   return () => {
     seed |= 0;
     seed = (seed + 0x6d2b79f5) | 0;
@@ -19,7 +18,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function seedFromString(str: string): number {
+export function seedFromString(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -163,6 +162,28 @@ export function applyGDAPurchase(state: GDAState, actionType: "boost" | "project
 export const DEFAULT_TRACK_LENGTH = 2800; // race distance units
 
 /**
+ * Grid advantage.
+ *
+ * Pole is an ACCELERATION bonus over the opening ticks, never a head start in
+ * distance: all four lanes have to leave the line level or the stacked-lane
+ * framing stops reading as a photo finish. The value was measured when the grid
+ * was earned by the Wind-Up phase; the phase is gone and the grid now comes
+ * from the seed, but the advantage still has to be small enough that a grid
+ * slot is a nudge rather than the result.
+ */
+export const GRID_TUNING = {
+  poleAccelerationBonus: 0.08,
+  poleAccelerationTicks: 60,
+} as const;
+
+/** Share of the pole bonus for a given grid slot; last place gets none. */
+export function poleAccelerationBonus(gridPosition: number, fieldSize: number): number {
+  if (fieldSize <= 1) return 0;
+  const share = (fieldSize - gridPosition) / (fieldSize - 1);
+  return GRID_TUNING.poleAccelerationBonus * share;
+}
+
+/**
  * Fatigue — the only thing that makes distance a real choice.
  *
  * Two things were wrong here and both are worth naming, because both were
@@ -210,7 +231,7 @@ export const FATIGUE = {
   /** Hard floor on speed, so a spent racer still crosses the line. */
   minSpeedFactor: 0.30,
 } as const;
-const TICKS_PER_SECOND = 10;
+export const TICKS_PER_SECOND = 10;
 /**
  * Safety stop, scaled to the distance.
  *
@@ -471,7 +492,7 @@ export function simulateRace(
       // Acceleration toward max speed. Grid slot adds a short opening burst
       // rather than a distance head start, so the lanes stay visually level.
       const gridAccelBonus =
-        tick < WIND_UP_TUNING.poleAccelerationTicks
+        tick < GRID_TUNING.poleAccelerationTicks
           ? poleAccelerationBonus(s.gridPosition, fieldSize)
           : 0;
       // Items multiply the target speed and draw no numbers from `rng`, so the
