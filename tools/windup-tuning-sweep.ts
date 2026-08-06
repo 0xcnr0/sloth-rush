@@ -41,7 +41,7 @@ const POLE_BONUS_AXIS = [0.0, 0.04, 0.08, 0.12, 0.16, 0.2, 0.28, 0.4];
 // interesting region moved down by roughly an order of magnitude.
 const OVERWIND_PENALTY_AXIS = [0.0, 0.0005, 0.001, 0.002, 0.003, 0.005, 0.01, 0.02];
 
-const COMMITTED_POLE = WIND_UP_TUNING.poleAccelerationBonus; // 0.12
+const COMMITTED_POLE = WIND_UP_TUNING.poleAccelerationBonus; // 0.08
 const COMMITTED_PENALTY = WIND_UP_TUNING.overwindDrainPerPoint; // 0.015
 
 // ---------------------------------------------------------------------------

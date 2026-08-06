@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { CUR, formatLabel } from '../config/theme'
+import { formatLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 interface RaceEntry {
@@ -63,7 +63,6 @@ export default function RaceHistory() {
         {[
           { label: 'Total Races', value: String(summary.totalRaces), color: 'text-white' },
           { label: 'Win Rate', value: `${summary.winRate}%`, color: 'text-brand-primary' },
-          { label: 'Total Earnings', value: `${summary.totalEarnings} ${CUR}`, color: 'text-brand-primary' },
         ].map((card, i) => (
           <motion.div
             key={card.label}
@@ -117,7 +116,7 @@ export default function RaceHistory() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       {race.reward > 0 ? (
-                        <span className="text-brand-primary font-bold">+{race.reward} {CUR}</span>
+                        <span className="text-gray-500">—</span>
                       ) : (
                         <span className="text-gray-500">0</span>
                       )}

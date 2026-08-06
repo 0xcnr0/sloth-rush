@@ -193,18 +193,41 @@ export const FATIGUE = {
    */
   freeDistance: 300,
   /** Each additional span of this distance applies one full `decay` step. */
-  spanDistance: 850,
+  spanDistance: 500,
   /** Decay at STA 0. */
   decayAtZeroSta: 0.46,
-  /** Subtracted per point of STA — chosen so STA 100 lands on the floor. */
-  decayPerSta: 0.0060,
+  /**
+   * Subtracted per point of STA — chosen so a maxed-rarity STA (35) lands on
+   * the floor. This was 0.0060, scaled for a 0-100 stat range that the game
+   * never produces: per-stat caps are 15 and 22-35, so across every racer that
+   * can exist the old coefficient spread decay over a band of 0.46 to 0.25 and
+   * STA barely separated anyone.
+   */
+  decayPerSta: 0.0160,
   /** Nobody fades below this, or the tail of a long race stops being a race. */
   minDecay: 0.04,
   /** Hard floor on speed, so a spent racer still crosses the line. */
-  minSpeedFactor: 0.24,
+  minSpeedFactor: 0.30,
 } as const;
 const TICKS_PER_SECOND = 10;
-const MAX_TICKS = 1500; // 150 seconds max
+/**
+ * Safety stop, scaled to the distance.
+ *
+ * This was a flat 1500 ticks, which is fine for a 1600-unit Sprint and not fine
+ * for a 3200-unit Endurance: a low-stat racer runs at roughly 4 units/tick and
+ * fades from there, so it hit the cap before the line and the race was ranked
+ * on an unfinished field. Measured: an Endurance race with a fresh racer ended
+ * at exactly 150.0s, which is the cap, not a finish.
+ *
+ * The floor speed a racer can decay to is maxSpeed * FATIGUE.minSpeedFactor,
+ * and the weakest possible maxSpeed is 3, so the slowest anyone crawls is about
+ * 0.72 units/tick. Allowing for that exactly would let a hopeless race run for
+ * minutes, so this is deliberately a cap and not a guarantee — but it now
+ * scales, so the formats behave the same way as each other.
+ */
+function maxTicksFor(trackLength: number): number {
+  return Math.ceil(trackLength / 1.6);
+}
 
 // Random events from GDD
 const RANDOM_EVENTS = [
@@ -215,6 +238,7 @@ const RANDOM_EVENTS = [
 ];
 
 export function simulateRace(participants: RacerStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false, trackLength: number = DEFAULT_TRACK_LENGTH): RaceResult {
+  const maxTicks = maxTicksFor(trackLength);
   const rng = mulberry32(seedFromString(seed));
   const frames: RaceFrame[] = [];
   const events: RaceEvent[] = [];
@@ -248,7 +272,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     // Overwinding past Safe Wind burns stamina faster for the whole race.
     staminaDrainMultiplier: p.staminaDrainMultiplier ?? 1,
     finished: false,
-    finishTick: MAX_TICKS,
+    finishTick: maxTicks,
     finishOvershoot: 0,
     slowdown: 0,
     boost: 0,
@@ -262,7 +286,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
   // ticks. Everyone therefore starts at distance 0.
   const fieldSize = state.length;
 
-  for (let tick = 0; tick < MAX_TICKS; tick++) {
+  for (let tick = 0; tick < maxTicks; tick++) {
     // Check for random events — chaos mode + weather affect frequency
     const eventInterval = chaosMode ? 5 : 10;
     const leaderDist = Math.max(...state.filter(s => !s.finished).map(s => s.distance));

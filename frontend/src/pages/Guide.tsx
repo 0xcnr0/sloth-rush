@@ -1,18 +1,25 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { THEME, CUR } from '../config/theme'
+import { THEME } from '../config/theme'
 
 // All copy is derived from THEME so a rebrand never reaches this file.
+//
+// This page is the only place the game explains itself, which makes it the
+// place most likely to describe a version that no longer exists. It previously
+// documented an in-game currency, a shop, training, quests, mini games, four
+// evolution tiers gated on coins, and three race formats — none of which are in
+// the game. Keep it honest or delete it; a wrong guide is worse than none.
 const SECTIONS = [
   {
     id: 'getting-started',
     title: 'Getting Started',
     icon: '\u{1F680}',
     content: [
-      { q: `What is ${THEME.brand.name}?`, a: `${THEME.brand.name} is a racing game on Base. Mint a racer, upgrade and evolve it, train it, and compete to earn ${CUR}.` },
-      { q: 'How do I start?', a: `Connect your wallet, mint a free ${THEME.tiers.free} (gasless!), then enter Exhibition races. When ready, upgrade for $3 USDC to unlock all race formats.` },
-      { q: 'Is it free to play?', a: `Yes. A ${THEME.tiers.free} can race in Exhibition mode and earn ${CUR}. Upgrading to a ${THEME.tiers.pro} ($3 or the free path) unlocks all features.` },
+      { q: `What is ${THEME.brand.name}?`, a: `A racing game on Base. Mint a wind-up toy, race it, and it gets better at racing. Nothing to buy, nothing to grind.` },
+      { q: 'How do I start?', a: `Connect a wallet and mint a ${THEME.tiers.free}. It is free and gasless, one per wallet. Then pick a distance and race.` },
+      { q: 'Is it free to play?', a: 'Yes, entirely. Races cost nothing and there is no in-game currency. The only thing money buys is the $3 upgrade, and that changes how your racer looks, not how fast it is.' },
+      { q: 'Do I need to know anything about crypto?', a: 'No. You can sign up with an email address, and minting costs no gas.' },
     ]
   },
   {
@@ -20,41 +27,32 @@ const SECTIONS = [
     title: 'Racing',
     icon: '\u{1F3C1}',
     content: [
-      { q: 'How do races work?', a: `Four racers line up at the ${THEME.locations.track}. Grid positions are set before the start, then the race runs deterministically from your racer's stats and a verifiable seed.` },
-      { q: 'Does the grid cost anything?', a: 'No. Grid position is never bought. Nothing in a race is purchasable except the optional Tactic-mode actions during Tactic and Grand Prix Final formats.' },
-      { q: 'What are race formats?', a: `Exhibition (free practice), Standard (50 ${CUR} entry), Tactic (75 ${CUR}, use ${THEME.tactics.boost} and ${THEME.tactics.projectile}), and Grand Prix (150 ${CUR}, multi-round championship).` },
-      { q: 'How are prizes distributed?', a: 'The platform takes 15%; the remaining prize pool splits 50% / 30% / 15% / 5% across the four finishing places. Exhibition races pay flat rewards.' },
-      { q: 'Can spectators affect a race?', a: 'No. Spectating is watch-only — no interaction and no influence on the result.' },
+      { q: 'What are the race formats?', a: `${THEME.raceFormats.exhibition.name} is practice. ${THEME.raceFormats.sprint.name} and ${THEME.raceFormats.endurance.name} differ in one thing only: distance.` },
+      { q: 'Which one should I enter?', a: `${THEME.raceFormats.sprint.name} is short, so raw top speed decides it. ${THEME.raceFormats.endurance.name} is twice as long, and a racer that is only fast fades before the line — the long track is won by balance. Pick the one your racer is built for.` },
+      { q: 'What is the Wind-Up phase?', a: 'Before the grid is set, all four racers wind their springs at the same time, hidden from each other. Hold to wind, release to lock. Winding further gives a better grid slot but drains stamina faster, and winding past the limit snaps the spring and puts you last. The safe limit comes from your STA.' },
+      { q: 'Who am I racing?', a: 'Bots fill any empty slot so a race always starts. They are labelled BOT and they are not competing for anything.' },
+      { q: 'Can a race be rigged?', a: 'No. Every race is a deterministic simulation of one seed, the code is open, and the result hash is written to Base. The same seed always produces the same race.' },
     ]
   },
   {
-    id: 'stats',
-    title: 'Stats & Training',
-    icon: '\u{1F4AA}',
+    id: 'progression',
+    title: 'Getting Better',
+    icon: '\u{1F4C8}',
     content: [
-      { q: 'What are the 6 stats?', a: `SPD (Speed) — max speed. ACC (Acceleration) — how fast you get there. STA (Stamina) — fatigue resistance. AGI (Agility) — ${THEME.events.mass_slow} resistance. REF (Reflex) — recovery after a ${THEME.events.collision}. LCK (Luck) — chance of a lucky event.` },
-      { q: 'How do I train my racer?', a: 'Timed Training: pick a stat, wait 6 hours, get +0.3. Mini Games: play short challenges for +0.1~0.5. Organic Growth: race and your dominant stat grows +0.05 per race automatically.' },
-      { q: 'Does rarity affect stats?', a: `Rarity sets your stat cap, not your stats: ${THEME.rarity.common} 22, ${THEME.rarity.uncommon} 25, ${THEME.rarity.rare} 28, ${THEME.rarity.epic} 31, ${THEME.rarity.legendary} 35. Rarity gives no bonus in a race — it is condition, not power.` },
+      { q: 'How does my racer improve?', a: 'By racing. Every finish adds a little to one of its six stats, based on where it placed, up to a daily limit. There is nothing to buy and no timer to wait out.' },
+      { q: 'What are the six stats?', a: 'SPD (top speed), ACC (acceleration), STA (stamina), AGI (agility), REF (reflex) and LCK (luck). SPD is the base currency of a race; STA is what protects it over distance.' },
+      { q: 'What is evolution?', a: 'As total stats cross a threshold your racer changes form — bigger, more finished, more detail. It happens on its own the moment you cross it. Evolution is how big you got.' },
+      { q: 'What is rarity?', a: `Surface, not power. Fair through Mint changes how well kept your racer looks and never changes how it races. Rarity is how well kept you are — a separate axis from evolution.` },
     ]
   },
   {
-    id: 'economy',
-    title: 'Economy',
-    icon: '\u{1FA99}',
+    id: 'upgrade',
+    title: 'Upgrading',
+    icon: '\u{2728}',
     content: [
-      { q: `What is ${CUR}?`, a: 'The in-game currency. Earn it from races, quests, daily login and mini games. Spend it on race entries, training, cosmetics and tactics. It can also be bought in the Shop.' },
-      { q: 'What is XP?', a: 'Experience Points measure progress. XP cannot be purchased — only earned by playing. Required for upgrades and evolution.' },
-      { q: `How do I earn ${CUR}?`, a: `Race rewards, the daily login bonus (15 ${CUR}), daily and weekly quests, mini games, and the Shop.` },
-    ]
-  },
-  {
-    id: 'evolution',
-    title: 'Evolution',
-    icon: '\u{2B50}',
-    content: [
-      { q: 'How does evolution work?', a: `${THEME.tiers.free} \u2192 ${THEME.tiers.pro} (Tier 1) \u2192 Tier 2 \u2192 Tier 3 \u2192 Tier 4. Each tier requires XP, race milestones, and ${CUR}. Evolution is how big you get; rarity is how well kept you are. They are separate axes.` },
-      { q: 'What are evolution paths?', a: `At Tier 3 you choose ${THEME.paths.speed.label} (${THEME.paths.speed.statBonus}), ${THEME.paths.endurance.label} (${THEME.paths.endurance.statBonus}), or ${THEME.paths.luck.label} (${THEME.paths.luck.statBonus}). Each path grants a unique passive.` },
-      { q: 'Can I upgrade for free?', a: `Yes. ${THEME.tiers.free} \u2192 ${THEME.tiers.pro} can be earned with 1500 XP, 30 races, 10 wins and 25 login days. Or pay $3 for an instant upgrade.` },
+      { q: `What does the ${THEME.tiers.pro} upgrade do?`, a: `Your ${THEME.tiers.free} is burned and a ${THEME.tiers.pro} is minted in its place: boxed, painted, with an archetype and a rarity rolled on-chain. It costs $3 in USDC.` },
+      { q: 'Does upgrading make me faster?', a: 'It raises your stat ceilings, so a Showcase can keep improving past where a Wind-Up stops. The rarity you roll has no effect on racing at all.' },
+      { q: 'Can I choose my rarity?', a: 'No. It is drawn by Chainlink VRF at the moment of upgrade, on-chain, and nobody can see or influence it beforehand.' },
     ]
   },
 ]

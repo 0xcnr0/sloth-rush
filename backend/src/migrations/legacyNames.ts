@@ -110,6 +110,29 @@ export const RETIRED_MECHANIC_MIGRATIONS: string[] = [
   `ALTER TABLE races ALTER COLUMN track_length SET NOT NULL`,
   `ALTER TABLE races DROP CONSTRAINT IF EXISTS races_format_check`,
   `ALTER TABLE races ADD CONSTRAINT races_format_check CHECK(format IN ('exhibition', 'sprint', 'endurance', 'standard', 'grand_prix', 'tactic', 'gp_qualify', 'gp_final'))`,
+
+  // --- the in-game currency, retired ---
+  // V1 races are free and there is nothing to buy, so nothing reads or writes
+  // these. They are dropped rather than left in place because an unused table
+  // is the same kind of debt as unused code: the next schema change still has
+  // to think about it, and the next reader still has to work out whether it
+  // matters. Entry fees stay on `races` and `race_participants.reward` stays at
+  // 0 so finished races keep their shape in history.
+  `DROP TABLE IF EXISTS transactions`,
+  `DROP TABLE IF EXISTS coin_balances`,
+  `DROP TABLE IF EXISTS daily_logins`,
+  `DROP TABLE IF EXISTS daily_free_races`,
+  `DROP TABLE IF EXISTS user_quest_progress`,
+  `DROP TABLE IF EXISTS quests`,
+  `DROP TABLE IF EXISTS trainings`,
+  `DROP TABLE IF EXISTS daily_minigame_plays`,
+  `DROP TABLE IF EXISTS cosmetics`,
+  `DROP TABLE IF EXISTS user_cosmetics`,
+  `DROP TABLE IF EXISTS accessories`,
+  `DROP TABLE IF EXISTS racer_equipment`,
+  `DROP TABLE IF EXISTS user_accessories`,
+  `DROP TABLE IF EXISTS user_accessories`,
+  `DROP TABLE IF EXISTS tactic_actions`,
 ];
 
 /**

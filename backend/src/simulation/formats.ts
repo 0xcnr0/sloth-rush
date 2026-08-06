@@ -33,10 +33,31 @@ export interface RaceFormat {
   trackLength: number;
 }
 
-/** Short race — roughly 24 seconds. */
-export const SPRINT_LENGTH = 1600;
-/** Long race — roughly 48 seconds. Twice the distance, so it is easy to explain. */
-export const ENDURANCE_LENGTH = 3200;
+/**
+ * Distances, in units, measured against the stat range the game actually mints.
+ *
+ * These were 1600/3200, derived from a sweep that used stats of 55-80. No racer
+ * has ever had a stat above 35 — the caps are 15 (free) and 22-35 by rarity, and
+ * a fresh racer mints near 10 — so a Sprint that was supposed to run 24 seconds
+ * ran 56, and an Endurance ran into the simulation's tick ceiling without
+ * finishing. Re-derived with `distanceLever.check.ts` inside the real caps.
+ */
+/** Short race — roughly 22 seconds for a fresh racer. */
+export const SPRINT_LENGTH = 800;
+/**
+ * Long race — the measured crossover, where a pure sprinter and a balanced
+ * racer win equally often (50.2 / 49.8 at 3000 runs).
+ *
+ * OPEN: duration depends heavily on how developed the racer is, and the spread
+ * is wide. A fresh racer (~11 per stat, which is what mint produces) runs this
+ * in about 62 seconds; a developed one (~20) in about 36. The distance that
+ * makes STA decide anything for a developed racer is a long watch for a new
+ * player, and the real cause is upstream: mint hands out ~10 per stat against
+ * caps of 15 (free) and 22-35 (rarity), so a new racer starts far below the
+ * range every other number was tuned for. Raising the mint floor is the fix,
+ * and it is a balance decision that has not been taken.
+ */
+export const ENDURANCE_LENGTH = 1400;
 
 export const RACE_FORMATS: Record<string, RaceFormat> = {
   exhibition: { id: 'exhibition', entry: 0, trackLength: SPRINT_LENGTH },

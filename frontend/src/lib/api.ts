@@ -31,7 +31,7 @@ export const api = {
     }),
 
   getCollection: (wallet: string) =>
-    request<{ racers: any[]; coinBalance: number }>(`/racer/collection/${wallet}`),
+    request<{ racers: any[] }>(`/racer/collection/${wallet}`),
 
   getCoinBalance: (wallet: string) =>
     request<{ wallet: string; balance: number }>(`/racer/coin/${wallet}`),

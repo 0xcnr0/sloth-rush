@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { CUR } from '../config/theme'
 
 export default function Invite() {
   const { code } = useParams<{ code: string }>()
@@ -30,7 +29,7 @@ export default function Invite() {
       await api.applyReferralCode(address, code)
       setApplied(true)
       localStorage.removeItem('racer-rush-referral')
-      toast.success(`Referral applied! Your friend earned 25 ${CUR}`)
+      toast.success('Referral applied!')
     } catch (err: any) {
       setError(err.message || 'Failed to apply referral')
     } finally {

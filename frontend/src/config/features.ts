@@ -30,8 +30,6 @@ export const FEATURES = {
   collection: true,       // Always on
   guide: true,           // Always on
 
-  shop: !MVP_MODE,       // Hide in MVP
-  evolution: !MVP_MODE,  // Hide in MVP
   // OFF everywhere, not hidden-in-MVP, and the difference matters.
   //
   // tacticRace is BROKEN, not deferred. The client submits an action during
@@ -47,7 +45,5 @@ export const FEATURES = {
   spectate: true,        // Always on — demo badge shown in MVP
   replay: true,           // Always on
   profile: true,          // Always on
-  accessories: !MVP_MODE,// Hide in MVP
-  cosmetics: !MVP_MODE,  // Hide in MVP
   demoRace: MVP_MODE,    // Demo race format in MVP mode
 } as const

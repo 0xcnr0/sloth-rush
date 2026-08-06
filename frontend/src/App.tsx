@@ -5,7 +5,6 @@ import Mint from './pages/Mint'
 import Collection from './pages/Collection'
 import RaceLobby from './pages/RaceLobby'
 import RaceBroadcast from './pages/RaceBroadcast'
-import Shop from './pages/Shop'
 import Leaderboard from './pages/Leaderboard'
 import Spectate from './pages/Spectate'
 import RaceReplay from './pages/RaceReplay'
@@ -25,7 +24,6 @@ export default function App() {
         <Route path="/collection" element={<Collection />} />
         <Route path="/race" element={<RaceLobby />} />
         <Route path="/race/:id" element={<RaceBroadcast />} />
-        <Route path="/shop" element={FEATURES.shop ? <Shop /> : <Navigate to="/" replace />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/spectate" element={<Spectate />} />
         <Route path="/replay/:id" element={FEATURES.replay ? <RaceReplay /> : <Navigate to="/" replace />} />

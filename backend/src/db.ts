@@ -126,18 +126,6 @@ export async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     );
 
-    CREATE TABLE IF NOT EXISTS daily_free_races (
-      wallet TEXT NOT NULL,
-      race_date TEXT NOT NULL,
-      PRIMARY KEY(wallet, race_date)
-    );
-
-    CREATE TABLE IF NOT EXISTS coin_balances (
-      wallet TEXT PRIMARY KEY,
-      balance INTEGER DEFAULT 0,
-      updated_at TIMESTAMP DEFAULT NOW()
-    );
-
     CREATE TABLE IF NOT EXISTS races (
       id TEXT PRIMARY KEY,
       status TEXT NOT NULL DEFAULT 'lobby' CHECK(status IN ('lobby', 'tuning', 'racing', 'finished')),
@@ -179,15 +167,6 @@ export async function initDB() {
       UNIQUE(race_id, racer_id)
     );
 
-    CREATE TABLE IF NOT EXISTS tactic_actions (
-      id SERIAL PRIMARY KEY,
-      race_id TEXT NOT NULL REFERENCES races(id),
-      racer_id INTEGER NOT NULL,
-      wallet TEXT NOT NULL,
-      action_type TEXT NOT NULL CHECK(action_type IN ('boost', 'projectile')),
-      tick INTEGER NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS streaks (
       racer_id INTEGER PRIMARY KEY,
       current_wins INTEGER DEFAULT 0,
@@ -198,51 +177,11 @@ export async function initDB() {
       total_wins INTEGER DEFAULT 0
     );
 
-    CREATE TABLE IF NOT EXISTS transactions (
-      id SERIAL PRIMARY KEY,
-      wallet TEXT NOT NULL,
-      type TEXT NOT NULL,
-      amount INTEGER NOT NULL,
-      description TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS daily_logins (
-      id SERIAL PRIMARY KEY,
-      wallet TEXT NOT NULL,
-      login_date TEXT NOT NULL,
-      bonus_amount INTEGER NOT NULL DEFAULT 15,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-
     CREATE TABLE IF NOT EXISTS user_xp (
       wallet TEXT PRIMARY KEY,
       total_xp INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS quests (
-      id SERIAL PRIMARY KEY,
-      type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      description TEXT,
-      requirement_type TEXT NOT NULL,
-      requirement_value INTEGER DEFAULT 1,
-      coin_reward INTEGER DEFAULT 0,
-      xp_reward INTEGER DEFAULT 0,
-      period TEXT DEFAULT 'daily'
-    );
-
-    CREATE TABLE IF NOT EXISTS user_quest_progress (
-      id SERIAL PRIMARY KEY,
-      wallet TEXT NOT NULL,
-      quest_id INTEGER NOT NULL,
-      progress INTEGER DEFAULT 0,
-      completed INTEGER DEFAULT 0,
-      completed_at TIMESTAMP,
-      reset_date TEXT NOT NULL,
-      UNIQUE(wallet, quest_id, reset_date)
     );
 
     CREATE TABLE IF NOT EXISTS race_points (
@@ -257,15 +196,6 @@ export async function initDB() {
 
   console.log("initDB: creating training tables...");
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS trainings (
-      id SERIAL PRIMARY KEY,
-      racer_id INTEGER NOT NULL,
-      wallet TEXT NOT NULL,
-      stat TEXT NOT NULL,
-      started_at TIMESTAMP DEFAULT NOW(),
-      completed_at TIMESTAMP NOT NULL,
-      claimed INTEGER DEFAULT 0
-    );
 
     CREATE TABLE IF NOT EXISTS daily_stat_gains (
       id SERIAL PRIMARY KEY,
@@ -292,13 +222,6 @@ export async function initDB() {
   console.log("initDB: creating Sprint 3-6 tables...");
   await pool.query(`
     -- Mini game daily plays tracking
-    CREATE TABLE IF NOT EXISTS daily_minigame_plays (
-      id SERIAL PRIMARY KEY,
-      racer_id INTEGER NOT NULL,
-      play_date TEXT NOT NULL,
-      count INTEGER DEFAULT 0,
-      UNIQUE(racer_id, play_date)
-    );
 
     -- Seasons
     CREATE TABLE IF NOT EXISTS seasons (
@@ -336,48 +259,8 @@ export async function initDB() {
     );
 
     -- Cosmetics catalog
-    CREATE TABLE IF NOT EXISTS cosmetics (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('hat','trail','celebration')),
-      coin_price INTEGER NOT NULL,
-      description TEXT,
-      rarity TEXT DEFAULT 'common'
-    );
-
-    -- User owned cosmetics
-    CREATE TABLE IF NOT EXISTS user_cosmetics (
-      id SERIAL PRIMARY KEY,
-      wallet TEXT NOT NULL,
-      cosmetic_id INTEGER NOT NULL,
-      equipped_racer_id INTEGER,
-      purchased_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(wallet, cosmetic_id)
-    );
-
-    -- Accessories catalog
-    CREATE TABLE IF NOT EXISTS accessories (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      stat_bonus JSONB NOT NULL DEFAULT '{}',
-      description TEXT,
-      rarity TEXT DEFAULT 'common',
-      coin_price INTEGER NOT NULL
-    );
-
-    -- User owned accessories
-    CREATE TABLE IF NOT EXISTS user_accessories (
-      id SERIAL PRIMARY KEY,
-      wallet TEXT NOT NULL,
-      accessory_id INTEGER NOT NULL,
-      UNIQUE(wallet, accessory_id)
-    );
 
     -- Racer equipment (1 accessory per racer)
-    CREATE TABLE IF NOT EXISTS racer_equipment (
-      racer_id INTEGER PRIMARY KEY,
-      accessory_id INTEGER NOT NULL
-    );
 
     -- Season rewards
     CREATE TABLE IF NOT EXISTS season_rewards (
@@ -484,137 +367,17 @@ export async function initDB() {
       "INSERT INTO seasons (number, start_date, end_date, is_active) VALUES (1, NOW(), NOW() + interval '4 weeks', 1)"
     );
   }
-
-  // Seed cosmetics (if none exist)
-  const cosmeticCount = await getOne("SELECT COUNT(*) as count FROM cosmetics");
-  if (parseInt(cosmeticCount.count) === 0) {
-    const cosmeticSeeds = [
-      ['Top Hat', 'hat', 200, 'A dapper top hat', 'common'],
-      ['Crown', 'hat', 500, 'A golden crown for champions', 'rare'],
-      ['Pirate Hat', 'hat', 300, 'Arr! A pirate hat', 'uncommon'],
-      ['Wizard Hat', 'hat', 400, 'A mystical wizard hat', 'uncommon'],
-      ['Rainbow Trail', 'trail', 300, 'Leave a rainbow behind', 'uncommon'],
-      ['Fire Trail', 'trail', 500, 'Blazing fire trail', 'rare'],
-      ['Ice Trail', 'trail', 400, 'Frosty ice trail', 'uncommon'],
-      ['Confetti Burst', 'celebration', 200, 'Confetti celebration!', 'common'],
-      ['Fireworks', 'celebration', 500, 'Spectacular fireworks', 'rare'],
-      ['Lightning Strike', 'celebration', 400, 'Electric celebration', 'uncommon'],
-    ];
-    for (const [name, type, price, desc, rarity] of cosmeticSeeds) {
-      await query(
-        "INSERT INTO cosmetics (name, type, coin_price, description, rarity) VALUES ($1, $2, $3, $4, $5)",
-        [name, type, price, desc, rarity]
-      );
-    }
-  }
-
-  // Seed accessories (if none exist)
-  const accessoryCount = await getOne("SELECT COUNT(*) as count FROM accessories");
-  if (parseInt(accessoryCount.count) === 0) {
-    const accessorySeeds = [
-      ['Rubber Tires', '{"spd": 1}', 'Extra grip for extra speed', 'common', 300],
-      ['Tin Padding', '{"sta": 2, "spd": -1}', 'Heavier shell, longer wind', 'uncommon', 400],
-      ['Lucky Marble', '{"lck": 2}', 'A charm that draws good rolls', 'common', 350],
-      ['Ball-Joint Kit', '{"acc": 1, "agi": 1}', 'Looser joints, sharper turns', 'uncommon', 500],
-      ['Glass Eyes', '{"ref": 2}', 'Sees trouble a beat earlier', 'common', 350],
-      ['Overwound Spring', '{"spd": 3, "sta": -2}', 'Max speed, less endurance', 'rare', 600],
-    ];
-    for (const [name, bonus, desc, rarity, price] of accessorySeeds) {
-      await query(
-        "INSERT INTO accessories (name, stat_bonus, description, rarity, coin_price) VALUES ($1, $2, $3, $4, $5)",
-        [name, bonus, desc, rarity, price]
-      );
-    }
-  }
-
-  // Seed daily quests (only if empty)
-  const questCount = await getOne("SELECT COUNT(*) as count FROM quests");
-  if (parseInt(questCount.count) === 0) {
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      ["daily", "Complete 1 Race", "Finish any race to earn rewards", "race_complete", 1, 5, 10]
-    );
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      ["daily", "Finish Top 2", "Place 1st or 2nd in a race", "top_2_finish", 1, 10, 10]
-    );
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      ["daily", "Visit Your Collection", "Check in on your racers", "home_visit", 1, 5, 10]
-    );
-  }
-
-  // Seed weekly quests (only if none exist)
-  const weeklyCount = await getOne("SELECT COUNT(*) as count FROM quests WHERE period = 'weekly'");
-  if (parseInt(weeklyCount.count) === 0) {
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["weekly", "Complete 5 Races", "Finish 5 races this week", "race_complete", 5, 25, 25, "weekly"]
-    );
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["weekly", "Race in 3 Weather Types", "Race in 3 different weather conditions", "weather_variety", 3, 25, 25, "weekly"]
-    );
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["weekly", "Complete 1 Training", "Finish a training session", "training_complete", 1, 25, 25, "weekly"]
-    );
-  }
-
-  // Seed milestone quests (only if none exist)
-  const milestoneCount = await getOne("SELECT COUNT(*) as count FROM quests WHERE period = 'milestone'");
-  if (parseInt(milestoneCount.count) === 0) {
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["milestone", "First Race", "Complete your first race", "race_complete", 1, 50, 25, "milestone"]
-    );
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["milestone", "First Victory", "Win your first race", "milestone_wins", 1, 100, 50, "milestone"]
-    );
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["milestone", "10 Races Completed", "Complete 10 races total", "milestone_races", 10, 200, 100, "milestone"]
-    );
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["milestone", "3 Win Streak", "Win 3 races in a row", "milestone_streak", 3, 150, 75, "milestone"]
-    );
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["milestone", "First Training", "Complete your first training session", "training_complete", 1, 50, 25, "milestone"]
-    );
-  }
-
-  // Seed mini game milestone quest (if not exists)
-  const miniGameQuestCount = await getOne("SELECT COUNT(*) as count FROM quests WHERE requirement_type = 'mini_game_complete' AND period = 'milestone'");
-  if (parseInt(miniGameQuestCount.count) === 0) {
-    await query(
-      "INSERT INTO quests (type, title, description, requirement_type, requirement_value, coin_reward, xp_reward, period) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["milestone", "First Mini Game", "Complete your first mini game", "mini_game_complete", 1, 30, 15, "milestone"]
-    );
-  }
-
   console.log("initDB: creating indexes...");
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_racers_wallet ON racers(wallet);
     CREATE INDEX IF NOT EXISTS idx_racers_wallet_burned ON racers(wallet, is_burned);
-    CREATE INDEX IF NOT EXISTS idx_coin_balances_wallet ON coin_balances(wallet);
     CREATE INDEX IF NOT EXISTS idx_race_participants_race ON race_participants(race_id);
     CREATE INDEX IF NOT EXISTS idx_race_participants_wallet ON race_participants(wallet);
     CREATE INDEX IF NOT EXISTS idx_race_participants_racer ON race_participants(racer_id);
     CREATE INDEX IF NOT EXISTS idx_streaks_racer ON streaks(racer_id);
-    CREATE INDEX IF NOT EXISTS idx_user_quest_progress_wallet ON user_quest_progress(wallet);
-    CREATE INDEX IF NOT EXISTS idx_trainings_racer ON trainings(racer_id);
     CREATE INDEX IF NOT EXISTS idx_race_points_wallet_season ON race_points(wallet, season);
     CREATE INDEX IF NOT EXISTS idx_gp_points_wallet_season ON gp_points(wallet, season);
-    CREATE INDEX IF NOT EXISTS idx_transactions_wallet ON transactions(wallet);
-    CREATE INDEX IF NOT EXISTS idx_daily_logins_wallet ON daily_logins(wallet);
     CREATE INDEX IF NOT EXISTS idx_races_status ON races(status);
-    CREATE INDEX IF NOT EXISTS idx_user_cosmetics_wallet ON user_cosmetics(wallet);
-    CREATE INDEX IF NOT EXISTS idx_user_accessories_wallet ON user_accessories(wallet);
-    CREATE INDEX IF NOT EXISTS idx_racer_equipment_racer ON racer_equipment(racer_id);
-    CREATE INDEX IF NOT EXISTS idx_tactic_actions_race ON tactic_actions(race_id);
     CREATE INDEX IF NOT EXISTS idx_daily_races_date ON daily_races(race_date);
     CREATE INDEX IF NOT EXISTS idx_feedback_wallet ON feedback(wallet);
     CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);

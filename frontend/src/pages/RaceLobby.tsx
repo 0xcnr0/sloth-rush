@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { THEME, CUR, rarityLabel, archetypeLabel, formatLabel } from '../config/theme'
+import { THEME, rarityLabel, archetypeLabel, formatLabel } from '../config/theme'
 import WindUpPhase from '../components/PreRace/WindUpPhase'
 import GridReveal from '../components/PreRace/GridReveal'
 import Spinner from '../components/Spinner'
@@ -17,18 +17,17 @@ type Phase = 'select' | 'winding' | 'reveal' | 'starting'
 // is which racer you own, not how much you are willing to spend. Entry fees and
 // distances are the backend's (backend/src/simulation/formats.ts); the labels
 // are the theme's. This list only says which of them the lobby offers.
-const fmt = (id: string, fee: number) => ({
+const fmt = (id: string) => ({
   id,
-  fee,
   name: THEME.raceFormats[id].name,
   desc: THEME.raceFormats[id].blurb,
 })
 
 const FORMATS = [
-  fmt('exhibition', 0),
-  { id: 'demo_standard', fee: 0, name: 'Demo Race', desc: 'Quick 20s demo race' },
-  fmt('sprint', 50),
-  fmt('endurance', 50),
+  fmt('exhibition'),
+  { id: 'demo_standard', name: 'Demo Race', desc: 'Quick 20s demo race' },
+  fmt('sprint'),
+  fmt('endurance'),
 ]
 
 export const visibleFormats = FORMATS.filter(f => {
@@ -47,7 +46,6 @@ export default function RaceLobby() {
 
   const [phase, setPhase] = useState<Phase>('select')
   const [racers, setRacers] = useState<any[]>([])
-  const [coinBalance, setCoinBalance] = useState(0)
   const [selectedRacer, setSelectedRacer] = useState<any>(null)
   // "Race Again" comes back here with the format it just ran, so repeating a
   // race is one tap on the racer plus one on Enter — not a re-pick of both.
@@ -64,7 +62,6 @@ export default function RaceLobby() {
     if (!address) return
     api.getCollection(address).then(data => {
       setAllCreatures(data.racers)
-      setCoinBalance(data.coinBalance)
     }).catch((err) => { console.error('Failed to load collection:', err); toast.error('Failed to load data. Please refresh.') })
   }, [address])
 
@@ -75,7 +72,7 @@ export default function RaceLobby() {
 
   // Free formats take any racer; paid formats are for upgraded racers only.
   useEffect(() => {
-    if (selectedFormat.fee === 0) {
+    if (selectedFormat.id === 'exhibition' || selectedFormat.id === 'demo_standard') {
       setRacers(allCreatures)
     } else {
       setRacers(allCreatures.filter((s: any) => s.type === 'pro'))
@@ -106,8 +103,7 @@ export default function RaceLobby() {
       const race = await api.createRace(address, selectedRacer.id, apiFormat)
       setRaceId(race.raceId)
 
-      const joined = await api.joinRace(race.raceId, selectedRacer.id, address)
-      setCoinBalance(joined.newBalance)
+      await api.joinRace(race.raceId, selectedRacer.id, address)
 
       // Straight into the Wind-Up window. There used to be a lobby screen here
       // with a "Start Race!" button and three slots that permanently read
@@ -291,11 +287,6 @@ export default function RaceLobby() {
             ) : (
               <>
                 {/* Balance */}
-                <div className="flex items-center gap-2 mb-6">
-                  <span className="text-gray-400">Balance:</span>
-                  <span className="text-brand-primary font-bold text-xl">{coinBalance}</span>
-                  <span className="text-brand-primary/70 text-sm">{CUR}</span>
-                </div>
 
                 {/* Format selection */}
                 <h2 className="text-lg font-semibold text-gray-300 mb-3">Select Race Format</h2>
@@ -317,9 +308,6 @@ export default function RaceLobby() {
                         )}
                       </p>
                       <p className="text-gray-500 text-sm mt-1">{fmt.desc}</p>
-                      {fmt.fee > 0 && (
-                        <p className="text-brand-primary text-sm font-bold mt-2">{fmt.fee} {CUR} Entry</p>
-                      )}
                     </button>
                   ))}
                 </div>
@@ -356,16 +344,11 @@ export default function RaceLobby() {
                 {/* Start button */}
                 <button
                   onClick={handleCreateAndJoin}
-                  disabled={!selectedRacer || loading || (selectedFormat.fee > coinBalance)}
+                  disabled={!selectedRacer || loading}
                   className="w-full py-3 bg-brand-primary text-brand-bg font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {loading ? 'Creating Race...' : `Enter Race (${selectedFormat.fee > 0 ? `${selectedFormat.fee} ${CUR}` : 'Free'})`}
+                  {loading ? 'Starting…' : 'Race'}
                 </button>
-                {selectedFormat.fee > 0 && coinBalance < selectedFormat.fee && (
-                  <p className="text-red-400 text-sm text-center mt-2">
-                    Need {selectedFormat.fee} {CUR} — you have {coinBalance}. Visit the Shop to buy more.
-                  </p>
-                )}
               </>
             )}
           </motion.div>

@@ -5,13 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { THEME, CUR, rarityLabel, archetypeLabel } from '../config/theme'
+import { THEME, rarityLabel, archetypeLabel } from '../config/theme'
 import RacerPortrait from '../components/RacerPortrait'
 import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
-import EvolutionModal from '../components/EvolutionModal'
 import Spinner from '../components/Spinner'
-import { FEATURES } from '../config/features'
 
 const EVOLUTION_PATH_ICONS: Record<string, string> = {
   speed: '\u26A1',
@@ -35,14 +33,12 @@ const RARITY_BORDER: Record<string, string> = {
   legendary: 'border-yellow-400',
 }
 
-
 type UpgradeState = 'idle' | 'paying' | 'burning' | 'revealing' | 'done'
 
 export default function Collection() {
   const { address, isConnected } = useAccount()
   const navigate = useNavigate()
   const [racers, setRacers] = useState<any[]>([])
-  const [coinBalance, setCoinBalance] = useState(0)
   const [loading, setLoading] = useState(true)
   const [upgradeState, setUpgradeState] = useState<UpgradeState>('idle')
   const [newRacer, setNewRacer] = useState<any>(null)
@@ -51,13 +47,7 @@ export default function Collection() {
   const [editName, setEditName] = useState('')
   const [streaks, setStreaks] = useState<Record<number, { current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }>>({})
   const [upgradeProgress, setUpgradeProgress] = useState<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean } | null>(null)
-  const [evolveRacerId, setEvolveRacerId] = useState<number | null>(null)
-  const [evolveRacerName, setEvolveRacerName] = useState<string>('')
-  const [ownedCosmetics, setOwnedCosmetics] = useState<any[]>([])
-  const [ownedAccessories, setOwnedAccessories] = useState<any[]>([])
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
   const [demoLoading, setDemoLoading] = useState<number | null>(null)
-  const [evoProgress, setEvoProgress] = useState<Record<number, any>>({})
 
   async function handleQuickDemoRace(racerId: number) {
     if (!address || demoLoading) return
@@ -82,13 +72,11 @@ export default function Collection() {
     try {
       const data = await api.getCollection(address)
       setRacers(data.racers)
-      setCoinBalance(data.coinBalance)
     } catch (err) { console.error('Failed to load collection:', err); toast.error('Failed to load data. Please refresh.') }
     setLoading(false)
   }
 
   useEffect(() => { loadCollection() }, [address])
-
 
   // Load free upgrade progress
   useEffect(() => {
@@ -105,28 +93,6 @@ export default function Collection() {
     }).catch((err) => { console.error('Failed to load streaks:', err) })
   }, [address])
 
-  // Load owned cosmetics and accessories for equip dropdowns
-  useEffect(() => {
-    if (!address) return
-    api.getShopCosmetics(address)
-      .then(d => setOwnedCosmetics((d.cosmetics || []).filter((c: any) => c.owned)))
-      .catch((err) => { console.error('Failed to load cosmetics:', err) })
-    api.getShopAccessories(address)
-      .then(d => setOwnedAccessories((d.accessories || []).filter((a: any) => a.owned)))
-      .catch((err) => { console.error('Failed to load accessories:', err) })
-  }, [address])
-
-  // Load evolution progress for all racers
-  useEffect(() => {
-    if (!racers.length) return
-    const racerType = racers.filter(s => s.type === 'pro')
-    racerType.forEach(s => {
-      api.getEvolutionProgress(s.id).then(data => {
-        setEvoProgress(prev => ({ ...prev, [s.id]: data }))
-      }).catch(() => {})
-    })
-  }, [racers])
-
   const freeRacer = racers.find(s => s.type === 'free')
   const racerList = racers.filter(s => s.type === 'pro')
 
@@ -135,7 +101,6 @@ export default function Collection() {
     if (onchainUpgrade.isSuccess && address) {
       api.upgradeRacer(address).then((data: any) => {
         setNewRacer(data.racer)
-        setCoinBalance(prev => prev + data.coinBonus)
         setUpgradeState('done')
       }).catch((err: any) => { console.error('Backend upgrade failed:', err); setUpgradeState('done') })
     }
@@ -170,7 +135,6 @@ export default function Collection() {
         setNewRacer(data.racer)
         await new Promise(r => setTimeout(r, 2000))
         setUpgradeState('done')
-        setCoinBalance(prev => prev + data.coinBonus)
       } catch (err: any) {
         toast.error(err.message)
         setUpgradeState('idle')
@@ -188,7 +152,6 @@ export default function Collection() {
       setNewRacer(data.racer)
       await new Promise(r => setTimeout(r, 2000))
       setUpgradeState('done')
-      setCoinBalance(prev => prev + data.coinBonus)
     } catch (err: any) {
       toast.error(err.message)
       setUpgradeState('idle')
@@ -204,20 +167,6 @@ export default function Collection() {
     } catch (err: any) {
       toast.error(err.message)
     }
-  }
-
-  async function handleUnequipAccessory(racerId: number) {
-    if (!address) return
-    try {
-      await api.unequipAccessory(address, racerId)
-      loadCollection()
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-  }
-
-  function toggleSection(key: string) {
-    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
   function closeReveal() {
@@ -248,10 +197,6 @@ export default function Collection() {
           <p className="text-gray-400 mt-1">
             {racers.length === 0 ? 'No racers yet' : `${racers.length} creature${racers.length > 1 ? 's' : ''}`}
           </p>
-        </div>
-        <div className="flex items-center gap-2 bg-brand-surface border border-brand-border rounded-xl px-4 py-2">
-          <span className="text-brand-primary font-bold text-lg">{coinBalance}</span>
-          <span className="text-brand-primary/70 text-sm">{CUR}</span>
         </div>
       </div>
 
@@ -311,60 +256,7 @@ export default function Collection() {
             {/* Training UI — Accordion */}
             
             {/* Equipment — Accordion */}
-            {FEATURES.cosmetics && (ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
-              <div className="mt-3">
-                <button
-                  onClick={() => toggleSection(`equip-${freeRacer.id}`)}
-                  className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
-                >
-                  <span className={`text-xs transition-transform ${expandedSections[`equip-${freeRacer.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
-                  Equipment
-                </button>
-                {expandedSections[`equip-${freeRacer.id}`] && (
-                  <div className="p-3 bg-brand-bg rounded-lg border border-brand-border space-y-2">
-                    {ownedCosmetics.length > 0 && (
-                      <select
-                        value=""
-                        onChange={async e => {
-                          const cosId = Number(e.target.value)
-                          if (!cosId || !address) return
-                          try {
-                            await api.equipCosmetic(address, freeRacer.id, cosId)
-                            loadCollection()
-                          } catch (err: any) { toast.error(err.message) }
-                        }}
-                        className="w-full bg-brand-surface border border-brand-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
-                      >
-                        <option value="">{freeRacer.cosmetic ? `Cosmetic: ${typeof freeRacer.cosmetic === 'string' ? freeRacer.cosmetic : freeRacer.cosmetic.name}` : 'Equip Cosmetic...'}</option>
-                        {ownedCosmetics.map((c: any) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    )}
-                    {ownedAccessories.length > 0 && (
-                      <select
-                        value=""
-                        onChange={async e => {
-                          const accId = Number(e.target.value)
-                          if (!accId || !address) return
-                          try {
-                            await api.equipAccessory(address, freeRacer.id, accId)
-                            loadCollection()
-                          } catch (err: any) { toast.error(err.message) }
-                        }}
-                        className="w-full bg-brand-surface border border-brand-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
-                      >
-                        <option value="">{(freeRacer.equipped_accessory || freeRacer.accessory) ? `Accessory: ${freeRacer.equipped_accessory || (typeof freeRacer.accessory === 'string' ? freeRacer.accessory : freeRacer.accessory?.name)}` : 'Equip Accessory...'}</option>
-                        {ownedAccessories.map((a: any) => (
-                          <option key={a.id} value={a.id}>{a.name}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
+            
             {/* Mini Games button */}
             
             {/* Enter Race — Exhibition only */}
@@ -576,96 +468,11 @@ export default function Collection() {
                 {/* Training UI — Accordion */}
                 
                 {/* Cosmetic / Accessory badges */}
-                {FEATURES.cosmetics && (racer.cosmetic || racer.equipped_accessory || racer.accessory) && (
-                  <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
-                    {racer.cosmetic && (
-                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-pink-500/10 text-pink-400 border-pink-500/30">
-                        {'\u{1F3A8}'} {typeof racer.cosmetic === 'string' ? racer.cosmetic : racer.cosmetic.name || 'Cosmetic'}
-                      </span>
-                    )}
-                    {(racer.equipped_accessory || racer.accessory) && (
-                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-cyan-500/10 text-cyan-400 border-cyan-500/30">
-                        {'\u{2699}\uFE0F'} {racer.equipped_accessory || (typeof racer.accessory === 'string' ? racer.accessory : racer.accessory?.name) || 'Accessory'}
-                      </span>
-                    )}
-                  </div>
-                )}
-
+                
                 {/* Equipment — Accordion */}
-                {FEATURES.cosmetics && (ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
-                  <div className="mt-3">
-                    <button
-                      onClick={() => toggleSection(`equip-${racer.id}`)}
-                      className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
-                    >
-                      <span className={`text-xs transition-transform ${expandedSections[`equip-${racer.id}`] ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
-                      Equipment
-                    </button>
-                    {expandedSections[`equip-${racer.id}`] && (
-                      <div className="p-3 bg-brand-bg rounded-lg border border-brand-border space-y-2">
-                        {ownedCosmetics.length > 0 && (
-                          <select
-                            value=""
-                            onChange={async e => {
-                              const cosId = Number(e.target.value)
-                              if (!cosId || !address) return
-                              try {
-                                await api.equipCosmetic(address, racer.id, cosId)
-                                loadCollection()
-                              } catch (err: any) { toast.error(err.message) }
-                            }}
-                            className="w-full bg-brand-surface border border-brand-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
-                          >
-                            <option value="">{racer.cosmetic ? `Cosmetic: ${typeof racer.cosmetic === 'string' ? racer.cosmetic : racer.cosmetic.name}` : 'Equip Cosmetic...'}</option>
-                            {ownedCosmetics.map((c: any) => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
-                        )}
-                        {ownedAccessories.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            <select
-                              value=""
-                              onChange={async e => {
-                                const accId = Number(e.target.value)
-                                if (!accId || !address) return
-                                try {
-                                  await api.equipAccessory(address, racer.id, accId)
-                                  loadCollection()
-                                } catch (err: any) { toast.error(err.message) }
-                              }}
-                              className="flex-1 bg-brand-surface border border-brand-border rounded px-2 py-2 text-white text-xs outline-none min-h-[44px] cursor-pointer"
-                            >
-                              <option value="">{(racer.equipped_accessory || racer.accessory) ? `Accessory: ${racer.equipped_accessory || (typeof racer.accessory === 'string' ? racer.accessory : racer.accessory?.name)}` : 'Equip Accessory...'}</option>
-                              {ownedAccessories.map((a: any) => (
-                                <option key={a.id} value={a.id}>{a.name}</option>
-                              ))}
-                            </select>
-                            {(racer.equipped_accessory || racer.accessory) && (
-                              <button
-                                onClick={() => handleUnequipAccessory(racer.id)}
-                                className="px-3 py-2 bg-gray-500/20 text-gray-400 rounded text-xs font-bold cursor-pointer min-h-[44px]"
-                              >
-                                &#x2715;
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
+                
                 {/* Evolve button */}
-                {FEATURES.evolution && (
-                <button
-                  onClick={() => { setEvolveRacerId(racer.id); setEvolveRacerName(racer.name) }}
-                  className="w-full mt-3 py-2 bg-brand-accent/20 text-brand-accent font-semibold rounded-lg hover:bg-brand-accent/30 transition-colors cursor-pointer text-sm"
-                >
-                  Evolve
-                </button>
-                )}
-
+                
                 {/* Mini Games button */}
                 
                 {/* Enter Race — prominent */}
@@ -685,56 +492,6 @@ export default function Collection() {
                   </button>
                 </div>
 
-                {/* Evolution Progress */}
-                {evoProgress[racer.id] && evoProgress[racer.id].requirements && (
-                  <div className="mt-3 pt-3 border-t border-brand-border">
-                    {(() => {
-                      const evo = evoProgress[racer.id]
-                      const reqs = evo.requirements
-                      const prog = evo.progress
-                      const items = [
-                        { label: 'XP', current: prog.xp, target: reqs.xp },
-                        { label: 'Races', current: prog.races, target: reqs.races },
-                        { label: 'Wins', current: prog.wins, target: reqs.wins },
-                        { label: CUR, current: prog.coins, target: reqs.coins },
-                        { label: 'Max Stat', current: prog.stat || prog.maxStat, target: reqs.stat },
-                      ]
-                      const pcts = items.map(i => Math.min(100, Math.round((i.current / i.target) * 100)))
-                      const avgPct = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
-                      return (
-                        <>
-                          <div className="text-center mb-2">
-                            <span className={`text-lg font-black ${evo.eligible ? 'text-brand-primary' : 'text-brand-gold'}`}>
-                              {evo.eligible ? 'Ready to Evolve!' : `${avgPct}% to Tier ${(evo.tier || 0) + 1}`}
-                            </span>
-                          </div>
-                          <div className="space-y-1.5">
-                            {items.map((item, idx) => (
-                              <div key={item.label} className="flex items-center gap-2 text-xs">
-                                <span className="text-gray-400 w-14 text-right">{item.label}</span>
-                                <div className="flex-1 bg-gray-800 rounded-full h-2.5 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all ${pcts[idx] >= 100 ? 'bg-brand-primary' : 'bg-brand-accent'}`}
-                                    style={{ width: `${pcts[idx]}%` }}
-                                  />
-                                </div>
-                                <span className="text-gray-500 w-20 text-right">{item.current}/{item.target}</span>
-                              </div>
-                            ))}
-                          </div>
-                          {evo.eligible && (
-                            <button
-                              onClick={() => { setEvolveRacerId(racer.id); setEvolveRacerName(racer.name) }}
-                              className="w-full mt-2 py-2 bg-brand-primary text-brand-bg font-bold rounded-lg hover:bg-brand-primary/90 transition-colors cursor-pointer"
-                            >
-                              Evolve Now
-                            </button>
-                          )}
-                        </>
-                      )
-                    })()}
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -742,17 +499,6 @@ export default function Collection() {
       )}
 
       
-      {/* Evolution Modal */}
-      {FEATURES.evolution && evolveRacerId !== null && address && (
-        <EvolutionModal
-          racerId={evolveRacerId}
-          racerName={evolveRacerName}
-          wallet={address}
-          onClose={() => setEvolveRacerId(null)}
-          onEvolved={() => loadCollection()}
-        />
-      )}
-
       {/* Upgrade Overlay */}
       <AnimatePresence>
         {upgradeState !== 'idle' && (
@@ -834,7 +580,6 @@ export default function Collection() {
                   <p className="text-gray-400 text-sm mb-2">
                     {archetypeLabel(newRacer.race)}
                   </p>
-                  <p className="text-brand-primary font-semibold mb-4">+500 {CUR}</p>
                   {onchainUpgrade.hash && (
                     <div className="mb-4">
                       <a

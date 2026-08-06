@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { rigFor, drawRacer, cadence } from '../lib/racerRig'
-import { THEME, CUR } from '../config/theme'
+import { THEME } from '../config/theme'
 import { getCommentary } from '../data/commentary'
 import { getDialogue, getEmote, getTrashTalk, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
 import {
@@ -44,8 +44,6 @@ const RACER_BG = [
   'rgba(249,115,22,0.15)', 'rgba(236,72,153,0.15)'
 ]
 
-const MAX_ENERGY = 1000
-
 export default function RaceBroadcast() {
   const { id } = useParams()
   const location = useLocation()
@@ -62,7 +60,6 @@ export default function RaceBroadcast() {
   const keyRef = useRef<Record<number, number>>({})
   const animFrameRef = useRef<number>(0)
 
-  const isTactic = location.state?.format === 'tactic'
   const isDemo = location.state?.demo === true
   const playerRacerId = location.state?.racerId as number | undefined
 
@@ -74,12 +71,6 @@ export default function RaceBroadcast() {
   const [loading, setLoading] = useState(!raceData)
 
   // Tactic mode state
-  const [energy, setEnergy] = useState(MAX_ENERGY)
-  const [boostUsed, setBoostUsed] = useState(false)
-  const [projectileUsed, setProjectileUsed] = useState(false)
-  const [actionFeedback, setActionFeedback] = useState<string | null>(null)
-  const [boostPrice, setBoostPrice] = useState(100)
-  const [projectilePrice, setProjectilePrice] = useState(250)
   const [commentary, setCommentary] = useState<string | null>(null)
   const [killFeed, setKillFeed] = useState<{ id: number; text: string; emoji: string; color: string }[]>([])
   const killFeedIdRef = useRef(0)
@@ -119,20 +110,7 @@ export default function RaceBroadcast() {
     }
   }, [id, raceData])
 
-
-
   // Poll GDA prices during tactic mode
-  useEffect(() => {
-    if (!isTactic || !id || raceFinished) return
-    const interval = setInterval(() => {
-      const tick = currentTickRef.current * 3
-      api.getGDAPrices(id, tick).then(data => {
-        setBoostPrice(data.boostPrice)
-        setProjectilePrice(data.projectilePrice)
-      }).catch((err) => { console.error('Failed to load GDA prices:', err) })
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [isTactic, id, raceFinished])
 
   useEffect(() => {
     if (raceData) return
@@ -146,43 +124,6 @@ export default function RaceBroadcast() {
           .catch((err2) => { console.error('Failed to load race:', err2); setLoading(false) })
       })
   }, [id])
-
-  async function handleTacticAction(actionType: 'boost' | 'projectile') {
-    if (!address || !id || !playerRacerId || raceFinished) return
-
-    const cost = actionType === 'boost' ? boostPrice : projectilePrice
-    if (energy < cost) return
-    if (actionType === 'boost' && boostUsed) return
-    if (actionType === 'projectile' && projectileUsed) return
-
-    // Pause animation
-    pausedRef.current = true
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
-
-    try {
-      const tick = currentTickRef.current * 3 // frames are every 3rd tick
-      await api.submitAction(id, address, playerRacerId, actionType, tick)
-
-      setEnergy(prev => prev - cost)
-      if (actionType === 'boost') setBoostUsed(true)
-      else setProjectileUsed(true)
-
-      setActionFeedback(actionType === 'boost' ? 'BOOST ACTIVATED!' : 'PROJECTILE THROWN!')
-      setTimeout(() => setActionFeedback(null), 2000)
-
-      // Re-simulate with the new action
-      const newData = await api.simulateRace(id)
-      setRaceData(newData)
-      // Animation will restart via useEffect
-    } catch (err: any) {
-      setActionFeedback(`Failed: ${err.message}`)
-      setTimeout(() => setActionFeedback(null), 2000)
-      // Resume animation
-      pausedRef.current = false
-      if (resumeCallbackRef.current) resumeCallbackRef.current()
-    }
-  }
-
   // Canvas animation — only starts when trash talk phase is over
   useEffect(() => {
     if (!raceData?.frames || !canvasRef.current || racePhase !== 'racing') return
@@ -610,7 +551,6 @@ export default function RaceBroadcast() {
           <h1 className="text-xl font-bold">
             <span className="text-brand-primary">LIVE</span> — Grand Projectile Throw Track
             {isDemo && <span className="ml-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded">DEMO</span>}
-            {isTactic && <span className="ml-2 text-brand-accent text-sm font-normal">(TACTIC MODE)</span>}
           </h1>
           <div className="flex items-center gap-2">
             <p className="text-gray-500 text-sm">Race {raceData.raceId?.slice(-8)}</p>
@@ -641,7 +581,6 @@ export default function RaceBroadcast() {
           </button>
           <div className="bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5">
             <span className="text-gray-400 text-xs">PRIZE POOL</span>
-            <p className="text-brand-gold font-bold">{raceData.totalPrizePool ?? 0} {CUR}</p>
           </div>
           <div className="bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5">
             <span className="text-gray-400 text-xs">TICK</span>
@@ -826,21 +765,6 @@ export default function RaceBroadcast() {
           })}
         </AnimatePresence>
 
-        {/* Action feedback */}
-        <AnimatePresence>
-          {actionFeedback && (
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.5, opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center"
-            >
-              <div className="bg-black/60 px-8 py-4 rounded-2xl">
-                <p className="text-3xl font-extrabold text-white">{actionFeedback}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Kill Feed Panel (outside canvas) */}
@@ -864,42 +788,6 @@ export default function RaceBroadcast() {
       </div>
 
       {/* Tactic Mode Controls */}
-      {isTactic && !raceFinished && (
-        <div className="bg-brand-surface border border-brand-border rounded-xl p-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-gray-300 font-semibold text-sm">TACTIC CONTROLS</span>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-xs">ENERGY</span>
-              <div className="w-32 h-3 bg-brand-bg rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand-accent rounded-full transition-all duration-300"
-                  style={{ width: `${(energy / MAX_ENERGY) * 100}%` }}
-                />
-              </div>
-              <span className="text-brand-accent font-bold text-sm">{energy}</span>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleTacticAction('boost')}
-              disabled={boostUsed || energy < boostPrice || !isConnected}
-              className="flex-1 py-3 bg-brand-primary/20 border border-brand-primary text-brand-primary font-bold rounded-xl hover:bg-brand-primary/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {THEME.tactics.boost.toUpperCase()} (1.5x Speed) — {boostPrice} {CUR}
-              {boostUsed && <span className="block text-xs opacity-70">USED</span>}
-            </button>
-            <button
-              onClick={() => handleTacticAction('projectile')}
-              disabled={projectileUsed || energy < projectilePrice || !isConnected}
-              className="flex-1 py-3 bg-brand-danger/20 border border-brand-danger text-brand-danger font-bold rounded-xl hover:bg-brand-danger/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {THEME.tactics.projectile.toUpperCase()} (Hit Leader) — {projectilePrice} {CUR}
-              {projectileUsed && <span className="block text-xs opacity-70">USED</span>}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Live standings */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
         {livePositions.map((pos, i) => (
@@ -1067,7 +955,6 @@ export default function RaceBroadcast() {
                 >
                   <div className="text-7xl mb-3">&#x1f3c6;</div>
                   <h2 className="text-4xl font-extrabold text-brand-gold mb-1">{winner?.name} WINS!</h2>
-                  <p className="text-gray-400">Prize Pool: {raceData.totalPrizePool} {CUR}</p>
                 </motion.div>
 
                 {/* Standings table */}
@@ -1096,9 +983,6 @@ export default function RaceBroadcast() {
                             {fo.isBot && ' | BOT'}
                           </p>
                         </div>
-                        {fo.reward > 0 && (
-                          <span className="text-brand-primary font-bold">+{fo.reward} {CUR}</span>
-                        )}
                       </motion.div>
                     ))}
                   </div>
@@ -1115,9 +999,7 @@ export default function RaceBroadcast() {
                     <h3 className="text-brand-accent font-bold text-sm mb-2">What If...?</h3>
                     <p className="text-gray-300 text-sm">
                       {runnerUp.name} was only <span className="text-brand-gold font-bold">{gap} units</span> from the finish line.
-                      {isTactic && !boostCount[runnerUp.id] && ' A well-timed Boost could have changed everything!'}
-                      {isTactic && boostCount[runnerUp.id] && ' Different Projectile Throw timing could have flipped the result!'}
-                      {!isTactic && ' A higher Grid Boost could have secured Pole Position!'}
+                      {' A tighter wind could have taken Pole Position.'}
                     </p>
                   </motion.div>
                 )}
@@ -1183,7 +1065,7 @@ export default function RaceBroadcast() {
                   <button
                     onClick={async () => {
                       const standings = raceData.finalOrder
-                        .map((fo: FinalOrder, i: number) => `${i + 1}. ${fo.name}${fo.reward > 0 ? ` (+${fo.reward} ${CUR})` : ''}`)
+                        .map((fo: FinalOrder, i: number) => `${i + 1}. ${fo.name}`)
                         .join('\n')
                       const frameUrl = `https://app.winduprush.xyz/api/social/frame/${id}`
                       const text = `${THEME.brand.mark} ${THEME.brand.name} Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\n${frameUrl}`

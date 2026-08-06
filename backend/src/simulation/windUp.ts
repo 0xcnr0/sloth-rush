@@ -53,6 +53,14 @@ export const WIND_UP_TUNING = {
   /**
    * Each point of tension above Safe Wind adds this much stamina drain.
    *
+   * Re-measured twice. Was 0.015 against the original fatigue model, then
+   * 0.0005 once fatigue became absolute — and then the whole grid had to be run
+   * again when it turned out both sweeps had used stats of 45-80 in a game
+   * whose per-stat caps are 15 and 22-35. The value survived that third pass;
+   * the pole bonus did not, dropping 0.12 to 0.08.
+   *
+   * Original note follows, because the reasoning still holds:
+   *
    * Was 0.015, measured against the old fatigue model. When fatigue became
    * absolute rather than a fraction of the track (see FATIGUE in engine.ts) the
    * drain multiplier started compounding against a far steeper curve, and every
@@ -74,7 +82,7 @@ export const WIND_UP_TUNING = {
    * stay visually level at the start. Front of the grid accelerates harder for
    * the opening ticks.
    */
-  poleAccelerationBonus: 0.12,
+  poleAccelerationBonus: 0.08,
   poleAccelerationTicks: 40,
 
   /** Bots aim just under their own Safe Wind. */

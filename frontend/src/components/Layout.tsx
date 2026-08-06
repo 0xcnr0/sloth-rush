@@ -7,30 +7,24 @@ import { api } from '../lib/api'
 import OnboardingTutorial from './OnboardingTutorial'
 import { FEATURES } from '../config/features'
 import { getSafeAreaInsets } from '../lib/farcaster'
-import { THEME, CUR } from '../config/theme'
+import { THEME } from '../config/theme'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home' },
   { path: '/collection', label: THEME.locations.home },
   { path: '/race', label: 'Race' },
   { path: '/spectate', label: 'Spectate' },
-  { path: '/shop', label: 'Shop' },
   { path: '/leaderboard', label: 'Leaderboard' },
-].filter(item => {
-  if (item.path === '/shop' && !FEATURES.shop) return false
-  return true
-})
+]
 
 export default function Layout() {
   const location = useLocation()
   const { address } = useAccount()
-  const [balance, setBalance] = useState(0)
   const [xp, setXp] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    if (!address) { setBalance(0); setXp(0); return }
-    api.getCoinBalance(address).then(d => setBalance(d.balance)).catch((err) => { console.error('Failed to load balance:', err) })
+    if (!address) { setXp(0); return }
     api.getXP(address).then(d => setXp(d.xp)).catch((err) => { console.error('Failed to load XP:', err) })
   }, [address, location.pathname])
 
@@ -79,12 +73,6 @@ export default function Layout() {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {address && balance > 0 && (
-              <div className="flex items-center gap-1 sm:gap-1.5 bg-brand-primary/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
-                <span className="text-brand-primary font-bold text-xs sm:text-sm">{balance}</span>
-                <span className="text-brand-primary/70 text-[10px] sm:text-xs hidden sm:inline">{CUR}</span>
-              </div>
-            )}
             {address && xp > 0 && (
               <div className="flex items-center gap-1 sm:gap-1.5 bg-brand-accent/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
                 <span className="text-brand-accent font-bold text-xs sm:text-sm">{xp}</span>
@@ -135,12 +123,6 @@ export default function Layout() {
                   <div className="flex items-center gap-2 px-3 py-1.5">
                     <span className="text-brand-accent font-bold text-sm">{xp}</span>
                     <span className="text-brand-accent/70 text-xs">XP</span>
-                  </div>
-                )}
-                {balance > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1.5">
-                    <span className="text-brand-primary font-bold text-sm">{balance}</span>
-                    <span className="text-brand-primary/70 text-xs">{CUR}</span>
                   </div>
                 )}
               </div>

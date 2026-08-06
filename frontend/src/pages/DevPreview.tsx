@@ -4,7 +4,7 @@ import GridReveal from '../components/PreRace/GridReveal'
 import RarityLadder from '../components/RarityLadder'
 import RacerPortrait from '../components/RacerPortrait'
 import { visibleFormats } from './RaceLobby'
-import { rarityLabel, archetypeLabel, CUR } from '../config/theme'
+import { rarityLabel, archetypeLabel } from '../config/theme'
 import { THEME } from '../config/theme'
 
 /**
@@ -70,9 +70,6 @@ export default function DevPreview() {
             <div key={f.id} className="rounded-xl border-2 border-brand-border bg-brand-surface p-4">
               <p className="text-white font-bold">{f.name}</p>
               <p className="text-gray-400 text-sm mt-1">{f.desc}</p>
-              <p className="text-brand-primary text-sm font-bold mt-2">
-                {f.fee > 0 ? `${f.fee} ${CUR} Entry` : 'Free'}
-              </p>
               <p className="text-gray-600 text-xs mt-2">id: {f.id}</p>
             </div>
           ))}

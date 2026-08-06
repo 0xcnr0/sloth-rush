@@ -213,16 +213,7 @@ router.post("/referral/apply", async (req: Request, res: Response) => {
       );
 
       // Reward referrer: 25 coins
-      await client.query(
-        `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 25)
-         ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 25, updated_at = NOW()`,
-        [referrer.wallet]
-      );
-      await client.query(
-        "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'referral_bonus', 25, $2)",
-        [referrer.wallet, `Referral bonus: ${w.slice(0, 8)}...`]
-      );
-
+      
       // Mark rewarded
       await client.query(
         "UPDATE referrals SET rewarded = 1 WHERE referee_wallet = $1",

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAccount } from 'wagmi'
 import WalletConnect from '../components/WalletConnect'
-import { THEME, CUR } from '../config/theme'
+import { THEME } from '../config/theme'
 import { motion } from 'framer-motion'
 
 // Last word in white, everything before it in the accent colour — works for
@@ -41,8 +41,8 @@ export default function Landing() {
         </p>
 
         <p className="text-gray-500 mb-10 max-w-md mx-auto">
-          Mint your racer, evolve and upgrade, and compete in races to earn {CUR}.
-          Every race is deterministic and verifiable.
+          Mint a wind-up toy, race it, and it gets better at racing.
+          Every race is a deterministic simulation you can verify yourself.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -80,7 +80,7 @@ export default function Landing() {
         {[
           { title: 'Free Mint', desc: `Gasless ${THEME.tiers.free} mint — one per wallet`, icon: '&#x2728;' },
           { title: 'Upgrade', desc: 'Upgrade your racer for $3 USDC and get random rarity', icon: '&#x1f525;' },
-          { title: 'Race & Earn', desc: `Compete in races — win ${CUR} and climb the ranks`, icon: '&#x1f3c6;' },
+          { title: 'Race to Improve', desc: 'Every finish grows your racer. No timers, nothing to buy.', icon: '&#x1f3c6;' },
         ].map((f) => (
           <div
             key={f.title}

@@ -135,11 +135,14 @@ format ancak farklı bir soru soruyorsa yerini hak eder, ve ölçülen tek kald�
 mesafe. İkisi de 50 SPRING — Endurance daha pahalı olsaydı oyuncu cüzdanına göre
 seçerdi, sahip olduğu oyuncağa göre değil.
 
-| Format | Mesafe | Süre | Neyi ödüllendirir |
+| Format | Mesafe | Süre (taze yarışçı) | Neyi ödüllendirir |
 |---|---|---|---|
-| **Practice Run** | 1.600 | ~24s | Ücretsiz, ödül yok |
-| **Sprint** | 1.600 | ~24s | En yüksek SPD kazanır |
-| **Endurance** | 3.200 | ~48s | Dengeli dağılım kazanır |
+| **Practice Run** | 800 | ~22s | Isınma |
+| **Sprint** | 800 | ~22s | En yüksek SPD kazanır |
+| **Endurance** | 1.400 | ~53s | Dengeli dağılım kazanır |
+
+**V1'de yarış ücretsizdir ve ödül vermez.** Üç formatın da girişi bedava; fark
+sadece mesafede. Ayrıntı için aşağıdaki "Para birimi V1'den çıkarıldı" bölümü.
 
 Sayılar tahminden değil ölçümden geldi: `backend/src/simulation/distanceLever.check.ts`
 ve `fatigueSweep.ts`. Mesafe sabitleri `backend/src/simulation/formats.ts`'te;
@@ -203,114 +206,87 @@ Botlar görsel olarak da ayrışır: **desatüre gövde + "BOT" etiketi + aksan 
 
 | Kademe | Toplam stat | Form |
 |---|---|---|
-| **T0** | 0-199 | Çıplak gövde, kesik hatlı panel, açıkta dişli, küçük anahtar. Kutu açılmamış. |
-| **T1** | 200-349 | Paneller kapandı, boyalı, tamamlanmış. Anahtar çalışıyor. |
-| **T2** | 350-499 | Ek plaka/kol parçaları, anahtar büyüdü, detaylar belirdi. |
-| **T3** | 500+ | Siluet dönüştü, belirgin daha büyük, hafif aura, dönen anahtarın hareket izi. |
+| **T0** | <90 | Çıplak gövde, kesik hatlı panel, açıkta dişli, küçük anahtar. Kutu açılmamış. |
+| **T1** | 90-129 | Paneller kapandı, boyalı, tamamlanmış. Anahtar çalışıyor. |
+| **T2** | 130-169 | Ek plaka/kol parçaları, anahtar büyüdü, detaylar belirdi. |
+| **T3** | 170+ | Siluet dönüştü, belirgin daha büyük, hafif aura, dönen anahtarın hareket izi. |
+
+> **Bu sayılar 2026-08-06'da düzeltildi ve eskisi kurguydu.** Tablo 0/200/350/500
+> diyordu; ama stat tavanları stat başına 15 (free) ve 22-35 (rarity), yani altı
+> stat en fazla **90** (Wind-Up) ve **210** (Mint Showcase) toplayabiliyor. T2 ve
+> T3 **hiçbir zaman ulaşılabilir değildi.** Fark edilmemesinin sebebi, eski manuel
+> evrim ucunun kademeyi bu tabloya değil XP/yarış/para şartlarına göre vermesiydi
+> — doküman ve kod farklı oyunları anlatıyordu ve ikisi birbirine karşı hiç
+> kontrol edilmemişti.
+>
+> Yeni merdiven ulaşılabilir aralığa oturuyor ve oyunun iki eksenine denk düşüyor:
+> tavanındaki bir Wind-Up tam T1'e ulaşıp durur, T2 upgrade ister, T3 upgrade
+> **ve** iyi bir rarity ister. `backend/src/simulation/evolution.ts`.
+
+**Evrim otomatiktir.** Basılacak buton, ödenecek bedel yoktur; statlar eşiği
+geçtiği anda form değişir. Eski manuel akış bir karar üretmiyordu — oyuncu
+buton yandığı anda basıyordu.
 
 T0 → T3 arası siluet alanı yaklaşık **%60 büyür.** Bir T3 Tinbot hâlâ ilk bakışta Tinbot okunmalı.
 
 > **Evrim = ne kadar büyüdün. Rarity = ne kadar bakımlısın.** İkisi ayrı eksendir, oyuncu karıştırmamalı.
 
-### Training
+### İlerleme — yarışarak
 
-Aşağıdaki değerler **koddan okundu** (`backend/src/routes/racer.ts`), tasarım notundan değil — Sprint 8 training'i yeniden dengeledi ve eski GDD rakamları geçersiz:
+Training, mini oyunlar, güçlendiriciler ve aksesuarlar V1'den çıktı. Geriye tek
+bir kaynak kaldı ve o da oyunun kendisi:
 
 | | Değer |
 |---|---|
-| Süre | **2 saat** (eski: 6 saat) |
-| Ücret | **5 SPRING** (eski: 10) |
-| Kazanç | **+0.5 istatistik puanı** (eski: +0.3), stat tavanına kadar |
-| Haftalık limit | **Showcase 5 / Wind-Up 3** (eski: 2 / 1) |
+| Kaynak | **Yarışmak** — başka hiçbir şey stat vermez |
+| Kazanç | Bitiriş sırasına bağlı bir stata **+0.4** |
+| Günlük tavan | **+4.0** (yani ~10 yarış bir günü doldurur) |
+| Sınır | Rarity'ye bağlı stat tavanı |
 
-- Başarılı training onchain metadata'yı günceller
-- Training süresinde yarışçı yarışa giremez
-- İlk mint'te **10 SPRING hoşgeldin bonusu** verilir (`welcome_bonus` transaction'ı)
+Rakamlar +0.05/yarış ve +0.3/gün idi; o değerler training tek başına +0.5
+verirken ayarlanmıştı. Diğer kaynaklar kapanınca o hızda **taze bir yarışçının
+ilk evrim kademesine ulaşması 100 gün** sürüyordu — yani kimse bir evrim
+görmeyecekti. Yeni hızda ilk kademe yaklaşık bir haftalık oyuna denk geliyor.
 
-> Bu rakamlar bir kez zaten soruna yol açtı: Sprint 8 dengeyi değiştirdi ama `qa-agent.ts` eski değerleri beklemeye devam etti ve 5 test aylarca kırmızı kaldı. Denge değişikliği yaparken **kod, testler ve bu tablo birlikte** güncellenir.
+> **Açık kalem:** mint stat başına ~10 veriyor, tavanlar ise 15 (free) ve 22-35
+> (rarity). Yani taze bir yarışçı, bütün sayıların ayarlandığı aralığın çok
+> altında başlıyor; Endurance'ı 53 saniyede koşmasının sebebi bu (gelişmiş bir
+> yarışçı 36 saniyede koşuyor). Doğru düzeltme mint tabanını yükseltmek, ve bu
+> karar alınmadı.
 
 ---
 
-## V1 Ekonomi Tablosu
+## Para birimi V1'den çıkarıldı (2026-08-06)
 
-**Rakamlar rebrand'de değişmedi** — ZZZ değerleri birebir SPRING'e çevrildi. Sprint 8'de yapılan denge düzeltmeleri (bot prize pool katkısı, teselli ödülü, ödül patlaması) korunur.
+**V1'de oyun içi para yoktur.** SPRING, `coin_balances`, `transactions`, giriş
+ücretleri, ödül havuzu, shop, günlük giriş bonusu, hoşgeldin bonusu ve
+referans ödülü — hepsi kaldırıldı. Tablolar `migrations/legacyNames.ts` içinde
+düşürülüyor.
 
-```
-Yarış Giriş Ücretleri:
-- Practice Run:  Ücretsiz
-- Sprint:        50 SPRING
-- Endurance:     50 SPRING
+**Sebep ölçümdü, tercih değil.** Kadroyu botlar dolduruyor ve bot ne para yatırır
+ne kazanabilir; dolayısıyla ücretli bir yarışın havaya bakan iki hâli vardı:
 
-Günlük Ücretsiz Yarış: 1 ücretli yarış / wallet (yarışçı sayısından bağımsız)
+1. Havuz **yoktan basılıyordu** — her bot, var olmadığı hâlde giriş ücretinin
+   %75'ini havuza koyuyordu. Ölçüldü: 50 giriş, **3. sıra**, **136** ödül.
+   Kazanmak ve kaybetmek aynı ödüyordu.
+2. Bu düzeltilince havuz **yalnızca oyuncunun kendi parası** oldu; platform
+   kesintisi düşülüp geri veriliyordu. Ölçüldü: 50 ver, 21 al. Üstelik tek
+   insan gerçek oyuncular arasında hep birinci olduğu için **sırası yine hiçbir
+   şeyi değiştirmiyordu.**
 
-> **Practice Run ödül vermez.** Kod bir dönem veriyordu (kazanana 5-14, diğerlerine
-> 2, sınırsız) — ölçüldü: üç yarışta +41 SPRING. Arayüz zaten "Free. No entry, no
-> reward." diyordu; sadece kod aynı fikirde değildi.
+Sıralamanın anlam kazanması için iki gerçek oyuncu gerekiyor; o gelene kadar
+ücretli yarış ya enflasyon ya da zarar. İkisi de oyun değil.
 
-Upgrade Paketi:
-- Upgrade ücreti: $3 USDC (onchain)
-- Başlangıç bakiyesi: 500 SPRING
-- → ~10 Standard Race yapabilir
+**Yerine geçen:** yarışmak yarışçıyı geliştirir (yukarıdaki tablo), evrim
+kademeleri statlardan türer, sıralama ve seri kaydı tutulur. Tek ödeme noktası
+**$3 USDC Showcase upgrade**'idir ve o da görünüşü değiştirir, hızı değil.
 
-Shop Paketleri:
-- Starter Pack:      $1.00  → 120 SPRING
-- Gift Box:          $5.00  → 650 SPRING (+%8 bonus)
-- Toy Chest:         $10.00 → 1.400 SPRING (+%17 bonus)
-- Collector's Crate: $25.00 → 4.000 SPRING (+%25 bonus)
+**Onchain tarafı değişmedi:** mint, burn, VRF rarity, yarış seed'i, sonuç hash'i
+ve kazanan adresi aynen duruyor.
 
-Güçlendiriciler (SPRING):
-- Oil Can (+8 SPD):            30
-- Extra Spring (+12 ACC):      25
-- Rubber Coating (+8 STA):     35
-- Lucky Marble Bag (+8 LCK):   40
-- Fine-Tuned Gears (+8 REF):   35
-- Full Rewind (+4 hepsi):      90
-- Tin Shield (1 projectile):   50
-
-Aksesuarlar:
-- Rubber Tires     → +SPD
-- Tin Padding      → +STA
-- Lucky Marble     → +LCK
-- Ball-Joint Kit   → +AGI
-- Glass Eyes       → +REF
-- Overwound Spring → Max SPD, düşük STA
-
-Aksesuar Kutuları:
-- Standart Kutu: 200 SPRING
-- Nadir Kutu:    600 SPRING
-- Efsane Kutu:   1.500 SPRING
-```
-
-### ⚠ Ölçülen ekonomi delikleri — kapatıldı (2026-08-06)
-
-İkisi de kapılar yeşilken duruyordu ve ikisi de **ölçülerek** bulundu, okunarak değil:
-
-1. **Botlar ödül havuzunu finanse ediyordu.** Her bot, var olmadığı hâlde giriş
-   ücretinin %75'ini havuza yatırıyor, sonra botların sıralama payları gerçek
-   oyunculara dağıtılıyordu. Tek insan üç bota karşı yarıştığında **bitiriş
-   sırası ne olursa olsun havuzun tamamını** topluyordu. Ölçüm: 50 SPRING giriş,
-   **3. sıra**, **136 SPRING** ödül — net +86. Yani kazanmak ve kaybetmek aynı
-   ödüyordu, ve oyundaki her sonuç ekonomik olarak birbirinin aynısıydı.
-2. **Practice Run musluğu** — yukarıdaki not.
-
-Artık havuz **yalnızca gerçek girişlerden** oluşuyor ve paylar **yalnızca gerçek
-oyuncular arasında** sıralanıyor; bot ne yatırır ne alır. `qa-agent.ts` E04 ve
-E08 bunları kalıcı olarak bekliyor.
-
-> **Bunun açıkta bıraktığı soru:** tek insan + üç bot olan bir yarışta ücretli
-> format matematiksel olarak anlamsız — oyuncu kendi parasını platform kesintisi
-> eksiğiyle geri alır ve sırası yine hiçbir şeyi değiştirmez. Sıralama ancak
-> **iki gerçek oyuncu** varken anlam kazanır. Bu bir hata değil, yapısal sonuç;
-> kararı bekliyor.
-
-### ⚠ Açık ekonomi kalemi
-
-İki SPRING kalemi kapandı ve **günlük gelir modeli yeniden hesaplanmadı:**
-
-1. **Tahmin ödülleri kaldırıldı** (tahmin başına 15 SPRING × sınırsız yarış). Bu aynı zamanda gerçek bir farming exploit'ini kapattı — ama bir gelir kalemiydi.
-2. **Wind-Up Fazı beceri bazlı oldu.** Eski Tune-Up bir SPRING gideriydi *ve* prize pool'u besliyordu. Artık prize pool'u sadece giriş ücretleri besliyor.
-
-Denge yeniden hesabı Sprint 9'un "Numbers policy" kalemine ait. **Bu tablodaki rakamlar o hesap yapılana kadar geçicidir.**
+> Bu, CLAUDE.md'de kilitli olan "SPRING offchain oyun içi para" kararını
+> geçersiz kılar. Karar 2026-08-06'da, yukarıdaki ölçümler görüldükten sonra
+> bilinçli olarak alındı.
 
 ---
 

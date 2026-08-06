@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { CUR, rarityLabel, formatLabel } from '../config/theme'
+import { rarityLabel, formatLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 interface ProfileData {
@@ -19,31 +19,18 @@ interface ProfileData {
   racerCount: number
 }
 
-interface Transaction {
-  type: string
-  amount: number
-  description: string
-  created_at: string
-}
 
 export default function Profile() {
   const { address, isConnected } = useAccount()
   const [profile, setProfile] = useState<ProfileData | null>(null)
-  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'overview' | 'transactions' | 'inventory'>('overview')
+  const [tab, setTab] = useState<'overview' | 'inventory'>('overview')
 
   useEffect(() => {
     if (!address) { setLoading(false); return }
     setLoading(true)
-    Promise.all([
-      api.getProfile(address),
-      api.getProfileTransactions(address),
-    ])
-      .then(([p, t]) => {
-        setProfile(p)
-        setTransactions(t.transactions)
-      })
+    api.getProfile(address)
+      .then(setProfile)
       .catch((err) => { console.error('Failed to load profile:', err); toast.error('Failed to load data. Please refresh.') })
       .finally(() => setLoading(false))
   }, [address])
@@ -80,12 +67,10 @@ export default function Profile() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {[
-          { label: `${CUR} Balance`, value: String(profile.balance), color: 'text-brand-primary' },
           { label: 'XP', value: String(profile.xp), color: 'text-purple-400' },
           { label: 'Total Races', value: String(profile.totalRaces), color: 'text-white' },
           { label: 'Win Rate', value: `${winRate}%`, color: 'text-yellow-400' },
           { label: 'Total Wins', value: String(profile.totalWins), color: 'text-brand-primary' },
-          { label: 'Total Earnings', value: `${profile.totalEarnings} ${CUR}`, color: 'text-brand-primary' },
           { label: 'Login Days', value: String(profile.loginDays), color: 'text-blue-400' },
           { label: 'Creatures', value: `${profile.freeRacerCount + profile.racerCount}`, color: 'text-white' },
         ].map((stat, i) => (
@@ -106,7 +91,6 @@ export default function Profile() {
       <div className="flex gap-2 mb-6">
         {([
           { id: 'overview' as const, label: 'Race History' },
-          { id: 'transactions' as const, label: 'Transactions' },
           { id: 'inventory' as const, label: 'Inventory' },
         ]).map(t => (
           <button
@@ -122,7 +106,6 @@ export default function Profile() {
       </div>
 
       {tab === 'overview' && <RaceHistorySection wallet={address!} />}
-      {tab === 'transactions' && <TransactionSection transactions={transactions} />}
       {tab === 'inventory' && <InventorySection wallet={address!} />}
 
       {/* Referral */}
@@ -183,14 +166,13 @@ function ReferralSection({ wallet }: { wallet: string }) {
           {stats && (
             <div className="flex gap-4 text-sm">
               <span className="text-gray-400">Referrals: <span className="text-white font-bold">{stats.totalReferrals}</span></span>
-              <span className="text-gray-400">Earned: <span className="text-brand-primary font-bold">{stats.totalEarned} {CUR}</span></span>
             </div>
           )}
-          <p className="text-gray-500 text-xs">Share your link. Friends who join earn you 25 {CUR} each!</p>
+          <p className="text-gray-500 text-xs">Share your link and bring a friend to the track.</p>
         </div>
       ) : (
         <div className="text-center">
-          <p className="text-gray-400 text-sm mb-3">Generate your referral link to invite friends and earn {CUR}</p>
+          <p className="text-gray-400 text-sm mb-3">Generate your referral link to invite friends</p>
           <button
             onClick={handleGenerate}
             disabled={generating}
@@ -255,72 +237,10 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
                 </td>
                 <td className="px-4 py-3 text-right">
                   {race.reward > 0 ? (
-                    <span className="text-brand-primary font-bold">+{race.reward} {CUR}</span>
+                    <span className="text-gray-500">—</span>
                   ) : (
                     <span className="text-gray-500">0</span>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function TransactionSection({ transactions }: { transactions: { type: string; amount: number; description: string; created_at: string }[] }) {
-  const TYPE_LABELS: Record<string, string> = {
-    race_entry: 'Race Entry',
-    race_reward: 'Race Reward',
-    daily_login: 'Daily Login',
-    quest_reward: 'Quest Reward',
-    training: 'Training',
-    mini_game: 'Mini Game',
-    shop_purchase: 'Shop Purchase',
-    upgrade: 'Upgrade',
-    cosmetic_purchase: 'Cosmetic',
-    accessory_purchase: 'Accessory',
-  }
-
-  // Rows written by retired systems keep their historical `type` string.
-  // Those strings are not part of the current vocabulary, so they are shown
-  // under a single neutral label rather than echoed back to the player.
-  const typeLabel = (type: string) => TYPE_LABELS[type] || 'Archived'
-
-  if (transactions.length === 0) return (
-    <div className="bg-brand-surface border border-brand-border rounded-xl p-12 text-center">
-      <p className="text-gray-400">No transactions yet</p>
-    </div>
-  )
-
-  return (
-    <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-brand-border text-gray-400">
-              <th className="text-left px-4 py-3 font-medium">Date</th>
-              <th className="text-left px-4 py-3 font-medium">Type</th>
-              <th className="text-left px-4 py-3 font-medium">Description</th>
-              <th className="text-right px-4 py-3 font-medium">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((tx, i) => (
-              <tr
-                key={i}
-                className={`border-b border-brand-border/50 hover:bg-white/5 transition-colors ${i === transactions.length - 1 ? 'border-b-0' : ''}`}
-              >
-                <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
-                  {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </td>
-                <td className="px-4 py-3 text-gray-300">{typeLabel(tx.type)}</td>
-                <td className="px-4 py-3 text-gray-400">{tx.description}</td>
-                <td className="px-4 py-3 text-right">
-                  <span className={tx.amount >= 0 ? 'text-brand-primary font-bold' : 'text-red-400 font-bold'}>
-                    {tx.amount >= 0 ? '+' : ''}{tx.amount} {CUR}
-                  </span>
                 </td>
               </tr>
             ))}

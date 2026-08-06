@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { query, getOne, getAll, runTransaction } from "../db";
-import { simulateRace, calculatePrizePool, RacerStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
+import { simulateRace, RacerStats, TacticAction, createGDAState, getGDAPrice, applyGDAPurchase, GDAState } from "../simulation/engine";
 import {
   WIND_UP_TUNING,
   botSigmaForSkill,
@@ -14,6 +14,7 @@ import {
   safeWindThreshold,
 } from "../simulation/windUp";
 import { raceFormat, isPlayableFormat, DEFAULT_FORMAT } from "../simulation/formats";
+import { tierForStats, totalStats } from "../simulation/evolution";
 import { awardXP, XP_AMOUNTS } from "../xp";
 import { isValidWallet } from "../middleware/validateWallet";
 import { recordRaceResultOnchain } from "../lib/onchain";
@@ -45,63 +46,9 @@ function getResetDate(period: string): string {
   // daily
   return new Date().toISOString().split("T")[0];
 }
-
-// Quest progress trigger — used after race simulate
-export async function triggerQuestProgress(wallet: string, requirementType: string): Promise<void> {
-  const quests = await getAll(
-    "SELECT * FROM quests WHERE requirement_type = $1",
-    [requirementType]
-  );
-
-  for (const quest of quests) {
-    // Skip milestones — they are computed on read
-    if (quest.period === "milestone") continue;
-
-    const resetDate = getResetDate(quest.period || "daily");
-
-    // Ensure progress row exists
-    await query(
-      `INSERT INTO user_quest_progress (wallet, quest_id, progress, completed, reset_date)
-       VALUES ($1, $2, 0, 0, $3) ON CONFLICT DO NOTHING`,
-      [wallet, quest.id, resetDate]
-    );
-
-    // Get current progress
-    const progress = await getOne(
-      "SELECT * FROM user_quest_progress WHERE wallet = $1 AND quest_id = $2 AND reset_date = $3",
-      [wallet, quest.id, resetDate]
-    );
-
-    if (progress && !progress.completed) {
-      const newProgress = progress.progress + 1;
-      const isComplete = newProgress >= quest.requirement_value;
-
-      await query(
-        `UPDATE user_quest_progress SET progress = $1, completed = $2, completed_at = $3
-         WHERE wallet = $4 AND quest_id = $5 AND reset_date = $6`,
-        [newProgress, isComplete ? 1 : 0, isComplete ? new Date().toISOString() : null, wallet, quest.id, resetDate]
-      );
-
-      // Award rewards on completion
-      if (isComplete) {
-        if (quest.coin_reward > 0) {
-          await query(
-            `INSERT INTO coin_balances (wallet, balance) VALUES ($1, $2)
-             ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + $3, updated_at = NOW()`,
-            [wallet, quest.coin_reward, quest.coin_reward]
-          );
-          await query(
-            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'quest_reward', $2, $3)",
-            [wallet, quest.coin_reward, `Quest: ${quest.title}`]
-          );
-        }
-        if (quest.xp_reward > 0) {
-          await awardXP(wallet, quest.xp_reward);
-        }
-      }
-    }
-  }
-}
+/** Stat added to one stat per finish, and the most a racer can gain in a day. */
+const PER_RACE_STAT_GAIN = 0.4;
+const DAILY_STAT_CAP = 4.0;
 
 // Stat caps by rarity (and type)
 const STAT_CAPS: Record<string, number> = {
@@ -227,49 +174,11 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
-    // GP tier gate: free racers blocked, Gold GP requires tier >= 2
-    if (race.format === "gp_qualify") {
-      if (racer.type === "free") {
-        res.status(400).json({ error: "GP requires at least a Racer" });
-        return;
-      }
-      if (race.entry_fee > 150 && (racer.tier || 0) < 2) {
-        res.status(400).json({ error: "Gold GP requires Elite racer (Tier 2+)" });
-        return;
-      }
-    }
-
-    // Training lock: racer in active (unclaimed) training cannot race
-    const activeTraining = await getOne(
-      "SELECT id FROM trainings WHERE racer_id = $1 AND claimed = 0",
-      [parsedRacerId]
-    );
-    if (activeTraining) {
-      res.status(400).json({ error: "This creature is in training and cannot race!" });
-      return;
-    }
-
-    // Daily free race check: 1 free Standard Race per wallet per day
-    const today = new Date().toISOString().slice(0, 10);
-    let isUsingFreeRace = false;
-
-    // Any paid format, not a named one. This read `race.format === "standard"`
-    // until the Sprint/Endurance split retired that name, at which point the
-    // daily free race silently stopped existing — the check could never be true
-    // again and nothing failed loudly. Gate on the fee, which is what the
-    // benefit is actually about.
-    if (race.entry_fee > 0) {
-      const dailyUsed = await getOne(
-        "SELECT 1 FROM daily_free_races WHERE wallet = $1 AND race_date = $2",
-        [wallet, today]
-      );
-
-      if (!dailyUsed) {
-        isUsingFreeRace = true;
-      }
-    }
-
-    const effectiveFee = isUsingFreeRace ? 0 : race.entry_fee;
+    // Racing is free. Entry fees, the prize pool and the daily-free-race
+    // exemption all went with the in-game currency: with bots filling the grid
+    // a paid race could not have real stakes — the pool was either minted out
+    // of nothing or handed straight back to the only human in it.
+    const effectiveFee = 0;
 
     // Check if already joined
     const existing = await getOne(
@@ -293,60 +202,16 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
-    // Join race with balance check inside transaction
-    try {
-      await runTransaction(async (client) => {
-        // Balance check with row lock
-        if (effectiveFee > 0) {
-          const balanceRow = (await client.query(
-            "SELECT balance FROM coin_balances WHERE wallet = $1 FOR UPDATE",
-            [wallet]
-          )).rows[0];
-          const currentBalance = balanceRow?.balance || 0;
-          if (currentBalance < effectiveFee) {
-            throw new Error("INSUFFICIENT_BALANCE");
-          }
-          await client.query(
-            "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
-            [effectiveFee, wallet]
-          );
-          await client.query(
-            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'race_entry', $2, $3)",
-            [wallet, -effectiveFee, `Entry fee for ${raceId}`]
-          );
-        }
-
-        // Record daily free race usage
-        if (isUsingFreeRace) {
-          await client.query(
-            "INSERT INTO daily_free_races (wallet, race_date) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-            [wallet, today]
-          );
-        }
-
-        // Add participant
-        await client.query(
-          "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot) VALUES ($1, $2, $3, 0)",
-          [raceId, parsedRacerId, wallet]
-        );
-      });
-    } catch (err: any) {
-      if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient balance" });
-        return;
-      }
-      throw err;
-    }
-
-    const newBalance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
+    await query(
+      "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot) VALUES ($1, $2, $3, 0)",
+      [raceId, parsedRacerId, wallet]
+    );
 
     res.json({
       joined: true,
       raceId,
       racerId: parsedRacerId,
       entryFeeCharged: effectiveFee,
-      dailyFreeRace: isUsingFreeRace,
-      newBalance: newBalance?.balance || 0,
     });
   } catch (err) {
     console.error("POST /join error:", err);
@@ -743,26 +608,9 @@ router.post("/simulate", async (req: Request, res: Response) => {
       [raceId]
     );
 
-    // Load accessory bonuses for each participant
+    // Accessories are gone, so nothing modifies stats at race time. Kept as an
+    // empty map rather than threading a removal through the whole builder.
     const accessoryBonuses: Record<number, Record<string, number>> = {};
-    for (const p of participants) {
-      const equipment = await getOne(
-        "SELECT a.stat_bonus FROM racer_equipment se JOIN accessories a ON se.accessory_id = a.id WHERE se.racer_id = $1",
-        [p.racer_id]
-      );
-      if (equipment && equipment.stat_bonus) {
-        let bonus: Record<string, number> = {};
-        try {
-          bonus = typeof equipment.stat_bonus === 'string'
-            ? JSON.parse(equipment.stat_bonus)
-            : equipment.stat_bonus || {};
-        } catch (e) {
-          console.error("Invalid stat_bonus JSON for equipment:", equipment.id, e);
-          bonus = {};
-        }
-        accessoryBonuses[p.racer_id] = bonus;
-      }
-    }
 
     // Grid positions are already persisted by the Wind-Up finalizer; backfill
     // only if something upstream left them null.
@@ -802,46 +650,10 @@ router.post("/simulate", async (req: Request, res: Response) => {
       };
     });
 
-    // Load tactic actions if any
-    const tacticRows = await getAll(
-      "SELECT * FROM tactic_actions WHERE race_id = $1",
-      [raceId]
-    );
-    const tacticActions: TacticAction[] = tacticRows.map((r: any) => ({
-      tick: r.tick,
-      type: r.action_type as "boost" | "projectile",
-      racerId: r.racer_id,
-    }));
-
-    // Generate bot tactic actions for tactic/gp_final modes
-    if (race.format === "tactic" || race.format === "gp_final") {
-      const botEntries = participants.filter((p: any) => p.is_bot === 1);
-      for (const bot of botEntries) {
-        if (Math.random() < 0.6) {
-          const actionType = Math.random() > 0.5 ? "boost" : "projectile";
-          const actionTick = Math.floor(50 + Math.random() * 200);
-          const existingAction = await getOne(
-            "SELECT 1 FROM tactic_actions WHERE race_id = $1 AND racer_id = $2 AND action_type = $3",
-            [raceId, bot.racer_id, actionType]
-          );
-          if (!existingAction) {
-            await query(
-              "INSERT INTO tactic_actions (race_id, racer_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
-              [raceId, bot.racer_id, bot.wallet, actionType, actionTick]
-            );
-          }
-        }
-      }
-      // Reload tactic actions after adding bot actions
-      const allActions = await getAll(
-        "SELECT * FROM tactic_actions WHERE race_id = $1",
-        [raceId]
-      );
-      tacticActions.length = 0;
-      for (const r of allActions) {
-        tacticActions.push({ tick: r.tick, type: r.action_type as "boost" | "projectile", racerId: r.racer_id });
-      }
-    }
+    // Tactic Mode is cut, so no race carries actions. The engine still accepts
+    // them; passing an empty list keeps that path exercised by the type system
+    // rather than deleted and re-derived later.
+    const tacticActions: TacticAction[] = [];
 
     // Reuse the seed generated when the Wind-Up window opened, so the Safe Wind
     // thresholds the players wound against and the race they produce verify
@@ -853,30 +665,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const trackLength = race.track_length ?? raceFormat(race.format).trackLength;
     const result = simulateRace(gridded, seed, tacticActions, isChaosMode, trackLength);
 
-    // Calculate prize pool distribution
-    const isExhibition = race.format === "exhibition";
-    let rewards: { id: number; reward: number }[];
-    let totalEntryFees = 0;
-
-    if (isExhibition) {
-      // Practice pays nothing. It used to hand the winner 5-14 and everyone
-      // else 2, with no cap and no entry fee — measured at +41 across three
-      // races, which made free racing the most profitable thing in the game and
-      // was the same uncapped-faucet shape as the spectator mechanic removed
-      // earlier. The lobby copy already said "Free. No entry, no reward.";
-      // only the code disagreed.
-      rewards = result.finalOrder.map((entry: any) => ({ id: entry.id, reward: 0 }));
-    } else {
-      // Real entries only. Bots used to contribute 75% of the entry fee each
-      // without existing, and their placement shares were then redistributed to
-      // the humans — so a single player against three bots collected the entire
-      // pool whatever their finishing position. Measured: paid 50, finished
-      // THIRD, received 136. Winning and losing paid the same, which quietly
-      // made every result in the game economically identical.
-      totalEntryFees = participants.filter((p: any) => p.is_bot === 0).length * race.entry_fee;
-      rewards = calculatePrizePool(totalEntryFees, result.finalOrder);
-    }
-
+    // No prize pool. Finishing order is recorded and drives stat growth,
+    // streaks and the leaderboard; it does not move a balance.
     // Save results
     const resultHash = crypto.createHash("sha256").update(JSON.stringify(result.finalOrder)).digest("hex");
     const winnerWallet = result.finalOrder[0]?.wallet || "";
@@ -888,27 +678,13 @@ router.post("/simulate", async (req: Request, res: Response) => {
       );
 
       for (const order of result.finalOrder) {
-        const reward = rewards.find((p) => p.id === order.id);
         const position = result.finalOrder.indexOf(order) + 1;
 
         await client.query(
-          "UPDATE race_participants SET finish_position = $1, reward = $2 WHERE race_id = $3 AND racer_id = $4",
-          [position, reward?.reward || 0, raceId, order.id]
+          "UPDATE race_participants SET finish_position = $1, reward = 0 WHERE race_id = $2 AND racer_id = $3",
+          [position, raceId, order.id]
         );
 
-        // Credit rewards to real players
-        if (!order.isBot && reward && reward.reward > 0) {
-          await client.query(
-            `INSERT INTO coin_balances (wallet, balance) VALUES ($1, $2)
-             ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + $3, updated_at = NOW()`,
-            [order.wallet, reward.reward, reward.reward]
-          );
-
-          await client.query(
-            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'race_reward', $2, $3)",
-            [order.wallet, reward.reward, `${position}${position === 1 ? "st" : position === 2 ? "nd" : position === 3 ? "rd" : "th"} place in ${raceId}`]
-          );
-        }
       }
 
       // Update streaks for non-bot participants
@@ -956,27 +732,6 @@ router.post("/simulate", async (req: Request, res: Response) => {
         if (i === 0) await awardXP(entry.wallet, XP_AMOUNTS.RACE_WIN);
       }
 
-      // First Race Bonus: 15 coins for first-ever race completion (per wallet)
-      for (let i = 0; i < result.finalOrder.length; i++) {
-        const entry = result.finalOrder[i];
-        if (entry.isBot) continue;
-        const totalRaces = (await client.query(
-          "SELECT COUNT(*) as count FROM race_participants rp JOIN races r ON rp.race_id = r.id WHERE rp.wallet = $1 AND rp.is_bot = 0 AND r.status = 'finished'",
-          [entry.wallet]
-        )).rows[0]?.count || 0;
-        if (parseInt(totalRaces) === 1) {
-          await client.query(
-            `INSERT INTO coin_balances (wallet, balance) VALUES ($1, 15)
-             ON CONFLICT(wallet) DO UPDATE SET balance = coin_balances.balance + 15, updated_at = NOW()`,
-            [entry.wallet]
-          );
-          await client.query(
-            "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'first_race_bonus', 15, 'First Race Bonus!')",
-            [entry.wallet]
-          );
-        }
-      }
-
       // Award Race Points (RP) for leaderboard
       const rpValues = [25, 15, 8, 3];
       for (let i = 0; i < result.finalOrder.length; i++) {
@@ -996,8 +751,6 @@ router.post("/simulate", async (req: Request, res: Response) => {
     for (let i = 0; i < result.finalOrder.length; i++) {
       const entry = result.finalOrder[i];
       if (entry.isBot) continue;
-      await triggerQuestProgress(entry.wallet, "race_complete");
-      if (i <= 1) await triggerQuestProgress(entry.wallet, "top_2_finish");
     }
 
     // Record race result on-chain (best-effort, non-blocking)
@@ -1022,12 +775,20 @@ router.post("/simulate", async (req: Request, res: Response) => {
         );
         const count = parseInt(weatherCount?.count) || 0;
         if (count === 5) {
-          await triggerQuestProgress(entry.wallet, "weather_variety");
         }
       }
     }
 
-    // Organic stat growth: +0.05 to position-based stat, max +0.3/day
+    // Stat growth. Racing is the ONLY way a racer improves now — training,
+    // mini-games, boosters and accessories are all gone — so the rate had to
+    // absorb what they used to contribute. It was +0.05 per race capped at
+    // +0.3/day, which was tuned when training alone gave +0.5 per session; at
+    // that pace a fresh racer (six stats, ~10 each) needed a hundred days to
+    // reach the first evolution tier and nobody would ever have seen one.
+    //
+    // Now +0.4 per finish, capped at +4.0/day, so ten races is a full day's
+    // progress and the first tier arrives in about a week of playing. See
+    // simulation/evolution.ts for where the tiers themselves land.
     const today = new Date().toISOString().split("T")[0];
     for (let i = 0; i < result.finalOrder.length; i++) {
       const entry = result.finalOrder[i];
@@ -1044,7 +805,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
         "SELECT total_gain FROM daily_stat_gains WHERE racer_id = $1 AND gain_date = $2",
         [entry.id, today]
       );
-      if ((dailyGain?.total_gain || 0) >= 0.3) continue;
+      if ((dailyGain?.total_gain || 0) >= DAILY_STAT_CAP) continue;
 
       // Check stat cap (with evolution support)
       assertValidStat(statToGrow);
@@ -1058,7 +819,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
       }
       if (racer.current_val >= cap) continue;
 
-      const gain = Math.min(0.05, cap - racer.current_val);
+      const gain = Math.min(PER_RACE_STAT_GAIN, cap - racer.current_val);
       await query(
         `UPDATE racers SET ${statToGrow} = ${statToGrow} + $1 WHERE id = $2`,
         [gain, entry.id]
@@ -1067,6 +828,19 @@ router.post("/simulate", async (req: Request, res: Response) => {
         "UPDATE daily_stat_gains SET total_gain = total_gain + $1 WHERE racer_id = $2 AND gain_date = $3",
         [gain, entry.id, today]
       );
+
+      // Tier follows the stats, so the racer's form changes the moment racing
+      // pushes it over a threshold. Nothing to press, nothing to pay.
+      const grown = await getOne(
+        "SELECT spd, acc, sta, agi, ref, lck, tier FROM racers WHERE id = $1",
+        [entry.id]
+      );
+      if (grown) {
+        const earned = tierForStats(totalStats(grown));
+        if (earned !== (grown.tier ?? 0)) {
+          await query("UPDATE racers SET tier = $1 WHERE id = $2", [earned, entry.id]);
+        }
+      }
     }
 
     // Send every 3rd frame for smooth animation (~100 frames for a 300-tick race)
@@ -1117,9 +891,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
       finalOrder: result.finalOrder.map((o: any, i: number) => ({
         ...o,
         position: i + 1,
-        reward: rewards.find((p) => p.id === o.id)?.reward || 0,
       })),
-      totalPrizePool: totalEntryFees,
       trackLength: result.trackLength,
       // Raw tick count, not animFrames.length — the frames are downsampled for
       // playback, so they cannot answer "did this race take longer".
@@ -1128,115 +900,6 @@ router.post("/simulate", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("POST /simulate error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// POST /api/race/action — Submit a tactic action (Boost or Projectile)
-router.post("/action", async (req: Request, res: Response) => {
-  try {
-    const { raceId, wallet, racerId, actionType, tick } = req.body;
-
-    if (!raceId || !wallet || !racerId || !actionType || tick === undefined) {
-      res.status(400).json({ error: "raceId, wallet, racerId, actionType, and tick required" });
-      return;
-    }
-
-    if (!isValidWallet(wallet as string)) {
-      res.status(400).json({ error: "Invalid wallet address format" });
-      return;
-    }
-
-    const parsedTick = parseInt(tick);
-    if (isNaN(parsedTick) || parsedTick < 0) {
-      res.status(400).json({ error: "Invalid tick value" });
-      return;
-    }
-
-    if (!["boost", "projectile"].includes(actionType)) {
-      res.status(400).json({ error: "actionType must be 'boost' or 'projectile'" });
-      return;
-    }
-
-    // Verify racer ownership
-    const racerOwner = await getOne("SELECT id FROM racers WHERE id = $1 AND wallet = $2", [racerId, wallet]);
-    if (racerOwner === null) {
-      res.status(403).json({ error: "Not your racer" });
-      return;
-    }
-
-    const race = await getOne("SELECT * FROM races WHERE id = $1", [raceId]);
-    if (!race) {
-      res.status(404).json({ error: "race not found" });
-      return;
-    }
-    if (race.format !== "tactic" && race.format !== "gp_final") {
-      res.status(400).json({ error: "actions only allowed in tactic/GP final races" });
-      return;
-    }
-
-    // GDA price calculation + action insert + balance deduction all inside transaction
-    const isChaos = race.format === "gp_final";
-    let cost = 0;
-
-    try {
-      await runTransaction(async (client) => {
-        // Lock tactic_actions rows for this race to prevent concurrent price drift
-        const priorActionsResult = await client.query(
-          "SELECT action_type, tick FROM tactic_actions WHERE race_id = $1 ORDER BY id ASC FOR UPDATE",
-          [raceId]
-        );
-        const priorActions = priorActionsResult.rows;
-
-        let gdaState = createGDAState();
-        for (const pa of priorActions) {
-          gdaState = applyGDAPurchase(gdaState, pa.action_type, pa.tick);
-        }
-        cost = getGDAPrice(gdaState, actionType, parsedTick, isChaos);
-
-        const balanceRow = (await client.query(
-          "SELECT balance FROM coin_balances WHERE wallet = $1 FOR UPDATE",
-          [wallet]
-        )).rows[0];
-        const currentBalance = balanceRow?.balance || 0;
-        if (currentBalance < cost) {
-          throw new Error("INSUFFICIENT_BALANCE");
-        }
-
-        await client.query(
-          "UPDATE coin_balances SET balance = balance - $1, updated_at = NOW() WHERE wallet = $2",
-          [cost, wallet]
-        );
-
-        await client.query(
-          "INSERT INTO transactions (wallet, type, amount, description) VALUES ($1, 'tactic_action', $2, $3)",
-          [wallet, -cost, `${actionType} in ${raceId} at tick ${parsedTick}`]
-        );
-
-        await client.query(
-          "INSERT INTO tactic_actions (race_id, racer_id, wallet, action_type, tick) VALUES ($1, $2, $3, $4, $5)",
-          [raceId, racerId, wallet, actionType, parsedTick]
-        );
-      });
-    } catch (err: any) {
-      if (err.message === "INSUFFICIENT_BALANCE") {
-        res.status(400).json({ error: "insufficient balance", cost });
-        return;
-      }
-      throw err;
-    }
-
-    const newBalance = await getOne("SELECT balance FROM coin_balances WHERE wallet = $1", [wallet]);
-
-    res.json({
-      raceId,
-      actionType,
-      tick: parsedTick,
-      cost,
-      newBalance: newBalance?.balance || 0,
-    });
-  } catch (err) {
-    console.error("POST /action error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -1320,37 +983,6 @@ router.post("/gp/advance", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("POST /gp/advance error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// GET /api/race/:id/prices — Get current GDA prices for a tactic race
-router.get("/:id/prices", async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const tick = parseInt(req.query.tick as string) || 0;
-
-    const race = await getOne("SELECT format FROM races WHERE id = $1", [id]);
-    const isChaos = race?.format === "gp_final";
-
-    const priorActions = await getAll(
-      "SELECT action_type, tick FROM tactic_actions WHERE race_id = $1 ORDER BY id ASC",
-      [id]
-    );
-
-    let gdaState = createGDAState();
-    for (const pa of priorActions) {
-      gdaState = applyGDAPurchase(gdaState, pa.action_type, pa.tick);
-    }
-
-    res.json({
-      boostPrice: getGDAPrice(gdaState, "boost", tick, isChaos),
-      projectilePrice: getGDAPrice(gdaState, "projectile", tick, isChaos),
-      boostPurchases: gdaState.boostPurchases,
-      projectilePurchases: gdaState.projectilePurchases,
-    });
-  } catch (err) {
-    console.error("GET /:id/prices error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

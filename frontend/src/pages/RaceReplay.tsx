@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
-import { CUR, THEME } from '../config/theme'
+import { THEME } from '../config/theme'
 
 const RACER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7']
 
@@ -262,9 +262,6 @@ export default function RaceReplay() {
                   i === 0 ? 'text-brand-primary' : 'text-gray-500'
                 }`}>{i + 1}.</span>
                 <span className="text-white font-semibold text-sm flex-1">{fo.name}</span>
-                {fo.reward > 0 && (
-                  <span className="text-brand-primary text-sm font-bold">+{fo.reward} {CUR}</span>
-                )}
               </div>
             ))}
           </div>

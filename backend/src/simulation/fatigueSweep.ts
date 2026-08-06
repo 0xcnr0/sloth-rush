@@ -12,6 +12,10 @@
  *     one, or ordinary racers become a coin toss decided by a stat they did
  *     not choose.
  *
+ * Stats here must stay inside the real caps — 15 for a free racer, 22-35 by
+ * rarity. An earlier version of this sweep used 45-80 and every constant it
+ * produced was calibrated for racers the game cannot mint.
+ *
  *   npx tsx src/simulation/fatigueSweep.ts
  */
 import { simulateRace, RacerStats, FATIGUE } from './engine';
@@ -21,13 +25,13 @@ import { simulateRace, RacerStats, FATIGUE } from './engine';
 const F = FATIGUE as unknown as { -readonly [K in keyof typeof FATIGUE]: number };
 const ORIGINAL = { ...FATIGUE };
 
-const SPRINT = 1800;
-const ENDURANCE = 4600;
+const SPRINT = 800;
+const ENDURANCE = 1800;
 const N = 1500;
 
 const mk = (id: number, grid: number, spd: number, sta: number, name: string): RacerStats => ({
   id, name, wallet: `0x${id}`, isBot: false,
-  spd, acc: spd, sta, agi: 50, ref: 50, lck: 50, gridPosition: grid,
+  spd, acc: spd, sta, agi: 20, ref: 20, lck: 20, gridPosition: grid,
 });
 
 /** Win share of the stayer minus the sprinter, in points. Negative = speed wins. */
@@ -37,7 +41,7 @@ function gap(len: number, hi: number, lo: number): number {
     const a = i % 2 ? 1 : 2, b = i % 2 ? 2 : 1;
     const r = simulateRace([
       mk(1, a, hi, lo, 'sprinter'), mk(2, b, lo, hi, 'stayer'),
-      mk(3, 3, 55, 55, 'even-a'), mk(4, 4, 55, 55, 'even-b'),
+      mk(3, 3, 20, 20, 'even-a'), mk(4, 4, 20, 20, 'even-b'),
     ], `fs_${len}_${hi}_${i}`, [], false, len);
     if (r.finalOrder[0].name === 'sprinter') sprinter++;
     if (r.finalOrder[0].name === 'stayer') stayer++;
@@ -52,12 +56,12 @@ console.log('  perSta  floor  span |  SPRINT uç  END uç | SPRINT ılım  END �
 type Cell = { perSta: number; floor: number; span: number; se: number; ee: number; sm: number; em: number };
 const cells: Cell[] = [];
 
-for (const perSta of [0.00525, 0.0060, 0.0070]) {
+for (const perSta of [0.010, 0.013, 0.016]) {
   for (const floor of [0.30, 0.24, 0.18]) {
-    for (const span of [1000, 850, 700]) {
+    for (const span of [700, 500, 350]) {
       F.decayPerSta = perSta; F.minSpeedFactor = floor; F.spanDistance = span;
-      const se = gap(SPRINT, 80, 30), ee = gap(ENDURANCE, 80, 30);
-      const sm = gap(SPRINT, 65, 45), em = gap(ENDURANCE, 65, 45);
+      const se = gap(SPRINT, 30, 10), ee = gap(ENDURANCE, 30, 10);
+      const sm = gap(SPRINT, 24, 16), em = gap(ENDURANCE, 24, 16);
       cells.push({ perSta, floor, span, se, ee, sm, em });
       const f = (n: number) => (n >= 0 ? '+' : '') + n.toFixed(1);
       console.log(
@@ -72,10 +76,16 @@ Object.assign(F, ORIGINAL);
 
 // Score: sprint must favour speed, endurance must be near level, and the
 // moderate field must stay calmer than the extreme one.
+// The third criterion used to be "ordinary racers swing less than extreme
+// ones", which was right when stats ranged 0-100 and wrong once they were
+// measured against the real caps: with every stat between 10 and 35 the
+// moderate field is so tightly packed that fatigue is exactly what separates
+// it, and it SHOULD be sensitive. What matters is that the preference points
+// the right way — speed short, stamina long.
 const scored = cells
-  .filter(c => c.se < -20)                     // sprint clearly belongs to speed
-  .filter(c => Math.abs(c.ee) < 25)            // endurance genuinely contested
-  .filter(c => Math.abs(c.em) < Math.abs(c.ee)) // ordinary racers swing less
+  .filter(c => c.se < -20)          // sprint clearly belongs to speed
+  .filter(c => Math.abs(c.ee) < 25) // endurance genuinely contested
+  .filter(c => c.em > 0)            // at distance, stamina is the readable edge
   .sort((a, b) => Math.abs(a.ee) - Math.abs(b.ee));
 
 console.log('\nGeçen hücreler:', scored.length);

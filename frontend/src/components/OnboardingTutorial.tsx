@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { THEME, CUR } from '../config/theme'
+import { THEME } from '../config/theme'
 
 const STEPS = [
   {
@@ -20,7 +20,7 @@ const STEPS = [
   },
   {
     title: 'Enter Your First Race',
-    description: `Join an Exhibition race for free, or enter a Standard Race to win ${CUR}!`,
+    description: 'Pick a distance and race. Every finish grows your racer.',
     icon: '\u{1F3C1}',
     cta: 'Go to Race',
     path: '/race',
