@@ -246,10 +246,27 @@ router.post("/start-tuning", async (req: Request, res: Response) => {
     const botsNeeded = maxSlots - participants.length;
     const botSkills: Record<number, number> = {};
     if (botsNeeded > 0) {
-      // Shuffle templates for variety
-      const shuffled = [...BOT_TEMPLATES].sort(() => Math.random() - 0.5);
+      // Bots must not duplicate an archetype already on the grid — their own or
+      // the player's. Two templates share each archetype, so a shuffle picked
+      // the same toy twice often enough that a four-lane race regularly showed
+      // two identical racers, which defeats the point of having four silhouettes.
+      //
+      // The pick is also derived from the race id rather than Math.random(): the
+      // whole race is meant to be reproducible from a seed, and a random field
+      // meant the same seed could not be replayed to the same result.
+      const takenArchetypes = new Set<string>();
+      for (const p of participants) {
+        const r = await getOne("SELECT race FROM racers WHERE id = $1", [p.racer_id]);
+        if (r?.race) takenArchetypes.add(r.race);
+      }
+      const rotate = parseInt(raceId.slice(-4), 16) || 0;
+      const ordered = BOT_TEMPLATES.map((_, i) => BOT_TEMPLATES[(i + rotate) % BOT_TEMPLATES.length]);
+
       for (let i = 0; i < botsNeeded; i++) {
-        const template = shuffled[i % shuffled.length];
+        const template =
+          ordered.find(t => !takenArchetypes.has(t.race)) ??
+          ordered[(i + rotate) % ordered.length];
+        takenArchetypes.add(template.race);
         // Create a bot racer with diverse stats
         const botRacer = await getOne(
           `INSERT INTO racers (wallet, type, name, rarity, race, spd, acc, sta, agi, ref, lck)

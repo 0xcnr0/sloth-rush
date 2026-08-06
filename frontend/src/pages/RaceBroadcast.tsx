@@ -328,16 +328,34 @@ export default function RaceBroadcast() {
         ctx.textBaseline = 'middle'
         ctx.fillText(String(rank), cx, ground - RACER_HEIGHT - 10)
 
-        const name = names.get(pos.id) || '#' + pos.id
-        ctx.fillStyle = isBot ? PALETTE.dust : PALETTE.ink
+        // Name plate. The text used to be drawn straight onto the lane, which
+        // worked on a flat fill and stopped working the moment the lane became
+        // a printed surface — the labels landed on top of the gear band and
+        // were unreadable. A stamped ink plate reads over anything and matches
+        // the toy-packaging language the rest of the UI uses.
+        const label = isBot ? `${names.get(pos.id) || '#' + pos.id}  BOT` : (names.get(pos.id) || '#' + pos.id)
+        const speedText = pos.speed.toFixed(1) + ' u/t'
         ctx.font = 'bold 10px sans-serif'
+        const plateW = Math.max(ctx.measureText(label).width, 42) + 14
+        const plateH = 26
+        const plateX = SIDE_MARGIN + 4
+        const plateY = top + 4
+
+        ctx.fillStyle = PALETTE.paper
+        ctx.strokeStyle = PALETTE.ink
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.roundRect(plateX, plateY, plateW, plateH, 6)
+        ctx.fill()
+        ctx.stroke()
+
+        ctx.fillStyle = isBot ? PALETTE.dust : PALETTE.ink
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
-        ctx.fillText(isBot ? `${name}  BOT` : name, SIDE_MARGIN + 8, top + 5)
-
+        ctx.fillText(label, plateX + 7, plateY + 4)
         ctx.fillStyle = PALETTE.dust
         ctx.font = '9px ui-monospace, monospace'
-        ctx.fillText(pos.speed.toFixed(1) + ' u/t', SIDE_MARGIN + 8, top + 18)
+        ctx.fillText(speedText, plateX + 7, plateY + 15)
       })
 
       const live = frame.positions.map((pos) => ({
@@ -700,12 +718,10 @@ export default function RaceBroadcast() {
       {/* Race Canvas + Kill Feed layout */}
       <div className="flex gap-3 mb-4" style={{ display: racePhase === 'trash_talk' ? 'none' : 'flex' }}>
       <div
-        className="relative flex-1 border border-brand-border rounded-xl overflow-hidden"
-        // The room behind the shelf: warm light near the floor, cooler toward
-        // the ceiling. This was a five-stop dark green gradient — grass and
-        // forest, left over from the first theme, and the reason the track kept
-        // reading as a night-time field even after the lanes were repainted.
-        style={{ background: 'linear-gradient(to top, #E8D9BC 0%, #DCE8F5 35%, #C9DFF5 100%)' }}
+        className="toy-panel relative flex-1 overflow-hidden p-0"
+        // The lanes are drawn art now, so the container only needs a ground
+        // colour for the sliver of canvas outside the track box.
+        style={{ background: PALETTE.wall }}
       >
         <canvas
           ref={canvasRef}
