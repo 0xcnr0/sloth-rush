@@ -52,17 +52,30 @@ sloth-rush/
 ### Setup
 
 ```bash
-# Install dependencies
 npm install
+createdb wind_up_rush     # once
 
-# Start backend (terminal 1)
-cd backend && npm run dev
-
-# Start frontend (terminal 2)
-cd frontend && npm run dev
+npm run dev               # frontend + backend, one terminal
 ```
 
-Frontend runs on http://localhost:5173, backend on http://localhost:3001.
+Frontend runs on http://localhost:5173, backend on http://localhost:3001, and
+Vite proxies `/api` to the backend so there is nothing to configure between them.
+
+`npm run dev` runs both under one process. Running the two start commands in a
+single terminal does not work: the first is a server and holds the shell, so the
+second only runs once you stop it.
+
+Other commands worth knowing:
+
+```bash
+npm run verify      # typecheck + vocabulary lint + unit tests — the release gate
+npm run typecheck   # frontend uses `tsc -b`; `-p` checks nothing here
+npm run lint:vocab  # theme words, retired symbols, raw codes, wagering language
+npm run qa          # end-to-end suite; needs a running backend
+```
+
+In dev builds only, `/dev` renders components against stub props so UI work can be
+looked at without connecting a wallet.
 
 ### Environment Variables
 

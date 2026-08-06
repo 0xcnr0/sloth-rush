@@ -2,7 +2,7 @@
   "name": "wind-up-rush",
   "version": "0.1.0",
   "private": true,
-  "description": "Wind-Up Rush — wind-up toy racing on Base",
+  "description": "Wind-Up Rush \u2014 wind-up toy racing on Base",
   "workspaces": [
     "frontend",
     "backend",
@@ -12,7 +12,7 @@
     "frontend": "npm run dev --workspace=frontend",
     "backend": "npm run dev --workspace=backend",
     "contracts": "npx hardhat compile --config contracts/hardhat.config.ts",
-    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "dev": "concurrently -n frontend,backend -c cyan,magenta \"npm run frontend\" \"npm run backend\"",
     "qa": "tsx qa-agent.ts",
     "test:unit": "tsx --test backend/src/simulation/*.test.ts",
     "sweep:windup": "tsx tools/windup-tuning-sweep.ts",
@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.18.0",
+    "concurrently": "^10.0.4",
     "pg": "^8.20.0",
     "playwright-core": "^1.62.1",
     "tsx": "^4.21.0",
