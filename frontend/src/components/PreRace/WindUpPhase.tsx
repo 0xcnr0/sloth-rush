@@ -183,7 +183,7 @@ export default function WindUpPhase({ raceId, wallet, onLocked }: Props) {
       </button>
 
       {/* Tension gauge. The band is approximate on purpose — see §9. */}
-      <div className="relative mt-5 h-7 rounded-full border-2 border-brand-border bg-brand-bg overflow-hidden">
+      <div className="relative mt-5 h-7 rounded-full border-2 border-brand-border overflow-hidden">
         {band && (
           <div
             className="absolute inset-y-0 bg-brand-primary/25 border-x-2 border-dashed border-brand-primary/50"

@@ -139,7 +139,7 @@ export default function RaceReplay() {
                   <span className="text-brand-ink text-sm font-semibold">{name}</span>
                   <span className="text-brand-dust text-xs">{pct.toFixed(0)}% | {pos.speed?.toFixed(1)} u/t</span>
                 </div>
-                <div className="relative h-6 bg-brand-bg rounded-full overflow-hidden">
+                <div className="relative h-6 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"
                     style={{ backgroundColor: color, width: `${Math.max(2, pct)}%` }}
@@ -176,13 +176,13 @@ export default function RaceReplay() {
 
           <button
             onClick={() => { if (playing) pause(); setCurrentFrame(prev => Math.max(0, prev - 1)) }}
-            className="px-3 py-2 bg-brand-bg text-brand-dust hover:text-brand-ink rounded-lg cursor-pointer text-sm font-semibold"
+            className="px-3 py-2 text-brand-dust hover:text-brand-ink rounded-lg cursor-pointer text-sm font-semibold"
           >
             &lt;
           </button>
           <button
             onClick={() => { if (playing) pause(); setCurrentFrame(prev => Math.min(totalFrames - 1, prev + 1)) }}
-            className="px-3 py-2 bg-brand-bg text-brand-dust hover:text-brand-ink rounded-lg cursor-pointer text-sm font-semibold"
+            className="px-3 py-2 text-brand-dust hover:text-brand-ink rounded-lg cursor-pointer text-sm font-semibold"
           >
             &gt;
           </button>
@@ -195,7 +195,7 @@ export default function RaceReplay() {
                 className={`px-3 py-2 rounded-lg font-semibold text-xs cursor-pointer transition-colors ${
                   speed === s
                     ? 'bg-brand-accent text-brand-ink'
-                    : 'bg-brand-bg text-brand-dust hover:text-brand-ink'
+                    : 'text-brand-dust hover:text-brand-ink'
                 }`}
               >
                 {s}x

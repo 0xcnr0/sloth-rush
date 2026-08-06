@@ -31,7 +31,7 @@ export default function DevPreview() {
   )
 
   return (
-    <div className="min-h-screen bg-brand-bg text-brand-ink p-4">
+    <div className="min-h-screen text-brand-ink p-4">
       <header className="mb-4">
         <p className="text-xs tracking-[0.16em] uppercase text-brand-dust">
           {THEME.brand.name} — dev preview
@@ -67,7 +67,7 @@ export default function DevPreview() {
         // sees: one free, two paid at the same price differing only in distance.
         <div className="space-y-3">
           {visibleFormats.map(f => (
-            <div key={f.id} className="rounded-xl border-2 border-brand-border bg-brand-surface p-4">
+            <div key={f.id} className="toy-panel p-4">
               <p className="text-brand-ink font-bold">{f.name}</p>
               <p className="text-brand-dust text-sm mt-1">{f.desc}</p>
               <p className="text-brand-dust/70 text-xs mt-2">id: {f.id}</p>
@@ -86,7 +86,7 @@ export default function DevPreview() {
             ['trickster', 'epic'],
             ['burst', 'legendary'],
           ] as const).map(([code, rarity]) => (
-            <div key={code} className="rounded-xl border-2 border-brand-border bg-brand-surface p-3">
+            <div key={code} className="toy-panel p-3">
               <RacerPortrait archetype={code} rarity={rarity} height={170} />
               <p className="text-brand-ink text-sm font-semibold mt-2">{archetypeLabel(code)}</p>
               <p className="text-brand-dust text-xs">{rarityLabel(rarity)}</p>

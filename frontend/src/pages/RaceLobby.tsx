@@ -9,6 +9,7 @@ import { THEME, rarityLabel, archetypeLabel, formatLabel } from '../config/theme
 import WindUpPhase from '../components/PreRace/WindUpPhase'
 import GridReveal from '../components/PreRace/GridReveal'
 import Spinner from '../components/Spinner'
+import RacerPortrait from '../components/RacerPortrait'
 import { FEATURES } from '../config/features'
 
 type Phase = 'select' | 'winding' | 'reveal' | 'starting'
@@ -198,7 +199,7 @@ export default function RaceLobby() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="bg-brand-surface border border-brand-border rounded-xl p-4 flex items-center justify-between hover:border-brand-primary/30 transition-colors"
+                  className="toy-panel p-4 flex items-center justify-between hover:border-brand-primary/30 transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
@@ -279,7 +280,7 @@ export default function RaceLobby() {
                 <p className="text-brand-dust mb-4">You need a Racer to race</p>
                 <button
                   onClick={() => navigate('/collection')}
-                  className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl cursor-pointer"
+                  className="px-6 py-2.5 toy-btn bg-brand-primary text-brand-surface cursor-pointer"
                 >
                   Go to {THEME.locations.home}
                 </button>
@@ -295,16 +296,16 @@ export default function RaceLobby() {
                     <button
                       key={fmt.id}
                       onClick={() => setSelectedFormat(fmt)}
-                      className={`p-4 rounded-xl border text-left transition-colors cursor-pointer ${
+                      className={`toy-panel toy-pop p-4 text-left cursor-pointer transition-transform ${
                         selectedFormat.id === fmt.id
-                          ? 'border-brand-primary bg-brand-primary/10'
-                          : 'border-brand-border bg-brand-surface hover:border-gray-500'
+                          ? 'translate-y-[4px] shadow-none bg-brand-gold/25'
+                          : 'hover:-translate-y-[2px]'
                       }`}
                     >
                       <p className="text-brand-ink font-semibold">
                         {fmt.name}
                         {fmt.id === 'demo_standard' && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] font-bold rounded">DEMO</span>
+                          <span className="ml-2 px-1.5 py-0.5 bg-brand-gold text-brand-ink text-[10px] font-bold rounded-full px-2 border-2 border-brand-ink">DEMO</span>
                         )}
                       </p>
                       <p className="text-brand-dust text-sm mt-1">{fmt.desc}</p>
@@ -319,18 +320,20 @@ export default function RaceLobby() {
                     <button
                       key={racer.id}
                       onClick={() => setSelectedRacer(racer)}
-                      className={`p-4 rounded-xl border flex items-center gap-4 transition-colors cursor-pointer ${
+                      className={`toy-panel toy-pop p-4 flex items-center gap-4 cursor-pointer transition-transform ${
                         selectedRacer?.id === racer.id
-                          ? 'border-brand-primary bg-brand-primary/10'
-                          : 'border-brand-border bg-brand-surface hover:border-gray-500'
+                          ? 'translate-y-[4px] shadow-none bg-brand-gold/25'
+                          : 'hover:-translate-y-[2px]'
                       }`}
                     >
-                      <span className="text-3xl">{THEME.brand.mark}</span>
+                      <div className="w-14 shrink-0">
+                        <RacerPortrait archetype={racer.race} rarity={racer.rarity} height={56} still />
+                      </div>
                       <div className="text-left">
                         <p className="text-brand-ink font-semibold flex items-center gap-2">
                           {racer.name}
                           {racer.type === 'free' && (
-                            <span className="px-1.5 py-0.5 bg-brand-info/20 text-brand-info text-[10px] font-bold rounded">{THEME.tiers.free.toUpperCase()}</span>
+                            <span className="px-1.5 py-0.5 bg-brand-info text-brand-surface text-[10px] font-bold rounded-full px-2 border-2 border-brand-ink">{THEME.tiers.free.toUpperCase()}</span>
                           )}
                         </p>
                         <p className="text-brand-dust text-xs capitalize">
@@ -345,7 +348,7 @@ export default function RaceLobby() {
                 <button
                   onClick={handleCreateAndJoin}
                   disabled={!selectedRacer || loading}
-                  className="w-full py-3 bg-brand-primary text-brand-surface font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
+                  className="w-full py-4 toy-btn bg-brand-gold text-brand-ink text-xl tracking-wide"
                 >
                   {loading ? 'Starting…' : 'Race'}
                 </button>

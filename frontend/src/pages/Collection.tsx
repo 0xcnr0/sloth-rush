@@ -245,7 +245,7 @@ export default function Collection() {
                 { label: 'REF', val: freeRacer.ref },
                 { label: 'LCK', val: freeRacer.lck },
               ].map(s => (
-                <div key={s.label} className="bg-brand-bg rounded px-1 py-1">
+                <div key={s.label} className="rounded px-1 py-1">
                   <span className="text-brand-dust">{s.label} </span>
                   <span className="text-brand-ink font-bold">{Number(s.val || 0) % 1 === 0 ? (s.val || 0) : Number(s.val || 0).toFixed(1)}</span>
                   <span className="text-brand-dust/70 text-[10px]">/15</span>
@@ -284,7 +284,7 @@ export default function Collection() {
 
           {/* Free Upgrade Path */}
           {upgradeProgress && (
-            <div className="mt-4 bg-brand-bg border border-brand-border rounded-xl p-5">
+            <div className="mt-4 border border-brand-border rounded-xl p-5">
               <p className="text-brand-dust text-sm mb-3 text-center">...or upgrade for free by completing milestones</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -346,7 +346,7 @@ export default function Collection() {
                           onChange={e => setEditName(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleRename(racer.id); if (e.key === 'Escape') setEditingId(null) }}
                           maxLength={20}
-                          className="bg-brand-bg border border-brand-primary rounded px-2 py-0.5 text-brand-ink text-sm w-32 outline-none"
+                          className="border border-brand-primary rounded px-2 py-0.5 text-brand-ink text-sm w-32 outline-none"
                           autoFocus
                         />
                         <button onClick={() => handleRename(racer.id)} className="text-brand-primary text-xs cursor-pointer">&#x2714;</button>
@@ -429,7 +429,7 @@ export default function Collection() {
                     { label: 'REF', val: racer.ref },
                     { label: 'LCK', val: racer.lck },
                   ].map(s => (
-                    <div key={s.label} className="bg-brand-bg rounded px-1 py-1">
+                    <div key={s.label} className="rounded px-1 py-1">
                       <span className="text-brand-dust">{s.label} </span>
                       <span className="text-brand-ink font-bold">{Number(s.val) % 1 === 0 ? s.val : Number(s.val).toFixed(1)}</span>
                     </div>

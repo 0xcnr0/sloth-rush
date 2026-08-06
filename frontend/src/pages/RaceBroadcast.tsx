@@ -830,7 +830,7 @@ export default function RaceBroadcast() {
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 20, opacity: 0 }}
-              className="bg-brand-bg border border-brand-border rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
+              className="border border-brand-border rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
             >
               <span>{item.emoji}</span>
               <span style={{ color: item.color }}>{item.text}</span>
@@ -996,7 +996,7 @@ export default function RaceBroadcast() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="fixed inset-0 z-50 bg-brand-bg overflow-y-auto"
+              className="fixed inset-0 z-50 overflow-y-auto"
             >
               <div className="max-w-2xl mx-auto px-4 py-8">
                 {/* Winner */}

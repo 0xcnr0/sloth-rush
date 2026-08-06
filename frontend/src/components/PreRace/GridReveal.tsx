@@ -62,7 +62,7 @@ export default function GridReveal({ entries }: { entries: GridEntry[] }) {
                         is the moment it becomes public, so showing only the
                         finishing order throws away the drama the phase built. */}
                     <div className="mt-1.5 flex items-center gap-2">
-                      <div className="relative h-1.5 flex-1 rounded-full bg-brand-bg overflow-hidden">
+                      <div className="relative h-1.5 flex-1 rounded-full overflow-hidden">
                         <div
                           className={`absolute inset-y-0 left-0 ${
                             gp.snapped ? 'bg-brand-danger' : 'bg-brand-primary'
