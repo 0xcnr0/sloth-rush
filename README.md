@@ -111,11 +111,25 @@ See [`simulation/README.md`](simulation/README.md) for full documentation on the
 
 ## QA
 
-92 automated tests covering happy path, edge cases, security, rate limits, economy, and race logic.
+81 end-to-end tests covering happy path, edge cases, security, rate limits,
+economy, and race logic. Needs a running backend.
 
 ```bash
-cd ~/slug-rush && npx tsx qa-agent.ts
+QA_BYPASS_TOKEN=local-dev npm run backend    # terminal 1
+QA_BYPASS_TOKEN=local-dev npm run qa         # terminal 2
 ```
+
+**Set the token on both, or the run is noise.** The suite makes far more requests
+per minute than a player ever would, so without the shared secret it trips the
+rate limiter partway through and every later test fails with a 429 — the failures
+land on whichever tests happen to run after the limit, so the report looks like a
+different regression each time. The bypass has been in `backend/src/index.ts`
+since it was written but was never actually set when running the suite; wiring it
+up took the pass rate from 78% to 97% without changing a line of product code.
+
+The server only honours the token outside production and only when the variable is
+explicitly set, so a deployed backend can never be talked out of rate limiting.
+The suite's own rate-limit tests deliberately omit the header.
 
 ## License
 

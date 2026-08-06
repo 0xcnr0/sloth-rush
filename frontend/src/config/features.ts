@@ -31,10 +31,7 @@ export const FEATURES = {
   guide: true,           // Always on
 
   shop: !MVP_MODE,       // Hide in MVP
-  training: true,         // Always on
   evolution: !MVP_MODE,  // Hide in MVP
-  miniGames: !MVP_MODE,  // Hide in MVP
-  quests: true,           // Always on
   // OFF everywhere, not hidden-in-MVP, and the difference matters.
   //
   // tacticRace is BROKEN, not deferred. The client submits an action during
@@ -53,6 +50,4 @@ export const FEATURES = {
   accessories: !MVP_MODE,// Hide in MVP
   cosmetics: !MVP_MODE,  // Hide in MVP
   demoRace: MVP_MODE,    // Demo race format in MVP mode
-  feedback: true,        // Always on — Sprint 6
-  community: true,       // Always on — Sprint 6
 } as const

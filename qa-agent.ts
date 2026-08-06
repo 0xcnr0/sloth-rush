@@ -374,7 +374,6 @@ function printReport(results: TestResult[]): void {
   console.log("\n" + "=".repeat(60));
 }
 
-
 // ============================================================
 // SECTION 5: TEST SUITES
 // ============================================================
@@ -699,77 +698,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
     })
   );
 
-  results.push(
-    await runTest("A23: Start training", "Happy Path", async () => {
-      const balBefore = (await tapi("GET", `/api/racer/coin/${WALLET_A}`)).data.balance;
-      const res = await tapi("POST", "/api/racer/train", {
-        wallet: WALLET_A,
-        racerId: ctx.racerIdA,
-        stat: "spd",
-      });
-      assertStatus(res, 200);
-      assertEqual(res.data.started, true, "started should be true");
-      // Sprint 8 rebalanced training: 5 coins, 2 hours, +0.5 stat.
-      const balAfter = (await tapi("GET", `/api/racer/coin/${WALLET_A}`)).data.balance;
-      assertEqual(balAfter, balBefore - TRAINING_COST, "should deduct the training fee");
-      ctx.balanceA = balAfter;
-    })
-  );
-
-  results.push(
-    await runTest("A24: Check training status", "Happy Path", async () => {
-      const res = await tapi(
-        "GET",
-        `/api/racer/training-status/${WALLET_A}`
-      );
-      assertStatus(res, 200);
-      assert(
-        Array.isArray(res.data.trainings),
-        "trainings should be array"
-      );
-      assert(
-        res.data.trainings.length >= 1,
-        "should have at least 1 training"
-      );
-    })
-  );
-
-  results.push(
-    await runTest("A25: Fast-forward + claim training", "Happy Path", async () => {
-      await fastForwardTraining(ctx.racerIdA!);
-      const res = await tapi("POST", "/api/racer/claim-training", {
-        wallet: WALLET_A,
-        racerId: ctx.racerIdA,
-      });
-      assertStatus(res, 200);
-      assertEqual(res.data.claimed, true, "claimed should be true");
-      assert(res.data.gain > 0, "gain should be > 0");
-    })
-  );
-
-  results.push(
-    await runTest("A26: Play mini-games (all 5 types)", "Happy Path", async () => {
-      const gameTypes = [
-        "dodge",
-        "stretch",
-        "lift",
-        "charm",
-        "tap",
-      ];
-      for (const gameType of gameTypes) {
-        const res = await tapi("POST", "/api/racer/mini-game", {
-          wallet: WALLET_A,
-          racerId: ctx.racerIdA,
-          gameType,
-          score: 500,
-        });
-        assertStatus(res, 200);
-        assertEqual(res.data.played, true, `${gameType} should be played`);
-      }
-    })
-  );
-
-  results.push(
+          results.push(
     await runTest("A27: Standard race full flow", "Happy Path", async () => {
       // Create
       const createRes = await tapi("POST", "/api/race/create", {
@@ -799,39 +728,7 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
     })
   );
 
-  results.push(
-    await runTest("A28: Check daily quests", "Happy Path", async () => {
-      const res = await tapi("GET", `/api/quests/daily/${WALLET_A}`);
-      assertStatus(res, 200);
-      assert(Array.isArray(res.data.quests), "quests should be array");
-    })
-  );
-
-  results.push(
-    await runTest("A29: Check weekly quests", "Happy Path", async () => {
-      const res = await tapi("GET", `/api/quests/weekly/${WALLET_A}`);
-      assertStatus(res, 200);
-    })
-  );
-
-  results.push(
-    await runTest("A30: Check milestones", "Happy Path", async () => {
-      const res = await tapi("GET", `/api/quests/milestones/${WALLET_A}`);
-      assertStatus(res, 200);
-    })
-  );
-
-  results.push(
-    await runTest("A31: Trigger collection visit quest", "Happy Path", async () => {
-      const res = await tapi("POST", "/api/quests/progress", {
-        wallet: WALLET_A,
-        requirementType: "collection_visit",
-      });
-      assertStatus(res, 200);
-    })
-  );
-
-  results.push(
+          results.push(
     await runTest("A32: Buy cosmetic", "Happy Path", async () => {
       const listRes = await tapi(
         "GET",
@@ -1063,27 +960,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
     })
   );
 
-  results.push(
-    await runTest("B04: Train with insufficient balance", "Edge Cases", async () => {
-      // Wallet B holds the mint welcome bonus, which now covers a training fee.
-      // Drain it first so this still tests what it is named after.
-      await pool.query(
-        "UPDATE coin_balances SET balance = 0 WHERE wallet = $1",
-        [WALLET_B]
-      );
-      const res = await tapi("POST", "/api/racer/train", {
-        wallet: WALLET_B,
-        racerId: ctx.freeRacerIdB,
-        stat: "spd",
-      });
-      assert(
-        res.status === 400,
-        `Expected 400 (insufficient balance), got ${res.status}`
-      );
-    })
-  );
-
-  results.push(
+    results.push(
     await runTest("B05: Free racer joins paid race -> 400", "Edge Cases", async () => {
       const createRes = await tapi("POST", "/api/race/create", {
         format: "sprint",
@@ -1098,19 +975,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
     })
   );
 
-  results.push(
-    await runTest("B07: Mini-game with score > 1000 -> 400", "Edge Cases", async () => {
-      const res = await tapi("POST", "/api/racer/mini-game", {
-        wallet: WALLET_A,
-        racerId: ctx.racerIdA,
-        gameType: "tap",
-        score: 1500,
-      });
-      assertStatus(res, 400);
-    })
-  );
-
-  results.push(
+    results.push(
     await runTest("B08: Rename with < 3 chars -> 400", "Edge Cases", async () => {
       const res = await tapi("POST", "/api/racer/rename", {
         wallet: WALLET_A,
@@ -1155,30 +1020,7 @@ async function runEdgeCases(ctx: TestContext): Promise<TestResult[]> {
     })
   );
 
-  results.push(
-    await runTest("B12: Invalid game type -> 400", "Edge Cases", async () => {
-      const res = await tapi("POST", "/api/racer/mini-game", {
-        wallet: WALLET_A,
-        racerId: ctx.racerIdA,
-        gameType: "invalid_game",
-        score: 100,
-      });
-      assertStatus(res, 400);
-    })
-  );
-
-  results.push(
-    await runTest("B13: Invalid stat for training -> 400", "Edge Cases", async () => {
-      const res = await tapi("POST", "/api/racer/train", {
-        wallet: WALLET_A,
-        racerId: ctx.racerIdA,
-        stat: "xyz",
-      });
-      assertStatus(res, 400);
-    })
-  );
-
-  results.push(
+      results.push(
     await runTest("B14: Join non-existent race -> 404", "Edge Cases", async () => {
       const res = await tapi("POST", "/api/race/join", {
         raceId: "race_nonexistent_999",
@@ -1231,21 +1073,7 @@ async function runSecurity(ctx: TestContext): Promise<TestResult[]> {
     })
   );
 
-  results.push(
-    await runTest("C02: Train another wallet's racer -> 403/404", "Security", async () => {
-      const res = await tapi("POST", "/api/racer/train", {
-        wallet: WALLET_B,
-        racerId: ctx.racerIdA,
-        stat: "spd",
-      });
-      assert(
-        res.status === 403 || res.status === 404,
-        `Expected 403/404, got ${res.status}`
-      );
-    })
-  );
-
-  results.push(
+    results.push(
     await runTest("C03: Invalid wallet format (no 0x) -> 400", "Security", async () => {
       const res = await tapi("POST", "/api/racer/mint", {
         wallet: "TEST000000000000000000000000000000000099",
@@ -1425,15 +1253,7 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
     })
   );
 
-  results.push(
-    await runTest("E04: Training costs exactly 10 coins", "Economy", async () => {
-      // Already tested in A23 — verified 10 coins deduction
-      // Spot check: wallet A balance decreased by 10 during training
-      assert(true, "Verified in A23");
-    })
-  );
-
-  results.push(
+    results.push(
     await runTest("E05: Race entry fee correct (50 coins sprint)", "Economy", async () => {
       // Create a paid race and track balance delta
       const balBefore = (await tapi("GET", `/api/racer/coin/${WALLET_A}`)).data.balance;
@@ -1483,13 +1303,15 @@ async function runEconomyAudit(ctx: TestContext): Promise<TestResult[]> {
         "INSERT INTO coin_balances (wallet, balance) VALUES ($1, 0) ON CONFLICT (wallet) DO UPDATE SET balance = 0",
         [WALLET_B]
       );
-      // Try to train (costs 10)
-      const trainRes = await tapi("POST", "/api/racer/train", {
-        wallet: WALLET_B,
+      // Try to enter a paid race with nothing to pay with. This used to check
+      // training, which no longer exists; race entry is now the only sink.
+      const createRes = await tapi("POST", "/api/race/create", { format: "sprint" });
+      const joinRes = await tapi("POST", "/api/race/join", {
+        raceId: createRes.data.raceId,
         racerId: ctx.freeRacerIdB,
-        stat: "spd",
+        wallet: WALLET_B,
       });
-      assert(trainRes.status === 400, `Training with 0 balance should fail, got ${trainRes.status}`);
+      assert(joinRes.status >= 400, `Race entry with 0 balance should fail, got ${joinRes.status}`);
       // Verify balance still 0
       const bal = await getDbBalance(WALLET_B);
       assertEqual(bal, 0, "Balance should still be 0");
@@ -1564,6 +1386,48 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
         (fo: any) => fo.reward > 0
       );
       assert(hasRewards, "At least one racer should have reward > 0");
+    })
+  );
+
+  results.push(
+    await runTest("E04: Practice pays nothing", "Economy", async () => {
+      // It used to pay the winner 5-14 and everyone else 2, uncapped and with no
+      // entry fee, which made the free format the most profitable thing in the
+      // game. The lobby has always said "Free. No entry, no reward."
+      const before = await tapi("GET", `/api/racer/collection/${WALLET_A}`);
+      for (let i = 0; i < 3; i++) {
+        const createRes = await tapi("POST", "/api/race/create", { format: "exhibition" });
+        const raceId = createRes.data.raceId;
+        await tapi("POST", "/api/race/join", { raceId, racerId: ctx.racerIdA, wallet: WALLET_A });
+        await tapi("POST", "/api/race/start-tuning", { raceId });
+        await tapi("POST", "/api/race/simulate", { raceId });
+      }
+      const after = await tapi("GET", `/api/racer/collection/${WALLET_A}`);
+      assert(
+        after.data.coinBalance === before.data.coinBalance,
+        `practice must not mint: ${before.data.coinBalance} -> ${after.data.coinBalance}`
+      );
+    })
+  );
+
+  results.push(
+    await runTest("E08: A race cannot pay out more than was put in", "Economy", async () => {
+      // Bots used to pay 75% of the entry fee into the pool without existing,
+      // and their placement shares were swept back to the humans — one player
+      // against three bots collected the whole pool from any finishing position.
+      // Measured before the fix: paid 50, finished third, received 136.
+      const createRes = await tapi("POST", "/api/race/create", { format: "sprint" });
+      const raceId = createRes.data.raceId;
+      await tapi("POST", "/api/race/join", { raceId, racerId: ctx.racerIdA, wallet: WALLET_A });
+      await tapi("POST", "/api/race/start-tuning", { raceId });
+      const sim = await tapi("POST", "/api/race/simulate", { raceId });
+      assertStatus(sim, 200);
+
+      const paidIn = sim.data.totalPrizePool;
+      const paidOut = sim.data.finalOrder.reduce((sum: number, o: any) => sum + (o.reward || 0), 0);
+      assert(paidOut <= paidIn, `paid out ${paidOut} against ${paidIn} taken in`);
+      const botRewards = sim.data.finalOrder.filter((o: any) => o.isBot && o.reward > 0);
+      assert(botRewards.length === 0, "bots must never be paid");
     })
   );
 
@@ -1709,7 +1573,6 @@ async function runRaceLogic(ctx: TestContext): Promise<TestResult[]> {
 // ============================================================
 // SECTION 6: MAIN RUNNER
 // ============================================================
-
 
 /** Blocks until the general rate-limit window has drained (max ~70s). */
 async function waitForRateLimitReset(label: string): Promise<void> {

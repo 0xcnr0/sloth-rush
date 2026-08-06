@@ -185,18 +185,6 @@ export const api = {
   getXP: (wallet: string) =>
     request<{ wallet: string; xp: number }>(`/racer/xp/${wallet}`),
 
-  // Quests
-  getDailyQuests: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; coin_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
-      `/quests/daily/${wallet}`
-    ),
-
-  trackQuestProgress: (wallet: string, type: string) =>
-    request<{ updated: boolean }>('/quests/progress', {
-      method: 'POST',
-      body: JSON.stringify({ wallet, requirementType: type }),
-    }),
-
   // Upgrade progress (free path)
   getUpgradeProgress: (wallet: string) =>
     request<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean }>(
@@ -220,45 +208,9 @@ export const api = {
       `/leaderboard/me/${wallet}`
     ),
 
-  // Training
-  startTraining: (wallet: string, racerId: number, stat: string) =>
-    request<{ started: boolean; racerId: number; stat: string; completedAt: string }>('/racer/train', {
-      method: 'POST',
-      body: JSON.stringify({ wallet, racerId: racerId, stat }),
-    }),
-
-  claimTraining: (wallet: string, racerId: number) =>
-    request<{ claimed: boolean; racerId: number; stat: string; gain: number; newStatValue: number }>('/racer/claim-training', {
-      method: 'POST',
-      body: JSON.stringify({ wallet, racerId: racerId }),
-    }),
-
-  getTrainingStatus: (wallet: string) =>
-    request<{ trainings: { racerId: number; racerName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]; weeklyCounts?: Record<number, number> }>(
-      `/racer/training-status/${wallet}`
-    ),
-
-  // Weekly & Milestone quests
-  getWeeklyQuests: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; coin_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
-      `/quests/weekly/${wallet}`
-    ),
-
-  getMilestones: (wallet: string) =>
-    request<{ quests: { id: number; title: string; description: string; requirement_type: string; coin_reward: number; xp_reward: number; progress: number; requirement_value: number; completed: boolean }[] }>(
-      `/quests/milestones/${wallet}`
-    ),
-
   // Daily race
   getDailyRace: () =>
     request<{ raceId: string; weather: string; date: string; isNew?: boolean }>('/race/daily'),
-
-  // Mini games
-  playMiniGame: (wallet: string, racerId: number, gameType: string, score: number) =>
-    request<{ gain: number; newStatValue: number; stat: string }>('/racer/mini-game', {
-      method: 'POST',
-      body: JSON.stringify({ wallet, racerId: racerId, gameType, score }),
-    }),
 
   // Evolution
   getEvolutionProgress: (racerId: number) =>
@@ -364,12 +316,6 @@ export const api = {
     ),
 
   // Feedback endpoints (Sprint 6)
-  submitFeedback: (wallet: string, category: string, text: string, rating: number) =>
-    request<{ submitted: boolean; feedback: any; message: string }>('/feedback/submit', {
-      method: 'POST',
-      body: JSON.stringify({ wallet, category, text, rating }),
-    }),
-
   getMyFeedback: (wallet: string) =>
     request<{ feedbacks: any[] }>(`/feedback/my/${wallet}`),
 

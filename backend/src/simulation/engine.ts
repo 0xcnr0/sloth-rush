@@ -538,40 +538,30 @@ export function calculatePrizePool(
   entryFees: number,
   finishOrder: { id: number; wallet: string; isBot: boolean }[]
 ): { id: number; wallet: string; reward: number; position: number }[] {
-  const totalPrizePool = entryFees;
-  const platformCut = Math.floor(totalPrizePool * 0.15);
-  const distributablePrizePool = totalPrizePool - platformCut;
+  const platformCut = Math.floor(entryFees * 0.15);
+  const distributable = entryFees - platformCut;
 
   const SHARES = [0.50, 0.30, 0.15, 0.05];
 
-  // Separate real players from bots
-  const realPlayers = finishOrder.filter((p) => !p.isBot);
-  const botSlots = finishOrder.filter((p) => p.isBot);
-
-  // Calculate base rewards
-  const rewards = finishOrder.map((player, index) => ({
-    id: player.id,
-    wallet: player.wallet,
-    reward: Math.floor(distributablePrizePool * SHARES[index]),
-    position: index + 1,
-    isBot: player.isBot,
-  }));
-
-  // Redistribute bot rewards to real players proportionally
-  const botTotal = rewards.filter((p) => p.isBot).reduce((sum, p) => sum + p.reward, 0);
-  if (botTotal > 0 && realPlayers.length > 0) {
-    const realRewards = rewards.filter((p) => !p.isBot);
-    const realTotal = realRewards.reduce((sum, p) => sum + p.reward, 0);
-
-    for (const p of realRewards) {
-      const share = realTotal > 0 ? p.reward / realTotal : 1 / realPlayers.length;
-      p.reward += Math.floor(botTotal * share);
-    }
-
-    for (const p of rewards.filter((p) => p.isBot)) {
-      p.reward = 0;
-    }
-  }
-
-  return rewards.map(({ isBot, ...rest }) => rest);
+  // Shares are handed out by rank AMONG REAL PLAYERS. Bots hold grid positions
+  // and finish alongside everyone, but they neither fund the pool nor take from
+  // it, so a bot ahead of you does not cost you a share.
+  //
+  // The previous version paid every finisher by absolute position and then
+  // swept the bots' shares back to the humans proportionally. With one human in
+  // the field that meant collecting the entire pool regardless of where they
+  // came — measured at 136 back on a 50 entry from a THIRD place finish. Every
+  // race was profitable and no result differed from any other.
+  let realRank = 0;
+  return finishOrder.map((p, index) => {
+    if (p.isBot) return { id: p.id, wallet: p.wallet, reward: 0, position: index + 1 };
+    const share = SHARES[realRank] ?? 0;
+    realRank++;
+    return {
+      id: p.id,
+      wallet: p.wallet,
+      reward: Math.floor(distributable * share),
+      position: index + 1,
+    };
+  });
 }

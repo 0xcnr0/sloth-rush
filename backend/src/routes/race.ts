@@ -253,7 +253,12 @@ router.post("/join", async (req: Request, res: Response) => {
     const today = new Date().toISOString().slice(0, 10);
     let isUsingFreeRace = false;
 
-    if (race.format === "standard" && race.entry_fee > 0) {
+    // Any paid format, not a named one. This read `race.format === "standard"`
+    // until the Sprint/Endurance split retired that name, at which point the
+    // daily free race silently stopped existing — the check could never be true
+    // again and nothing failed loudly. Gate on the fee, which is what the
+    // benefit is actually about.
+    if (race.entry_fee > 0) {
       const dailyUsed = await getOne(
         "SELECT 1 FROM daily_free_races WHERE wallet = $1 AND race_date = $2",
         [wallet, today]
@@ -854,29 +859,21 @@ router.post("/simulate", async (req: Request, res: Response) => {
     let totalEntryFees = 0;
 
     if (isExhibition) {
-      const seed32 = parseInt(seed.slice(0, 8), 16);
-      const CONSOLATION_PRIZE = 2;
-      rewards = [];
-      for (let i = 0; i < result.finalOrder.length; i++) {
-        const entry = result.finalOrder[i];
-        if (entry.isBot) {
-          rewards.push({ id: entry.id, reward: 0 });
-        } else if (i === 0) {
-          const creatureType = await getOne("SELECT type FROM racers WHERE id = $1", [entry.id]);
-          if (creatureType?.type === "free") {
-            rewards.push({ id: entry.id, reward: 3 + ((seed32 + i) % 3) + CONSOLATION_PRIZE });
-          } else {
-            rewards.push({ id: entry.id, reward: 8 + ((seed32 + i) % 5) + CONSOLATION_PRIZE });
-          }
-        } else {
-          rewards.push({ id: entry.id, reward: CONSOLATION_PRIZE });
-        }
-      }
+      // Practice pays nothing. It used to hand the winner 5-14 and everyone
+      // else 2, with no cap and no entry fee — measured at +41 across three
+      // races, which made free racing the most profitable thing in the game and
+      // was the same uncapped-faucet shape as the spectator mechanic removed
+      // earlier. The lobby copy already said "Free. No entry, no reward.";
+      // only the code disagreed.
+      rewards = result.finalOrder.map((entry: any) => ({ id: entry.id, reward: 0 }));
     } else {
-      // Entry fees are the only source now — the old pre-race spend is gone.
-      const realPlayerFees = participants.filter((p: any) => p.is_bot === 0).length * race.entry_fee;
-      const botVirtualFees = participants.filter((p: any) => p.is_bot === 1).length * race.entry_fee * 0.75;
-      totalEntryFees = realPlayerFees + botVirtualFees;
+      // Real entries only. Bots used to contribute 75% of the entry fee each
+      // without existing, and their placement shares were then redistributed to
+      // the humans — so a single player against three bots collected the entire
+      // pool whatever their finishing position. Measured: paid 50, finished
+      // THIRD, received 136. Winning and losing paid the same, which quietly
+      // made every result in the game economically identical.
+      totalEntryFees = participants.filter((p: any) => p.is_bot === 0).length * race.entry_fee;
       rewards = calculatePrizePool(totalEntryFees, result.finalOrder);
     }
 

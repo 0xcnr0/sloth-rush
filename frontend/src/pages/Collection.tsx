@@ -9,9 +9,7 @@ import { THEME, CUR, rarityLabel, archetypeLabel } from '../config/theme'
 import RacerPortrait from '../components/RacerPortrait'
 import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
-import QuestPanel from '../components/QuestPanel'
 import EvolutionModal from '../components/EvolutionModal'
-import MiniGameModal from '../components/MiniGameModal'
 import Spinner from '../components/Spinner'
 import { FEATURES } from '../config/features'
 
@@ -53,17 +51,11 @@ export default function Collection() {
   const [editName, setEditName] = useState('')
   const [streaks, setStreaks] = useState<Record<number, { current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }>>({})
   const [upgradeProgress, setUpgradeProgress] = useState<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean } | null>(null)
-  const [trainings, setTrainings] = useState<{ racerId: number; racerName: string; stat: string; startedAt: string; completedAt: string; isReady: boolean }[]>([])
-  const [trainingStat, setTrainingStat] = useState<Record<number, string>>({})
-  const [trainingLoading, setTrainingLoading] = useState<number | null>(null)
-  const [weeklyTrainingCounts, setWeeklyTrainingCounts] = useState<Record<number, number>>({})
   const [evolveRacerId, setEvolveRacerId] = useState<number | null>(null)
   const [evolveRacerName, setEvolveRacerName] = useState<string>('')
   const [ownedCosmetics, setOwnedCosmetics] = useState<any[]>([])
   const [ownedAccessories, setOwnedAccessories] = useState<any[]>([])
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
-  const [questsOpen, setQuestsOpen] = useState(true)
-  const [activeMiniGame, setActiveMiniGame] = useState<{ racerId: number; racerName: string } | null>(null)
   const [demoLoading, setDemoLoading] = useState<number | null>(null)
   const [evoProgress, setEvoProgress] = useState<Record<number, any>>({})
 
@@ -97,27 +89,12 @@ export default function Collection() {
 
   useEffect(() => { loadCollection() }, [address])
 
-  // Trigger collection_visit quest progress
-  useEffect(() => {
-    if (!address) return
-    api.trackQuestProgress(address, 'collection_visit').catch((err) => { console.error('Failed to track quest:', err) })
-  }, [address])
 
   // Load free upgrade progress
   useEffect(() => {
     if (!address) return
     api.getUpgradeProgress(address).then(setUpgradeProgress).catch((err) => { console.error('Failed to load upgrade progress:', err) })
   }, [address])
-
-  // Load training status
-  function loadTrainings() {
-    if (!address) return
-    api.getTrainingStatus(address).then(d => {
-      setTrainings(d.trainings)
-      if (d.weeklyCounts) setWeeklyTrainingCounts(d.weeklyCounts)
-    }).catch((err) => { console.error('Failed to load trainings:', err) })
-  }
-  useEffect(() => { loadTrainings() }, [address])
 
   useEffect(() => {
     if (!address) return
@@ -229,34 +206,6 @@ export default function Collection() {
     }
   }
 
-  async function handleStartTraining(racerId: number) {
-    if (!address) return
-    const stat = trainingStat[racerId]
-    if (!stat) return
-    setTrainingLoading(racerId)
-    try {
-      await api.startTraining(address, racerId, stat)
-      loadTrainings()
-      loadCollection()
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-    setTrainingLoading(null)
-  }
-
-  async function handleClaimTraining(racerId: number) {
-    if (!address) return
-    setTrainingLoading(racerId)
-    try {
-      await api.claimTraining(address, racerId)
-      loadTrainings()
-      loadCollection()
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-    setTrainingLoading(null)
-  }
-
   async function handleUnequipAccessory(racerId: number) {
     if (!address) return
     try {
@@ -360,83 +309,7 @@ export default function Collection() {
             </div>
 
             {/* Training UI — Accordion */}
-            {FEATURES.training && (<div className="mt-3">
-              <button
-                onClick={() => toggleSection(`training-${freeRacer.id}`)}
-                className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
-              >
-                <span className={`text-xs transition-transform ${expandedSections[`training-${freeRacer.id}`] || trainings.find(t => t.racerId === freeRacer.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
-                Training
-                {trainings.find(t => t.racerId === freeRacer.id) && (
-                  <span className="text-brand-accent text-xs font-normal ml-1">(Active)</span>
-                )}
-              </button>
-              {(expandedSections[`training-${freeRacer.id}`] || trainings.find(t => t.racerId === freeRacer.id)) && (() => {
-                const active = trainings.find(t => t.racerId === freeRacer.id)
-                if (active) {
-                  return (
-                    <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
-                      <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
-                      {active.isReady ? (
-                        <button
-                          onClick={() => handleClaimTraining(freeRacer.id)}
-                          disabled={trainingLoading === freeRacer.id}
-                          className="w-full py-1.5 bg-brand-primary text-brand-bg font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
-                        >
-                          {trainingLoading === freeRacer.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
-                        </button>
-                      ) : (
-                        <p className="text-xs text-brand-accent">
-                          Ready at {new Date(active.completedAt).toLocaleTimeString()}
-                        </p>
-                      )}
-                    </div>
-                  )
-                }
-                const weeklyCount = weeklyTrainingCounts[freeRacer.id] || 0
-                const weeklyLimit = 1
-                const limitReached = weeklyCount >= weeklyLimit
-                return (
-                  <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-gray-400">Train a stat (6h, 10 {CUR})</p>
-                      <span className={`text-[10px] font-bold ${limitReached ? 'text-red-400' : 'text-gray-500'}`}>
-                        {weeklyCount}/{weeklyLimit} this week
-                      </span>
-                    </div>
-                    {limitReached ? (
-                      <p className="text-xs text-red-400 text-center py-2">Weekly training limit reached</p>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2">
-                          {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
-                            <button
-                              key={stat}
-                              onClick={() => setTrainingStat(prev => ({ ...prev, [freeRacer.id]: stat }))}
-                              className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
-                                trainingStat[freeRacer.id] === stat
-                                  ? 'bg-brand-accent text-white'
-                                  : 'bg-brand-surface text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              {stat.toUpperCase()}
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          onClick={() => handleStartTraining(freeRacer.id)}
-                          disabled={!trainingStat[freeRacer.id] || trainingLoading === freeRacer.id}
-                          className="w-full py-1.5 bg-brand-accent/20 text-brand-accent font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
-                        >
-                          {trainingLoading === freeRacer.id ? 'Starting...' : 'Start Training'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )
-              })()}
-            </div>)}
-
+            
             {/* Equipment — Accordion */}
             {FEATURES.cosmetics && (ownedCosmetics.length > 0 || ownedAccessories.length > 0) && (
               <div className="mt-3">
@@ -493,15 +366,7 @@ export default function Collection() {
             )}
 
             {/* Mini Games button */}
-            {FEATURES.miniGames && (
-            <button
-              onClick={() => setActiveMiniGame({ racerId: freeRacer.id, racerName: freeRacer.name })}
-              className="w-full mt-3 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
-            >
-              Play Mini Games
-            </button>
-            )}
-
+            
             {/* Enter Race — Exhibition only */}
             <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
               <button
@@ -569,19 +434,7 @@ export default function Collection() {
       )}
 
       {/* Quest Panel */}
-      {FEATURES.quests && (
-      <div className="mb-6">
-        <button
-          onClick={() => setQuestsOpen(!questsOpen)}
-          className="flex items-center gap-2 text-lg font-semibold text-gray-300 mb-3 cursor-pointer hover:text-white transition-colors"
-        >
-          <span className={`text-sm transition-transform ${questsOpen ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
-          Daily Quests
-        </button>
-        {questsOpen && <QuestPanel />}
-      </div>
-      )}
-
+      
       {/* Racer Cards */}
       {racerList.length > 0 && (
         <div>
@@ -721,83 +574,7 @@ export default function Collection() {
                 )}
 
                 {/* Training UI — Accordion */}
-                {FEATURES.training && (<div className="mt-3">
-                  <button
-                    onClick={() => toggleSection(`training-${racer.id}`)}
-                    className="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 cursor-pointer hover:text-white transition-colors"
-                  >
-                    <span className={`text-xs transition-transform ${expandedSections[`training-${racer.id}`] || trainings.find(t => t.racerId === racer.id) ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
-                    Training
-                    {trainings.find(t => t.racerId === racer.id) && (
-                      <span className="text-brand-accent text-xs font-normal ml-1">(Active)</span>
-                    )}
-                  </button>
-                  {(expandedSections[`training-${racer.id}`] || trainings.find(t => t.racerId === racer.id)) && (() => {
-                    const active = trainings.find(t => t.racerId === racer.id)
-                    if (active) {
-                      return (
-                        <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
-                          <p className="text-xs text-gray-400 mb-1">Training {active.stat.toUpperCase()}</p>
-                          {active.isReady ? (
-                            <button
-                              onClick={() => handleClaimTraining(racer.id)}
-                              disabled={trainingLoading === racer.id}
-                              className="w-full py-1.5 bg-brand-primary text-brand-bg font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
-                            >
-                              {trainingLoading === racer.id ? 'Claiming...' : 'Claim +0.3 ' + active.stat.toUpperCase()}
-                            </button>
-                          ) : (
-                            <p className="text-xs text-brand-accent">
-                              Ready at {new Date(active.completedAt).toLocaleTimeString()}
-                            </p>
-                          )}
-                        </div>
-                      )
-                    }
-                    const weeklyCount = weeklyTrainingCounts[racer.id] || 0
-                    const weeklyLimit = racer.type === 'free' ? 1 : 2
-                    const limitReached = weeklyCount >= weeklyLimit
-                    return (
-                      <div className="p-3 bg-brand-bg rounded-lg border border-brand-border">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs text-gray-400">Train a stat (6h, 10 {CUR})</p>
-                          <span className={`text-[10px] font-bold ${limitReached ? 'text-red-400' : 'text-gray-500'}`}>
-                            {weeklyCount}/{weeklyLimit} this week
-                          </span>
-                        </div>
-                        {limitReached ? (
-                          <p className="text-xs text-red-400 text-center py-2">Weekly training limit reached</p>
-                        ) : (
-                          <>
-                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2">
-                              {['spd', 'acc', 'sta', 'agi', 'ref', 'lck'].map(stat => (
-                                <button
-                                  key={stat}
-                                  onClick={() => setTrainingStat(prev => ({ ...prev, [racer.id]: stat }))}
-                                  className={`py-2 rounded text-xs font-bold cursor-pointer min-h-[36px] flex items-center justify-center ${
-                                    trainingStat[racer.id] === stat
-                                      ? 'bg-brand-accent text-white'
-                                      : 'bg-brand-surface text-gray-400 hover:text-white'
-                                  }`}
-                                >
-                                  {stat.toUpperCase()}
-                                </button>
-                              ))}
-                            </div>
-                            <button
-                              onClick={() => handleStartTraining(racer.id)}
-                              disabled={!trainingStat[racer.id] || trainingLoading === racer.id}
-                              className="w-full py-1.5 bg-brand-accent/20 text-brand-accent font-semibold rounded-lg text-xs cursor-pointer disabled:opacity-50"
-                            >
-                              {trainingLoading === racer.id ? 'Starting...' : 'Start Training'}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )
-                  })()}
-                </div>)}
-
+                
                 {/* Cosmetic / Accessory badges */}
                 {FEATURES.cosmetics && (racer.cosmetic || racer.equipped_accessory || racer.accessory) && (
                   <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
@@ -890,15 +667,7 @@ export default function Collection() {
                 )}
 
                 {/* Mini Games button */}
-                {FEATURES.miniGames && (
-                <button
-                  onClick={() => setActiveMiniGame({ racerId: racer.id, racerName: racer.name })}
-                  className="w-full mt-2 py-2 bg-purple-500/20 text-purple-400 font-semibold rounded-lg hover:bg-purple-500/30 transition-colors cursor-pointer text-sm"
-                >
-                  Play Mini Games
-                </button>
-                )}
-
+                
                 {/* Enter Race — prominent */}
                 <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
                   <button
@@ -972,18 +741,7 @@ export default function Collection() {
         </div>
       )}
 
-      {/* MiniGameModal */}
-      {FEATURES.miniGames && activeMiniGame && address && (
-        <MiniGameModal
-          racerId={activeMiniGame.racerId}
-          racerName={activeMiniGame.racerName}
-          wallet={address}
-          playsLeft={5}
-          onClose={() => setActiveMiniGame(null)}
-          onGameComplete={() => loadCollection()}
-        />
-      )}
-
+      
       {/* Evolution Modal */}
       {FEATURES.evolution && evolveRacerId !== null && address && (
         <EvolutionModal

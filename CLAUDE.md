@@ -243,6 +243,10 @@ Yarış Giriş Ücretleri:
 
 Günlük Ücretsiz Yarış: 1 ücretli yarış / wallet (yarışçı sayısından bağımsız)
 
+> **Practice Run ödül vermez.** Kod bir dönem veriyordu (kazanana 5-14, diğerlerine
+> 2, sınırsız) — ölçüldü: üç yarışta +41 SPRING. Arayüz zaten "Free. No entry, no
+> reward." diyordu; sadece kod aynı fikirde değildi.
+
 Upgrade Paketi:
 - Upgrade ücreti: $3 USDC (onchain)
 - Başlangıç bakiyesi: 500 SPRING
@@ -276,6 +280,28 @@ Aksesuar Kutuları:
 - Nadir Kutu:    600 SPRING
 - Efsane Kutu:   1.500 SPRING
 ```
+
+### ⚠ Ölçülen ekonomi delikleri — kapatıldı (2026-08-06)
+
+İkisi de kapılar yeşilken duruyordu ve ikisi de **ölçülerek** bulundu, okunarak değil:
+
+1. **Botlar ödül havuzunu finanse ediyordu.** Her bot, var olmadığı hâlde giriş
+   ücretinin %75'ini havuza yatırıyor, sonra botların sıralama payları gerçek
+   oyunculara dağıtılıyordu. Tek insan üç bota karşı yarıştığında **bitiriş
+   sırası ne olursa olsun havuzun tamamını** topluyordu. Ölçüm: 50 SPRING giriş,
+   **3. sıra**, **136 SPRING** ödül — net +86. Yani kazanmak ve kaybetmek aynı
+   ödüyordu, ve oyundaki her sonuç ekonomik olarak birbirinin aynısıydı.
+2. **Practice Run musluğu** — yukarıdaki not.
+
+Artık havuz **yalnızca gerçek girişlerden** oluşuyor ve paylar **yalnızca gerçek
+oyuncular arasında** sıralanıyor; bot ne yatırır ne alır. `qa-agent.ts` E04 ve
+E08 bunları kalıcı olarak bekliyor.
+
+> **Bunun açıkta bıraktığı soru:** tek insan + üç bot olan bir yarışta ücretli
+> format matematiksel olarak anlamsız — oyuncu kendi parasını platform kesintisi
+> eksiğiyle geri alır ve sırası yine hiçbir şeyi değiştirmez. Sıralama ancak
+> **iki gerçek oyuncu** varken anlam kazanır. Bu bir hata değil, yapısal sonuç;
+> kararı bekliyor.
 
 ### ⚠ Açık ekonomi kalemi
 
@@ -412,12 +438,17 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 9. SPRING bakiye sistemi
 10. Prize pool dağıtımı
 
-### BONUS:
-- Training sistemi
+### V1'DEN ÇIKARILDI (2026-08-06 sadeleştirmesi)
+- **Training** — 2 saat boyunca yarışçıyı *oynanamaz* yapıyordu. İlerlemek için oyundan çıkmayı zorunlu kılan tek mekanikti.
+- **Mini oyunlar** — 449 satır, yarıştan bağımsız ikinci bir oyun.
+- **Günlük görevler** — sınırsız SPRING kaynağıydı, karar üretmiyordu.
+- **Community Board / Feedback** — oyun değil, 630 satır ve 11 uç.
+- **Taktik Mod / Grand Prix** — yukarıda, ayrı gerekçelerle.
+
+### BONUS (hâlâ kodda, MVP'de gizli):
 - Güçlendirici satın alma
 - Aksesuar sistemi
-- Mini oyunlar
-- Günlük görevler
+- Evrim modalı
 
 ---
 
