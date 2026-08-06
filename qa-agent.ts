@@ -513,6 +513,95 @@ async function runHappyPath(ctx: TestContext): Promise<TestResult[]> {
     })
   );
 
+  // --- Wind-Up phase -------------------------------------------------------
+  // The phase's pure functions have unit tests; its HTTP surface had none, and
+  // a client/server mismatch in the band strings shipped because of it. These
+  // cover the contract itself: what the endpoints answer, and that winding
+  // harder actually buys a better grid slot.
+
+  results.push(
+    await runTest("A13a: Wind-Up start opens the hold", "Happy Path", async () => {
+      const res = await tapi("POST", "/api/race/wind/start", {
+        raceId: ctx.raceId,
+        wallet: ctx.walletA,
+      });
+      assertStatus(res, 200);
+      assert(res.data.winding === true, "the hold should be open");
+      // The exact Safe Wind line is never sent — only an approximate band.
+      // That vagueness is the defence against a scripted client (§9), so a
+      // response carrying the precise threshold would be a real regression.
+      assert(res.data.safeWindBand != null, "an approximate band should be returned");
+      assert(
+        res.data.safeWindBand.high > res.data.safeWindBand.low,
+        "the band should be a range, not a line"
+      );
+      assert(res.data.exactSafeWind == null, "the exact threshold must never be sent");
+    })
+  );
+
+  results.push(
+    await runTest("A13b: Wind-Up release locks a tension in", "Happy Path", async () => {
+      const res = await tapi("POST", "/api/race/wind/release", {
+        raceId: ctx.raceId,
+        wallet: ctx.walletA,
+        heldMs: 2400,
+      });
+      assertStatus(res, 200);
+      assert(res.data.locked === true, "the wind should be locked");
+      assert(
+        ["under", "over", "snapped"].includes(res.data.band),
+        `band should be under/over/snapped, got ${res.data.band}`
+      );
+      assert(
+        res.data.tension > 0 && res.data.tension <= 100,
+        `tension should be 0-100, got ${res.data.tension}`
+      );
+    })
+  );
+
+  results.push(
+    await runTest("A13c: Wind-Up refuses a second release", "Edge Case", async () => {
+      const res = await tapi("POST", "/api/race/wind/release", {
+        raceId: ctx.raceId,
+        wallet: ctx.walletA,
+        heldMs: 3400,
+      });
+      // Re-releasing would let a player keep winding until they liked the answer.
+      assertStatus(res, 409);
+    })
+  );
+
+  results.push(
+    await runTest("A13d: Claimed hold cannot exceed the window", "Security", async () => {
+      // The client reports its own duration so latency does not cost it tension,
+      // which means the server has to bound the claim. An hour-long hold inside
+      // a ten-second window is the plain version of that attack.
+      const create = await tapi("POST", "/api/race/create", {
+        wallet: ctx.walletB,
+        racerId: ctx.freeRacerIdB,
+        format: "exhibition",
+      });
+      const raceId = create.data.raceId;
+      await tapi("POST", "/api/race/join", {
+        raceId,
+        racerId: ctx.freeRacerIdB,
+        wallet: ctx.walletB,
+      });
+      await tapi("POST", "/api/race/start-tuning", { raceId });
+      await tapi("POST", "/api/race/wind/start", { raceId, wallet: ctx.walletB });
+      const res = await tapi("POST", "/api/race/wind/release", {
+        raceId,
+        wallet: ctx.walletB,
+        heldMs: 3_600_000,
+      });
+      assertStatus(res, 200);
+      assert(
+        res.data.holdMs <= 10_000,
+        `hold should be capped at the phase window, got ${res.data.holdMs}ms`
+      );
+    })
+  );
+
   results.push(
     await runTest("A14: Simulate race", "Happy Path", async () => {
       const res = await tapi("POST", "/api/race/simulate", {
