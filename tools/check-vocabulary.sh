@@ -71,6 +71,26 @@ else
 fi
 
 echo
+echo "==> Raw codes rendered to players (must go through a label helper)"
+# Rarity and archetype are stored as theme-neutral CODES — common, speedster —
+# and the player must never see them. Twice now a screen rendered {racer.rarity}
+# and showed "legendary" where it should have said "Mint", including on the
+# upgrade reveal. Any JSX that interpolates .rarity or .race directly is wrong;
+# rarityLabel() and archetypeLabel() exist for it.
+#
+# A `{` preceded by `=` is a PROP, not a render — `archetype={racer.race}` hands
+# the code to a component that needs it, which is correct. Only bare children
+# are the bug, so the pattern requires a non-`=` character before the brace.
+code_hits=$(grep -rnE '[^=]\{[a-zA-Z]+\.(rarity|race)\}' --include=*.tsx frontend/src 2>/dev/null || true)
+if [ -n "$code_hits" ]; then
+  echo "$code_hits"
+  echo "FAIL: a raw code is being rendered — wrap it in rarityLabel/archetypeLabel"
+  fail=1
+else
+  echo "OK"
+fi
+
+echo
 echo "==> Wagering vocabulary (allowed only in the retirement migration)"
 bet_hits=$(grep -rinE "$BETTING_PATTERN" "${INCLUDES[@]}" "${EXCLUDES[@]}" "${SEARCH_PATHS[@]}" 2>/dev/null \
   | grep -vE "$BETTING_ALLOWED" || true)

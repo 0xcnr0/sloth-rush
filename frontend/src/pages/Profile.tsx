@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { CUR } from '../config/theme'
+import { CUR, rarityLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 interface ProfileData {
@@ -390,7 +390,7 @@ function InventorySection({ wallet }: { wallet: string }) {
           {item.rarity && (
             <p className="text-center mt-1">
               <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${RARITY_BADGE[item.rarity] || RARITY_BADGE.common}`}>
-                {item.rarity}
+                {rarityLabel(item.rarity)}
               </span>
             </p>
           )}

@@ -637,7 +637,7 @@ export default function Collection() {
                     )}
                   </div>
                   <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${RARITY_COLORS[racer.rarity] || ''}`}>
-                    {racer.rarity}
+                    {rarityLabel(racer.rarity)}
                   </span>
                 </div>
 
@@ -663,7 +663,7 @@ export default function Collection() {
 
                 <RacerPortrait
                   archetype={racer.race}
-                  rarity={racer.rarity}
+                  rarity={rarityLabel(racer.rarity)}
                   height={110}
                   still
                   className="mb-2"

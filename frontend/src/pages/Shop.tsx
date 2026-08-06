@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { THEME, CUR } from '../config/theme'
+import { THEME, CUR, rarityLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 // Keyed by package size code; the display names come from THEME.shopPackages.
@@ -267,7 +267,7 @@ export default function Shop() {
                         item.rarity === 'rare' ? 'bg-blue-500/20 text-blue-400' :
                         'bg-gray-500/20 text-gray-400'
                       }`}>
-                        {item.rarity}
+                        {rarityLabel(item.rarity)}
                       </span>
                     </p>
                   )}
