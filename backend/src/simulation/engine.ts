@@ -46,6 +46,8 @@ export interface RacerStats {
    * art folder to draw from this.
    */
   archetype?: string;
+  /** Rarity CODE — common…legendary. Visual only; never affects the sim. */
+  rarity?: string;
 
   // --- Wind-Up phase results (see simulation/windUp.ts) ---
   // Optional so an older caller, a replay or the standalone verifier can leave

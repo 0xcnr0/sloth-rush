@@ -729,7 +729,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
     // Grid order was decided by the Wind-Up phase; read it back rather than
     // re-deriving it, so the reveal the player saw is the grid that races.
     const participants = await getAll(
-      `SELECT rp.*, s.name, s.race, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
+      `SELECT rp.*, s.name, s.race, s.rarity, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
        FROM race_participants rp
        JOIN racers s ON rp.racer_id = s.id
        WHERE rp.race_id = $1
@@ -777,6 +777,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
       const staminaDrainMultiplier = overwindDrainMultiplier(p.wind_tension || 0, safeWind);
       return {
         archetype: p.race,
+        rarity: p.rarity,
         id: p.racer_id,
         name: p.name,
         wallet: p.wallet,
@@ -1103,6 +1104,9 @@ router.post("/simulate", async (req: Request, res: Response) => {
         // picks the art folder from it; without it every racer draws as the
         // same toy. Display labels stay in theme.ts.
         race: g.archetype,
+        // Rarity CODE. Purely a surface treatment on the client — it grants no
+        // stats, so this is the only thing that makes it visible at all.
+        rarity: g.rarity,
         position: g.gridPosition,
         tension: g.windTension ?? 0,
         snapped: (g.startStaminaFactor ?? 1) < 1,

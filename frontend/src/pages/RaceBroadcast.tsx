@@ -55,6 +55,7 @@ export default function RaceBroadcast() {
   // Each archetype's art loads once and is shared; the rig draws nothing until
   // all seven of its PNGs are in.
   const archetypeRef = useRef<Record<number, string>>({})
+  const rarityRef = useRef<Record<number, string>>({})
   // Walk phase and key angle accumulate per racer across frames; keeping them in
   // refs means playback scrubbing does not reset the animation mid-race.
   const phaseRef = useRef<Record<number, number>>({})
@@ -213,6 +214,7 @@ export default function RaceBroadcast() {
       // trickster / burst. Bots carry it too, so a lane of four reads as four
       // different toys rather than four Tinbots.
       if (gp.race) archetypeRef.current[gp.id] = gp.race
+      if (gp.rarity) rarityRef.current[gp.id] = gp.rarity
     })
     raceData.finalOrder?.forEach((fo: any) => {
       if (fo.race && !archetypeRef.current[fo.id]) archetypeRef.current[fo.id] = fo.race
@@ -319,6 +321,7 @@ export default function RaceBroadcast() {
           keyAngle: -keyRef.current[pos.id],
           facing: 1,
           dimmed: isBot,
+          rarity: rarityRef.current[pos.id],
         })
         phaseRef.current[pos.id] = phase + cadence(pos.speed * 2.2, RACER_HEIGHT) * 0.28
 
@@ -979,6 +982,7 @@ export default function RaceBroadcast() {
       // trickster / burst. Bots carry it too, so a lane of four reads as four
       // different toys rather than four Tinbots.
       if (gp.race) archetypeRef.current[gp.id] = gp.race
+      if (gp.rarity) rarityRef.current[gp.id] = gp.rarity
     })
     raceData.finalOrder?.forEach((fo: any) => {
       if (fo.race && !archetypeRef.current[fo.id]) archetypeRef.current[fo.id] = fo.race

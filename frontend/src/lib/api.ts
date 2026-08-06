@@ -113,6 +113,8 @@ export const api = {
         position: number
         /** Archetype code, for picking art. Display label lives in theme.ts. */
         race?: string
+        /** Rarity code — surface treatment only, no stat effect. */
+        rarity?: string
         /** What the racer wound to, 0-100 — the reveal's whole point. */
         tension: number
         /** Overwound past the snap point: last on the grid, reduced stamina. */

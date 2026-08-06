@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import WindUpPhase from '../components/PreRace/WindUpPhase'
 import GridReveal from '../components/PreRace/GridReveal'
+import RarityLadder from '../components/RarityLadder'
 import { THEME } from '../config/theme'
 
 /**
@@ -15,7 +16,7 @@ import { THEME } from '../config/theme'
  *
  * It is registered only when import.meta.env.DEV is true, so it never ships.
  */
-const PANELS = ['wind-up', 'grid-reveal'] as const
+const PANELS = ['wind-up', 'grid-reveal', 'rarity'] as const
 type Panel = (typeof PANELS)[number]
 
 export default function DevPreview() {
@@ -48,6 +49,8 @@ export default function DevPreview() {
           </button>
         ))}
       </nav>
+
+      {panel === 'rarity' && <RarityLadder />}
 
       {panel === 'grid-reveal' && (
         // Stub grid covering every outcome the reveal has to render: a pole

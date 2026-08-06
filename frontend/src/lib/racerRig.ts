@@ -143,6 +143,36 @@ export function rigFor(archetype: string): RacerRig {
 const ART_FACING = -1
 const COUNTER_FLIP = new Set<PartName>(['head'])
 
+/**
+ * Rarity as a material layer, per ART_DIRECTION §6.
+ *
+ * Rarity changes the SURFACE, never the form — that separation is the whole
+ * point: evolution is how big you grew, rarity is how well kept you are, and a
+ * player who confuses them has lost both. It is also the only thing rarity does,
+ * since it grants no stats (CLAUDE.md), so if it is invisible it does not exist.
+ *
+ * §6 assumes Rive material layers over sixteen assets. Drawing in canvas instead,
+ * the equivalent is a filter over the same seven parts — same economy, no extra
+ * art. These are TINT approximations of the material ladder, not real PBR: at
+ * 48-64px what survives is the shift in saturation and warmth, which is exactly
+ * what separates dull tin from chrome from gold leaf at that size. A card view
+ * showing one racer large deserves the real treatment.
+ *
+ * Codes stay theme-neutral (common…legendary); Fair→Mint are labels in theme.ts.
+ */
+const RARITY_FILTER: Record<string, string> = {
+  // Dull scratched tin: desaturated, slightly darker, a touch of age.
+  common: 'saturate(0.55) brightness(0.94) sepia(0.16)',
+  // Flat matte paint — the baseline the art was drawn at.
+  uncommon: '',
+  // Glossy lacquer: richer colour, brighter, crisper.
+  rare: 'saturate(1.28) brightness(1.07) contrast(1.06)',
+  // Chrome plating: colour drains toward metal, contrast climbs.
+  epic: 'saturate(0.28) brightness(1.2) contrast(1.18)',
+  // Gold leaf: warm, rich and the brightest of the ladder.
+  legendary: 'sepia(0.42) saturate(1.7) brightness(1.14) hue-rotate(-12deg)',
+}
+
 /** Sheet metal is thin but not invisible; letting the scale reach zero reads as a flicker. */
 const KEY_MIN_EDGE = 0.09
 
@@ -229,6 +259,8 @@ export interface DrawOptions {
   facing?: number
   /** Desaturate and skip the accent — bots read grey (ART_DIRECTION §10). */
   dimmed?: boolean
+  /** Rarity CODE (common…legendary). Drives the surface treatment only. */
+  rarity?: string
 }
 
 export function drawRacer(ctx: CanvasRenderingContext2D, rig: RacerRig, o: DrawOptions): void {
@@ -240,7 +272,10 @@ export function drawRacer(ctx: CanvasRenderingContext2D, rig: RacerRig, o: DrawO
   const [tw, th] = g.torso
 
   ctx.save()
-  if (o.dimmed) ctx.filter = 'saturate(0.15) brightness(1.1)'
+  // Bot dimming wins over rarity: a bot's job is to read as scenery, and a Mint
+  // bot glinting gold would pull the eye away from the racers that matter.
+  const filter = o.dimmed ? 'saturate(0.15) brightness(1.1)' : RARITY_FILTER[o.rarity ?? ''] ?? ''
+  if (filter) ctx.filter = filter
   ctx.translate(o.x, o.y)
   // Lean into the direction of travel, applied OUTSIDE the mirror so the body
   // always tips forwards rather than back.
