@@ -45,6 +45,19 @@ const RACER_COLORS = ['#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D', '#E63946', '#2
  * Canvas colours. The stylesheet's CSS variables cannot be read cheaply per
  * frame, so ART_DIRECTION §5 is mirrored here — if one moves, move both.
  */
+/**
+ * The lane deck: one drawn shelf compartment, stretched into each lane.
+ *
+ * The lanes used to be flat rectangles, and the reason that read so badly was
+ * not their size. `GROUND_AT` was 0.83, so the sky-blue wall was painted across
+ * the FULL height of the lane and the wood only covered the bottom 17% —
+ * starting exactly at the toy's feet and hidden behind them. Every racer was
+ * standing in open sky with a sliver of floor under its soles, which is why a
+ * carefully drawn toy looked pasted onto a diagram no matter what size it was.
+ */
+const laneDeck = new Image()
+laneDeck.src = '/art/lane-deck.webp'
+
 const PALETTE = {
   wall: '#C9DFF5',
   wallAlt: '#BFD8F0',
@@ -220,43 +233,21 @@ export default function RaceBroadcast() {
       // racers legible without shrinking them (ART_DIRECTION §8).
       for (let i = 0; i < numRacers; i++) {
         const top = TOP_MARGIN + i * LANE_HEIGHT
-        const ground = top + LANE_HEIGHT * GROUND_AT
 
-        // Wall behind the shelf, then the shelf itself. These are the locked
-        // ART_DIRECTION §5 colours; the lanes used to be #101a2e navy on #3a2f24
-        // brown, which is a night-time esports track, not a toy shelf in a lit
-        // room. Alternating lanes differ by a hair of brightness so the four
-        // read as separate shelves without the stripe becoming the loudest
-        // thing in the frame.
-        ctx.fillStyle = i % 2 === 0 ? PALETTE.wall : PALETTE.wallAlt
-        ctx.fillRect(SIDE_MARGIN, top, TRACK_WIDTH, LANE_HEIGHT)
-
-        const shelfTop = LANE_HEIGHT - LANE_HEIGHT * GROUND_AT
-        ctx.fillStyle = PALETTE.floor
-        ctx.fillRect(SIDE_MARGIN, ground, TRACK_WIDTH, shelfTop)
-        // Front edge of the shelf, darker, so the board reads as having depth.
-        ctx.fillStyle = PALETTE.floorEdge
-        ctx.fillRect(SIDE_MARGIN, ground + shelfTop - 4, TRACK_WIDTH, 4)
-
-        // Wood grain: a few long, faint strokes along the running direction.
-        ctx.strokeStyle = PALETTE.grain
-        ctx.lineWidth = 1
-        for (let g = 0; g < 3; g++) {
-          const y = ground + 3 + g * ((shelfTop - 6) / 3)
-          ctx.beginPath()
-          ctx.moveTo(SIDE_MARGIN + 4, y)
-          ctx.lineTo(SIDE_MARGIN + TRACK_WIDTH - 4, y)
-          ctx.stroke()
+        // The drawn deck fills the lane. Odd lanes are mirrored so four
+        // repeats of one image do not read as a repeating pattern.
+        if (laneDeck.complete && laneDeck.naturalWidth > 0) {
+          ctx.save()
+          if (i % 2 === 1) {
+            ctx.translate(SIDE_MARGIN * 2 + TRACK_WIDTH, 0)
+            ctx.scale(-1, 1)
+          }
+          ctx.drawImage(laneDeck, SIDE_MARGIN, top, TRACK_WIDTH, LANE_HEIGHT)
+          ctx.restore()
+        } else {
+          ctx.fillStyle = PALETTE.floor
+          ctx.fillRect(SIDE_MARGIN, top, TRACK_WIDTH, LANE_HEIGHT)
         }
-
-        // The line the toys stand on, in ink — the same outline weight the art
-        // uses, so the rig sits on the shelf instead of floating over it.
-        ctx.strokeStyle = PALETTE.ink
-        ctx.lineWidth = 1.5
-        ctx.beginPath()
-        ctx.moveTo(SIDE_MARGIN, ground)
-        ctx.lineTo(SIDE_MARGIN + TRACK_WIDTH, ground)
-        ctx.stroke()
 
         // Lane accent stripe — which lane is whose, at a glance (§10).
         ctx.fillStyle = RACER_COLORS[i] || PALETTE.ink
