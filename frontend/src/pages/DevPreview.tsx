@@ -2,6 +2,8 @@ import { useState } from 'react'
 import WindUpPhase from '../components/PreRace/WindUpPhase'
 import GridReveal from '../components/PreRace/GridReveal'
 import RarityLadder from '../components/RarityLadder'
+import RacerPortrait from '../components/RacerPortrait'
+import { rarityLabel, archetypeLabel } from '../config/theme'
 import { THEME } from '../config/theme'
 
 /**
@@ -16,7 +18,7 @@ import { THEME } from '../config/theme'
  *
  * It is registered only when import.meta.env.DEV is true, so it never ships.
  */
-const PANELS = ['wind-up', 'grid-reveal', 'rarity'] as const
+const PANELS = ['wind-up', 'grid-reveal', 'rarity', 'portraits'] as const
 type Panel = (typeof PANELS)[number]
 
 export default function DevPreview() {
@@ -51,6 +53,25 @@ export default function DevPreview() {
       </nav>
 
       {panel === 'rarity' && <RarityLadder />}
+
+      {panel === 'portraits' && (
+        // One per archetype, each on a different rung, so both axes are visible
+        // at once: which toy you got, and how well kept it is.
+        <div className="grid grid-cols-2 gap-4">
+          {([
+            ['tank', 'common'],
+            ['speedster', 'rare'],
+            ['trickster', 'epic'],
+            ['burst', 'legendary'],
+          ] as const).map(([code, rarity]) => (
+            <div key={code} className="rounded-xl border-2 border-brand-border bg-brand-surface p-3">
+              <RacerPortrait archetype={code} rarity={rarity} height={170} />
+              <p className="text-white text-sm font-semibold mt-2">{archetypeLabel(code)}</p>
+              <p className="text-gray-400 text-xs">{rarityLabel(rarity)}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {panel === 'grid-reveal' && (
         // Stub grid covering every outcome the reveal has to render: a pole

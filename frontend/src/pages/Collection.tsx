@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { THEME, CUR } from '../config/theme'
+import { THEME, CUR, rarityLabel, archetypeLabel } from '../config/theme'
+import RacerPortrait from '../components/RacerPortrait'
 import { useUpgrade } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
 import QuestPanel from '../components/QuestPanel'
@@ -1038,13 +1039,17 @@ export default function Collection() {
 
               {upgradeState === 'revealing' && (
                 <>
+                  {/* The toy is already there, still turning over — what is
+                      being revealed is its surface, not its existence. */}
                   <motion.div
                     initial={{ rotateY: 0 }}
                     animate={{ rotateY: 360 }}
-                    transition={{ duration: 1.5, ease: 'easeInOut' }}
-                    className="text-7xl mb-4 inline-block"
-                    style={{ perspective: '500px' }}
-                  >&#x2753;</motion.div>
+                    transition={{ duration: 1.5, ease: 'easeInOut', repeat: Infinity }}
+                    className="mb-4"
+                    style={{ perspective: '600px' }}
+                  >
+                    <RacerPortrait height={150} />
+                  </motion.div>
                   <p className="text-xl font-bold mb-2 text-brand-accent">Revealing Rarity...</p>
                   <p className="text-gray-400">Chainlink VRF determining your racer...</p>
                 </>
@@ -1053,17 +1058,21 @@ export default function Collection() {
               {upgradeState === 'done' && newRacer && (
                 <>
                   <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: 'spring', stiffness: 200 }}
-                    className="text-7xl mb-4"
-                  >&#x1f389;</motion.div>
+                    className="mb-3"
+                  >
+                    <RacerPortrait archetype={newRacer.race} rarity={newRacer.rarity} height={190} />
+                  </motion.div>
                   <h2 className="text-2xl font-bold text-white mb-2">{newRacer.name}</h2>
+                  {/* rarityLabel, not the raw code: the player is told "Mint",
+                      never "legendary" (CLAUDE.md §0). */}
                   <span className={`inline-block px-3 py-1 rounded-lg text-sm font-bold uppercase mb-4 ${RARITY_COLORS[newRacer.rarity] || ''}`}>
-                    {newRacer.rarity}
+                    {rarityLabel(newRacer.rarity)}
                   </span>
-                  <p className="text-gray-400 text-sm mb-2 capitalize">
-                    Race: {newRacer.race?.replace('_', ' ')}
+                  <p className="text-gray-400 text-sm mb-2">
+                    {archetypeLabel(newRacer.race)}
                   </p>
                   <p className="text-brand-primary font-semibold mb-4">+500 {CUR}</p>
                   {onchainUpgrade.hash && (
