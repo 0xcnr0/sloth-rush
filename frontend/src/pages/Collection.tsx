@@ -37,10 +37,6 @@ const RARITY_BORDER: Record<string, string> = {
   legendary: 'border-yellow-400',
 }
 
-// Arketip simgeleri tema içeriğidir, kodda sabitlenmez (CLAUDE.md §0).
-const RACER_EMOJI: Record<string, string> = Object.fromEntries(
-  Object.entries(THEME.archetypes).map(([code, a]) => [code, a.emoji]),
-)
 
 type UpgradeState = 'idle' | 'paying' | 'burning' | 'revealing' | 'done'
 
@@ -665,12 +661,18 @@ export default function Collection() {
                   </div>
                 )}
 
-                <div className="text-4xl text-center mb-3">
-                  {RACER_EMOJI[racer.race] || THEME.brand.mark}
-                </div>
+                <RacerPortrait
+                  archetype={racer.race}
+                  rarity={racer.rarity}
+                  height={110}
+                  still
+                  className="mb-2"
+                />
 
-                <p className="text-gray-400 text-xs text-center mb-3 capitalize">
-                  {racer.race?.replace('_', ' ')}
+                {/* archetypeLabel, not the raw code: the card says "Jetster",
+                    never "speedster" (CLAUDE.md §0). */}
+                <p className="text-gray-400 text-xs text-center mb-3">
+                  {archetypeLabel(racer.race)}
                 </p>
 
                 <div className="grid grid-cols-3 gap-1 mt-3 text-center text-xs">

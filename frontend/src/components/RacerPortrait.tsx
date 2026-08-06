@@ -14,11 +14,18 @@ export default function RacerPortrait({
   rarity,
   height = 220,
   className,
+  still = false,
 }: {
   archetype?: string
   rarity?: string
   height?: number
   className?: string
+  /**
+   * Draw one frame instead of animating. A collection grid can hold a dozen
+   * racers, and a dozen independent rAF loops is a real cost for motion nobody
+   * is looking at. The key still points somewhere sensible; it just stops.
+   */
+  still?: boolean
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
 
@@ -53,11 +60,22 @@ export default function RacerPortrait({
         keyAngle: -key,
         rarity,
       })
+      if (!still) frame = requestAnimationFrame(tick)
+    }
+
+    if (still) {
+      // The art may not have arrived yet, and a still portrait has no later
+      // frame to correct itself on — so retry until the rig reports ready.
+      const draw = () => {
+        tick()
+        if (!rigFor(archetype ?? 'tank').ready) frame = requestAnimationFrame(draw)
+      }
+      frame = requestAnimationFrame(draw)
+    } else {
       frame = requestAnimationFrame(tick)
     }
-    frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [archetype, rarity, height])
+  }, [archetype, rarity, height, still])
 
   return <canvas ref={ref} className={className} style={{ width: '100%', height }} />
 }
