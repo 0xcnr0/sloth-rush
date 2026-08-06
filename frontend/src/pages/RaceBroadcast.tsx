@@ -82,6 +82,14 @@ export default function RaceBroadcast() {
   const { address, isConnected } = useAccount()
   const previewMode =
     import.meta.env.DEV && new URLSearchParams(window.location.search).has('preview')
+  // Preview also stands in for a wallet, because the controls that need one are
+  // exactly the controls nobody can look at otherwise. Three rounds of this
+  // screen were changed without ever seeing it; the item buttons were about to
+  // be the fourth.
+  const previewRacerId = previewMode
+    ? Number(new URLSearchParams(window.location.search).get('racer')) || undefined
+    : undefined
+  const previewWallet = previewMode ? '0xPREVIEW' : undefined
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Each archetype's art loads once and is shared; the rig draws nothing until
   // all seven of its PNGs are in.
@@ -94,7 +102,7 @@ export default function RaceBroadcast() {
   const animFrameRef = useRef<number>(0)
 
   const isDemo = location.state?.demo === true
-  const playerRacerId = location.state?.racerId as number | undefined
+  const playerRacerId = (location.state?.racerId as number | undefined) ?? previewRacerId
 
   const [raceData, setRaceData] = useState<any>(location.state?.raceResult || null)
   const [currentTick, setCurrentTick] = useState(0)
@@ -812,7 +820,10 @@ export default function RaceBroadcast() {
               className="absolute pointer-events-none"
               style={{ left: `${leftPct}%`, top: '20%', transform: 'translateX(-50%)' }}
             >
-              <div className="bg-white text-brand-surface text-xs font-bold px-3 py-1.5 rounded-xl rounded-bl-none shadow-lg max-w-[200px]">
+              {/* Cream text on white — the second survivor of the blanket colour
+                  swap that made text-brand-bg into text-brand-surface. Invisible
+                  in both cases, and in both cases only findable by looking. */}
+              <div className="toy-chip text-brand-ink text-xs px-3 py-1.5 max-w-[200px]">
                 {speechBubble.text}
               </div>
             </motion.div>
@@ -865,7 +876,7 @@ export default function RaceBroadcast() {
           and only while it is running. The button says what happens; the server
           decides when, because a client-chosen tick could land in a moment the
           player had already watched. */}
-      {!raceFinished && playerRacerId && address && itemsLeft.length > 0 && (
+      {!raceFinished && playerRacerId && (address || previewWallet) && itemsLeft.length > 0 && (
         <div className="flex gap-3 mb-4">
           {(['boost', 'hinder'] as const).map(code => {
             const count = itemsLeft.filter(c => c === code).length
@@ -876,7 +887,7 @@ export default function RaceBroadcast() {
                 type="button"
                 disabled={deploying}
                 onClick={async () => {
-                  if (!id || !playerRacerId) return
+                  if (!id || !playerRacerId || !address) return
                   setDeploying(true)
                   try {
                     await api.deployItem(id, playerRacerId, address, code)
