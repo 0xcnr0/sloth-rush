@@ -457,9 +457,31 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 
 ## Şu An Neredeyiz
 
-Tema kilitli, Faz 1 `main`'de, Wind-Up fazı uçtan uca çalışıyor, dört arketip üretildi ve yarış görünümünde çiziliyor.
+V1 kapsamı sadeleştirildi ve `main`'de. Oyun döngüsü: **mint → mesafe ve loadout
+seç → yarış → yarışçı gelişir.** Oyun içi para yok; tek ödeme $3 Showcase
+upgrade'i ve o da görünüşü değiştiriyor.
 
-Kapılar tek komut: **`npm run verify`** (typecheck + `lint:vocab` + 53 birim testi). Kontrat testleri ayrı: `cd contracts && npx hardhat test` → 4/4.
+Kapılar tek komut: **`npm run verify`** (typecheck + `lint:vocab` +
+`check:verifier` + 17 birim testi). Uçtan uca: `QA_BYPASS_TOKEN=local-dev` ile
+iki tarafta da → **57/57**. Kontrat testleri ayrı: `cd contracts && npx hardhat test` → 4/4.
+
+> **`check:verifier` neden var:** `simulation/` altındaki bağımsız doğrulayıcı
+> motorun kendi kopyasını taşıyor — "sunucuya güvenmek zorunda değilsin"
+> iddiasının tamamı ona dayanıyor. O kopya 123 satır geride kalmıştı ve README'si
+> iki marka önceki oyunu anlatıyordu. Sunucudan farklı sonuç veren bir açık
+> doğrulayıcı, adalet iddiasını kanıtsız bırakmaz — **yanlış yapar.**
+
+### ⚠ Passive'ler yazılmış ama hiç çalışmamış
+
+Motorda altı passive dalı var (`late_surge`, `impact_resist`, `luck_magnet`,
+`fatigue_resist`, `misfortune_flip`, `overtake_boost`) ve `theme.ts` etiketlerini
+taşıyor. Ama **hiçbir şey passive atamıyor** — atayan tek yer kaldırdığımız manuel
+evrim ucuydu. Veritabanındaki 114 yarışçının hiçbirinde passive yok, yani bu
+dallar bir kez bile tetiklenmemiş.
+
+Dallar zararsız ve bir passive atanırsa doğru çalışırlar; o yüzden silmedim.
+Ama **doküman çalışıyormuş gibi yazıyordu, yazmıyor artık.** Karar: passive'ler
+nereden gelecek (mint? rarity? upgrade?) — alınmadı.
 
 ### Kontrat redeploy'u — bilinçli olarak bekletiliyor
 
@@ -473,10 +495,16 @@ Kontratlar yeniden adlandırıldı (`FreeRacer` / `Racer` / `RaceCore`), derlend
 
 ### Sıradaki iş kalemleri
 
-1. **Ekonomi yeniden dengeleme** (Sprint 9) — aşağıdaki açık kalem. Karar gerektiriyor.
-2. **Wind-Up fazını gerçek oyuncuyla dene** — API ve UI ayrı ayrı doğrulandı, ama cüzdan bağlı tam akış (lobi → faz → grid → yarış) elle oynanmadı.
-3. **Faz 0 artıkları** — `winduprush.xyz` al, `.mcp.json` yolları kırık, projeyi `_arsiv`'den ana dizine taşı.
-4. **Kontrat redeploy'u** — yukarıdaki tetikleyiciye bağlı.
+1. **Cüzdan bağlı tam oyun denemesi.** Uçtan uca API ile doğrulandı (57/57) ve
+   ekranla bakıldı, ama gerçek bir oyuncu tarafından baştan sona oynanmadı.
+   Özellikle yarış içi item butonları cüzdan gerektiriyor, o yüzden önizleme
+   modunda hiç görünmediler.
+2. **Mint stat tabanı.** Mint stat başına ~10 veriyor, tavanlar 15 (free) ve
+   22-35 (rarity). Taze yarışçı bütün sayıların ayarlandığı aralığın altında
+   başlıyor; Endurance'ı 53 saniyede koşmasının sebebi bu. Denge kararı.
+3. **Passive'ler** — yukarıdaki açık kalem.
+4. **Ücretsiz yarışçılara arketip atanmıyor**, hepsi Tinbot çiziliyor.
+5. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
 
 ### Sanat hattı — kanıtlanmış ve tekrarlanabilir
 

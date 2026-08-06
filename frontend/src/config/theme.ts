@@ -30,14 +30,6 @@ export const THEME = {
     mark: '\u{1F511}',
   },
 
-  currency: {
-    /** Short form used inline next to a number. */
-    symbol: 'SPRING',
-    /** Long form used in prose. */
-    name: 'SPRING',
-    plural: 'SPRING',
-  },
-
   /**
    * Race-flow labels. The code calls the pre-race window `tuning` (the DB status
    * and the route both say so); "Wind-Up" is what the player reads, so it lives
@@ -144,29 +136,6 @@ export const THEME = {
     boost: { name: 'Over-Wind', blurb: 'A hard turn of your own key.' },
     hinder: { name: 'Marble Under Foot', blurb: 'Rolls under whoever is leading.' },
   } as Record<string, { name: string; blurb: string }>,
-
-  /** Tactic-mode actions. Code says `boost` / `projectile`. */
-  tactics: {
-    boost: 'Turbo Wind',
-    projectile: 'Marble Toss',
-  } as Record<string, string>,
-
-  /** Mini games. Code names the action; the stat it trains is in the label. */
-  miniGames: {
-    dodge: 'Marble Dodge',
-    stretch: 'Spring Stretch',
-    lift: 'Tin Lift',
-    charm: 'Lucky Pick',
-    tap: 'Key Wind',
-  } as Record<string, string>,
-
-  /** Coin packages. Code says `bag` / `crate` / `pallet` / `container`. */
-  shopPackages: {
-    bag: 'Starter Pack',
-    crate: 'Gift Box',
-    pallet: 'Toy Chest',
-    container: "Collector's Crate",
-  } as Record<string, string>,
 
   /** Evolution tiers — form, not rarity. */
   evolutionTiers: {
@@ -317,7 +286,6 @@ export const THEME = {
 } as const
 
 /** Currency symbol — by far the most-used lookup, so it gets a short alias. */
-export const CUR = THEME.currency.symbol
 
 /** Display label for a racer tier code (`free` / `pro`). */
 export function tierLabel(type: string | undefined): string {
