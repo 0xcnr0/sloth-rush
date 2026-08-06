@@ -6,6 +6,7 @@
  */
 
 import { WIND_UP_TUNING, poleAccelerationBonus } from "./windUp";
+import { itemMultiplier, type ScheduledItem } from "./items";
 
 // Seeded PRNG (mulberry32) — deterministic random from seed
 function mulberry32(seed: number): () => number {
@@ -237,7 +238,20 @@ const RANDOM_EVENTS = [
   { type: "collision", chance: 0.0015, description: "Collision! Two racers tangled up!", stat: "ref" as const },
 ];
 
-export function simulateRace(participants: RacerStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false, trackLength: number = DEFAULT_TRACK_LENGTH): RaceResult {
+export function simulateRace(
+  participants: RacerStats[],
+  seed: string,
+  actions: TacticAction[] = [],
+  chaosMode: boolean = false,
+  trackLength: number = DEFAULT_TRACK_LENGTH,
+  /**
+   * Items scheduled onto future ticks. Applying one must never consume
+   * randomness — see items.ts. That is what lets the server re-simulate from
+   * tick 0 after every submission and still reproduce the frames it has
+   * already shown the client.
+   */
+  items: ScheduledItem[] = []
+): RaceResult {
   const maxTicks = maxTicksFor(trackLength);
   const rng = mulberry32(seedFromString(seed));
   const frames: RaceFrame[] = [];
@@ -460,7 +474,11 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
         tick < WIND_UP_TUNING.poleAccelerationTicks
           ? poleAccelerationBonus(s.gridPosition, fieldSize)
           : 0;
-      const targetSpeed = s.maxSpeed * staminaFactor * passiveSpeedMul;
+      // Items multiply the target speed and draw no numbers from `rng`, so the
+      // frames before an item's tick come out bit-identical with or without it.
+      const isLeader = s.distance >= leaderDist - 1e-9;
+      const itemMul = items.length ? itemMultiplier(items, s.id, isLeader, tick) : 1;
+      const targetSpeed = s.maxSpeed * staminaFactor * passiveSpeedMul * itemMul;
       if (s.speed < targetSpeed) {
         s.speed = Math.min(targetSpeed, s.speed + (s.acceleration + gridAccelBonus) * 0.1);
       } else {
