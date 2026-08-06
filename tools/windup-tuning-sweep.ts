@@ -24,6 +24,7 @@ import {
   safeWindThreshold,
 } from "../backend/src/simulation/windUp";
 import { simulateRace, type RacerStats } from "../backend/src/simulation/engine";
+import { SPRINT_LENGTH, ENDURANCE_LENGTH } from "../backend/src/simulation/formats";
 
 // ---------------------------------------------------------------------------
 // Sweep axes
@@ -33,7 +34,12 @@ import { simulateRace, type RacerStats } from "../backend/src/simulation/engine"
 const POLE_BONUS_AXIS = [0.0, 0.04, 0.08, 0.12, 0.16, 0.2, 0.28, 0.4];
 
 /** Extra stamina drain per tension point above Safe Wind. */
-const OVERWIND_PENALTY_AXIS = [0.0, 0.005, 0.01, 0.015, 0.02, 0.03, 0.045, 0.07];
+// Re-cut fine at the low end after the fatigue model was rebuilt (2026-08-06).
+// Fatigue is now absolute rather than a fraction of the track, so the overwind
+// drain multiplier compounds against a much steeper curve: every penalty at or
+// above 0.005 wiped the red strategy out entirely at Sprint distance. The
+// interesting region moved down by roughly an order of magnitude.
+const OVERWIND_PENALTY_AXIS = [0.0, 0.0005, 0.001, 0.002, 0.003, 0.005, 0.01, 0.02];
 
 const COMMITTED_POLE = WIND_UP_TUNING.poleAccelerationBonus; // 0.12
 const COMMITTED_PENALTY = WIND_UP_TUNING.overwindDrainPerPoint; // 0.015
@@ -180,7 +186,7 @@ function runRace(
     startStaminaFactor: e.snapped ? WIND_UP_TUNING.snapStaminaFactor : 1,
   }));
 
-  const result = simulateRace(participants, seed);
+  const result = simulateRace(participants, seed, [], false, TRACK_DISTANCE);
   const winnerId = result.finalOrder[0].id;
   const winner = entries.find((e) => e.racerId === winnerId)!.strategy;
 
@@ -272,6 +278,13 @@ function verdict(cell: CellResult) {
 // Main
 // ---------------------------------------------------------------------------
 
+/**
+ * Distance the sweep measures at. V1 ships two, and the Wind-Up trade-off is
+ * a stamina trade-off, so a verdict is only valid for the distance it was
+ * measured on — `--distance 3200` re-runs the whole grid for Endurance.
+ */
+let TRACK_DISTANCE = SPRINT_LENGTH;
+
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
@@ -284,13 +297,15 @@ async function main() {
   const statSigma = parseFloat(arg("statsigma", "6"));
   const seedBase = parseInt(arg("seed", "12345"), 10);
   const csvPath = arg("csv", "");
+  TRACK_DISTANCE = parseInt(arg("distance", String(SPRINT_LENGTH)), 10);
 
   console.log("Wind-Up tuning sweep — measurement only, nothing is written back.");
   console.log(
     `races/cell=${races}  stats=${statsMode}${statsMode === "varied" ? ` (sigma ${statSigma})` : ""}  executionJitter=${jitter}  seed=${seedBase}`
   );
   console.log(
-    `field: clean + edge + red + 1 bot. Chance = 25% per racer. Committed cell: pole=${COMMITTED_POLE} penalty=${COMMITTED_PENALTY}\n`
+    `field: clean + edge + red + 1 bot. Chance = 25% per racer. Committed cell: pole=${COMMITTED_POLE} penalty=${COMMITTED_PENALTY}\n` +
+    `distance=${TRACK_DISTANCE}${TRACK_DISTANCE === SPRINT_LENGTH ? " (Sprint)" : TRACK_DISTANCE === ENDURANCE_LENGTH ? " (Endurance)" : ""}\n`
   );
 
   const csvRows: string[] = [

@@ -155,7 +155,54 @@ export function applyGDAPurchase(state: GDAState, actionType: "boost" | "project
   }
 }
 
-const TRACK_LENGTH = 2800; // race distance units
+// Fallback only. Real races take their distance from the race format
+// (backend/src/simulation/formats.ts) — distance is the one lever that
+// changes which stat decides the race, so it belongs to the format, not
+// to the engine. Callers that omit it are tests and tuning harnesses.
+export const DEFAULT_TRACK_LENGTH = 2800; // race distance units
+
+/**
+ * Fatigue — the only thing that makes distance a real choice.
+ *
+ * Two things were wrong here and both are worth naming, because both were
+ * invisible while every gate stayed green.
+ *
+ * 1. The decay coefficient was `0.35 - sta * 0.015`, which reaches the 0.05
+ *    floor at STA 20. Every racer in the game sits above 20, so STA 25 and
+ *    STA 100 faded at exactly the same rate — six stats were advertised and
+ *    one of them did nothing.
+ * 2. Fatigue was measured as a fraction of the track (`distance > len * 0.6`),
+ *    so a race twice as long faded you over twice the distance at half the
+ *    rate. The shape was identical at every distance; a longer track was just
+ *    a longer wait.
+ *
+ * Now it is absolute: everyone runs fresh for `freeDistance`, then fades per
+ * `spanDistance` travelled beyond it, at a rate STA actually spans. That makes
+ * a long race a genuinely different question from a short one, which is the
+ * whole reason for having two.
+ *
+ * Measure any change with `distanceLever.check.ts` and `fatigueSweep.ts`.
+ */
+export const FATIGUE = {
+  /**
+   * Distance covered before anyone starts to fade. Deliberately short: a wound
+   * spring starts running down the moment it is released, so a long grace
+   * period reads wrong as well as measuring wrong. At 1200 the fade arrived so
+   * late that a sprinter had already built an unassailable lead, and the two
+   * formats came out identical (-97 vs -99).
+   */
+  freeDistance: 300,
+  /** Each additional span of this distance applies one full `decay` step. */
+  spanDistance: 850,
+  /** Decay at STA 0. */
+  decayAtZeroSta: 0.46,
+  /** Subtracted per point of STA — chosen so STA 100 lands on the floor. */
+  decayPerSta: 0.0060,
+  /** Nobody fades below this, or the tail of a long race stops being a race. */
+  minDecay: 0.04,
+  /** Hard floor on speed, so a spent racer still crosses the line. */
+  minSpeedFactor: 0.24,
+} as const;
 const TICKS_PER_SECOND = 10;
 const MAX_TICKS = 1500; // 150 seconds max
 
@@ -167,7 +214,7 @@ const RANDOM_EVENTS = [
   { type: "collision", chance: 0.0015, description: "Collision! Two racers tangled up!", stat: "ref" as const },
 ];
 
-export function simulateRace(participants: RacerStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false): RaceResult {
+export function simulateRace(participants: RacerStats[], seed: string, actions: TacticAction[] = [], chaosMode: boolean = false, trackLength: number = DEFAULT_TRACK_LENGTH): RaceResult {
   const rng = mulberry32(seedFromString(seed));
   const frames: RaceFrame[] = [];
   const events: RaceEvent[] = [];
@@ -219,7 +266,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     // Check for random events — chaos mode + weather affect frequency
     const eventInterval = chaosMode ? 5 : 10;
     const leaderDist = Math.max(...state.filter(s => !s.finished).map(s => s.distance));
-    const chaosMultiplier = chaosMode && leaderDist > TRACK_LENGTH * 0.7 ? 3 : chaosMode ? 2 : 1;
+    const chaosMultiplier = chaosMode && leaderDist > trackLength * 0.7 ? 3 : chaosMode ? 2 : 1;
     if (tick > 30 && tick % eventInterval === 0) {
       for (const event of RANDOM_EVENTS) {
         if (rng() < event.chance * 10 * chaosMultiplier * weatherMods.eventFreqMul) {
@@ -361,17 +408,20 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
       // something even for a racer whose decay already floored out.
       const fatigueMul = s.passive === 'fatigue_resist' ? 0.5 : 1;
       const staDecay =
-        Math.max(0.05, (0.35 - s.stamina * 0.015 * weatherMods.staMul) * fatigueMul) *
-        s.staminaDrainMultiplier;
-      const staminaFactor = s.distance > TRACK_LENGTH * 0.6
-        ? 1 - ((s.distance - TRACK_LENGTH * 0.6) / (TRACK_LENGTH * 0.4)) * staDecay
-        : 1;
+        Math.max(
+          FATIGUE.minDecay,
+          (FATIGUE.decayAtZeroSta - s.stamina * FATIGUE.decayPerSta * weatherMods.staMul) * fatigueMul
+        ) * s.staminaDrainMultiplier;
+      // Absolute, not a fraction of the track: distance has to cost something
+      // that a longer track charges more of, or the second format is decoration.
+      const fadeSpans = Math.max(0, s.distance - FATIGUE.freeDistance) / FATIGUE.spanDistance;
+      const staminaFactor = Math.max(FATIGUE.minSpeedFactor, 1 - fadeSpans * staDecay);
 
       // Passive abilities — speed multiplier
       let passiveSpeedMul = 1;
 
       // late_surge: last 33% of track +10% speed
-      if (s.passive === 'late_surge' && s.distance > TRACK_LENGTH * 0.67) {
+      if (s.passive === 'late_surge' && s.distance > trackLength * 0.67) {
         passiveSpeedMul *= 1.10;
       }
 
@@ -411,18 +461,18 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
       s.distance += moveSpeed;
 
       // Check finish
-      if (s.distance >= TRACK_LENGTH) {
+      if (s.distance >= trackLength) {
         s.finished = true;
         s.finishTick = tick;
         // Record how far PAST the line this racer went before clamping. Ticks are
         // discrete, so photo finishes land on the same tick constantly — and once
-        // distance is clamped to TRACK_LENGTH the tie-break below compares two
+        // distance is clamped to trackLength the tie-break below compares two
         // identical numbers, returns 0, and a stable sort silently falls back to
         // state order, which is grid order. That handed every same-tick finish to
         // whoever started further forward. Overshoot is the real signal: the racer
         // who travelled further past the line crossed it earlier within the tick.
-        s.finishOvershoot = s.distance - TRACK_LENGTH;
-        s.distance = TRACK_LENGTH;
+        s.finishOvershoot = s.distance - trackLength;
+        s.distance = trackLength;
       }
     }
 
@@ -459,7 +509,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     .sort((a, b) => {
       if (a.finishTick !== b.finishTick) return a.finishTick - b.finishTick;
       // Same tick: whoever went further past the line crossed it first. Comparing
-      // `distance` here does not work — it is clamped to TRACK_LENGTH on finish,
+      // `distance` here does not work — it is clamped to trackLength on finish,
       // so every photo finish tied at 0 and fell through to grid order.
       return b.finishOvershoot - a.finishOvershoot;
     })
@@ -476,7 +526,7 @@ export function simulateRace(participants: RacerStats[], seed: string, actions: 
     events,
     finalOrder,
     seed,
-    trackLength: TRACK_LENGTH,
+    trackLength: trackLength,
     totalTicks: frames.length,
     weather,
   };

@@ -50,8 +50,21 @@ export const WIND_UP_TUNING = {
   /** Winding past this breaks the spring. */
   snapPoint: 100,
 
-  /** Each point of tension above Safe Wind adds this much stamina drain. */
-  overwindDrainPerPoint: 0.015,
+  /**
+   * Each point of tension above Safe Wind adds this much stamina drain.
+   *
+   * Was 0.015, measured against the old fatigue model. When fatigue became
+   * absolute rather than a fraction of the track (see FATIGUE in engine.ts) the
+   * drain multiplier started compounding against a far steeper curve, and every
+   * penalty at or above 0.005 wiped overwinding out completely — 0-2% of player
+   * wins at Sprint distance. A phase whose bold option never pays is not a
+   * choice. Re-swept fine and re-committed at 0.0005, which is the only column
+   * where all three strategies survive at BOTH distances.
+   *
+   *   npx tsx tools/windup-tuning-sweep.ts --races 2600 --distance 1600
+   *   npx tsx tools/windup-tuning-sweep.ts --races 2600 --distance 3200
+   */
+  overwindDrainPerPoint: 0.0005,
 
   /** A snapped spring starts the race with this fraction of its stamina. */
   snapStaminaFactor: 0.7,

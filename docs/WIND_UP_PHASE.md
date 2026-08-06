@@ -174,7 +174,10 @@ CLAUDE.md'deki ekonomi tablosu bu yüzden geçici işaretli. Sprint 9'un "Number
 
 ## 13. Ölçüldü: risk almak kazandırıyor — ayar kilitli (2026-08-06)
 
-**Karar: pole avantajı 0.12, aşırı kurma cezası 0.015.** Değiştirme; değiştirmek istersen önce aşağıdaki taramayı yeniden koştur.
+> **GÜNCELLEME (aynı gün, yorgunluk modeli değişince):** Ceza **0.015 → 0.0005**.
+> Pole avantajı **0.12** olarak kaldı. Sebep §14'te.
+
+**Karar: pole avantajı 0.12, aşırı kurma cezası 0.0005.** Değiştirme; değiştirmek istersen önce aşağıdaki taramayı yeniden koştur.
 
 §6 şunu kritik ayar noktası olarak işaretlemişti: *"pole avantajı, aşırı kurmanın stamina maliyetini biraz aşmalı ki risk almak mantıklı olsun — ama herkesin kırmızıya kadar kurmasını sağlayacak kadar değil."* Bu tartışmayla değil ölçümle kapandı.
 
@@ -192,3 +195,65 @@ CLAUDE.md'deki ekonomi tablosu bu yüzden geçici işaretli. Sprint 9'un "Number
 **Ölçüm sırası önemliydi:** ilk tarama, foto-finiş beraberliklerini grid sırasına düşüren motor hatasından (`6138d9b`) önce koşmuştu. O hata sayılmamış fazladan bir pole avantajıydı, yani tam da ölçülen büyüklüğü kirletiyordu. Düzeltmeden sonra sayılar 0-3 puan kaydı, karar değişmedi — ama bu ancak yeniden koşturulduğu için bilinebilirdi.
 
 **Açık kalan:** faz karışık kadroda belirgin biçimde zayıflıyor (~33/35/31). Stat farkı mekaniği bastırıyor. Ayar aynasal maç verisinden okunmalı, ve fazın canlı oyunda ızgaranın ima ettiğinden daha az fark yaratması beklenmeli.
+
+
+---
+
+## 14. Ceza yeniden ölçüldü: yorgunluk değişti, ayar bayatladı (2026-08-06)
+
+§13'ün kararı doğru ölçülmüştü ama **ölçüldüğü zemin değişti.** V1'e ikinci bir
+mesafe (Sprint 1.600 / Endurance 3.200) eklenirken motorun yorgunluk modeli
+yeniden yazıldı, ve o model bu fazın tek gerçek maliyeti olan stamina'yı
+sürüyor. Kilitli bir sayıyı yerinde bırakmak, artık ölçmediği bir şeyi ölçüyor
+sanmak olurdu.
+
+**Neden yeniden yazıldı.** Eski model iki şeyi yanlış yapıyordu:
+
+1. Sönüm katsayısı `0.35 - STA × 0.015` idi ve **STA 20'de tabana çakılıyordu.**
+   Oyundaki her yarışçı 20'nin üstünde, yani STA 25 ile STA 100 tıpatıp aynı
+   hızda yoruluyordu. Altı istatistik ilan edilmişti, biri hiçbir şey yapmıyordu.
+2. Yorgunluk **pistin oranı** olarak ölçülüyordu (`mesafe > uzunluk × 0.6`).
+   İki kat uzun bir pist, iki kat mesafeye yayılmış yarı hızda bir sönüm
+   demekti — eğrinin şekli her mesafede aynı. Uzun pist sadece uzun bir bekleyiş
+   olurdu, farklı bir soru değil.
+
+Şimdi mutlak: herkes `freeDistance` kadar dinç koşar, sonra aşılan her
+`spanDistance` için bir tam sönüm adımı yer. Sabitler `engine.ts`'teki `FATIGUE`
+bloğunda; `fatigueSweep.ts` ile taranarak seçildiler, göz kararıyla değil.
+
+**Fazı ilgilendiren sonuç.** Aşırı kurma cezası bir *çarpandır* — çok daha dik
+bir eğriye çarpınca büyüdü. Yeniden taramada 0.005 ve üstündeki her ceza,
+kırmızı stratejiyi Sprint mesafesinde tamamen siliyordu (oyuncu kazançlarının
+%0-2'si). **Cesur seçeneğin hiç kazanmadığı bir faz, seçim içermez.** İlgi alanı
+bir büyüklük mertebesi aşağı kaymıştı, o yüzden ceza ekseni ince yeniden kesildi.
+
+**Yeni ölçüm — hücre iki mesafede birden ayakta kalmak zorunda:**
+
+| pole × ceza | Sprint (1.600) | Endurance (3.200) |
+|---|---|---|
+| 0.08 × 0.0005 | 30/47/24 | 32/44/24 |
+| **0.12 × 0.0005** | **26/46/28** | **29/45/26** |
+| 0.16 × 0.0005 | 23/47/31 | 26/46/28 |
+
+*(2.600 yarış/hücre, her iki mesafede de doğrulama koşusu.)*
+
+`clean/edge/red`, oyuncu kazançlarındaki pay. Ceza 0.0005, iki mesafede de üç
+stratejinin birden yaşadığı **tek** sütun.
+
+**Karar: pole 0.12 (değişmedi), ceza 0.0005.** Pole değerinin ayakta kalması
+tesadüf değil — §8'de gerekçelendirildiği gibi o bir ivme avantajı, mesafe
+avantajı değil, ve ivme yorgunluktan bağımsız. Değişmesi gereken, yorgunluğa
+*çarpan* olarak bağlı olan taraftı.
+
+**Alınacak ders §13'ün kendi cümlesinden daha geniş:** bir sayıyı ölçüp
+kilitlemek, o sayının dayandığı modeli de kilitlemez. Model değiştiğinde ölçüm
+sessizce bayatlar ve kilit hâlâ sağlam görünür. Bu tarama, yorgunluk
+değiştirildiği için değil, **değiştirildiği fark edildiği için** koştu.
+
+**Doğrulama komutu:**
+
+```
+npx tsx tools/windup-tuning-sweep.ts --races 2600 --distance 1600
+npx tsx tools/windup-tuning-sweep.ts --races 2600 --distance 3200
+npx tsx backend/src/simulation/distanceLever.check.ts
+```
