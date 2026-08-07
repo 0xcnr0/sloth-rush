@@ -21,7 +21,7 @@ function positionBadge(pos: number): string {
 }
 
 function positionColor(pos: number): string {
-  return pos === 1 ? 'text-yellow-400 font-bold' : pos === 2 ? 'text-brand-ink/80 font-bold' : pos === 3 ? 'text-orange-400 font-bold' : 'text-brand-dust'
+  return pos === 1 ? 'text-brand-gold font-bold' : pos === 2 ? 'text-brand-ink/80 font-bold' : pos === 3 ? 'text-brand-accent font-bold' : 'text-brand-dust'
 }
 
 export default function RaceHistory() {

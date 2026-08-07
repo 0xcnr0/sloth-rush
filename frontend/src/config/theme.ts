@@ -303,6 +303,31 @@ export function archetypeLabel(archetype: string | undefined | null): string {
 }
 
 /** Accent colour for an archetype code. */
+/**
+ * A bot's display name.
+ *
+ * The server names bots after the archetype code and a slot number —
+ * "Speedster-01", "Tank-02" — which is correct for the server: those names are
+ * theme-neutral, and race.ts says in a comment that the frontend renders the
+ * display label from this file. It never did, so `speedster`, `tank`,
+ * `trickster` and `burst` were on screen next to every bot, which is the exact
+ * leak CLAUDE.md §0 exists to stop, and CLAUDE.md's own roster says these are
+ * Jetster-01, Tinbot-02, Waddler-03, Chomper-04.
+ *
+ * lint:vocab did not catch it: it hunts retired brands and betting words, not
+ * archetype codes.
+ */
+export function racerDisplayName(
+  name: string | undefined | null,
+  archetype: string | undefined | null,
+): string {
+  if (!name) return '';
+  const slot = /-(\d+)$/.exec(name);
+  const label = archetypeLabel(archetype);
+  if (!slot || !archetype || !label) return name;
+  return `${label}-${slot[1]}`;
+}
+
 export function archetypeAccent(archetype: string | undefined | null): string | undefined {
   return archetype ? THEME.archetypes[archetype]?.accent : undefined
 }

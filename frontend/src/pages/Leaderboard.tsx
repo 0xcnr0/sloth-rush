@@ -15,10 +15,10 @@ type LeaderboardEntry = {
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'text-brand-dust',
-  uncommon: 'text-green-400',
-  rare: 'text-blue-400',
-  epic: 'text-purple-400',
-  legendary: 'text-yellow-400',
+  uncommon: 'text-brand-primary',
+  rare: 'text-brand-ink',
+  epic: 'text-brand-accent',
+  legendary: 'text-brand-gold',
 }
 
 type MainTab = 'season' | 'career'
@@ -121,10 +121,10 @@ export default function Leaderboard() {
                 className={`px-5 py-2 rounded-lg font-semibold text-sm transition-colors cursor-pointer capitalize ${
                   league === l
                     ? l === 'bronze'
-                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500'
+                      ? 'bg-brand-accent/20 text-brand-accent border border-brand-accent'
                       : l === 'silver'
-                      ? 'bg-gray-400/20 text-brand-ink/80 border border-gray-400'
-                      : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500'
+                      ? 'bg-brand-shelf/20 text-brand-ink/80 border border-brand-shelf'
+                      : 'bg-brand-gold/20 text-brand-gold border border-brand-gold'
                     : 'bg-brand-surface border border-brand-border text-brand-dust hover:text-brand-ink'
                 }`}
               >
@@ -200,7 +200,7 @@ export default function Leaderboard() {
                       transition={{ delay: i * 0.08 }}
                       className="bg-brand-surface border border-brand-border rounded-xl p-4 flex items-center gap-4"
                     >
-                      <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-2xl font-bold text-yellow-400">
+                      <div className="w-12 h-12 rounded-full bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-center text-2xl font-bold text-brand-gold">
                         {i + 1}
                       </div>
                       <div className="flex-1">
@@ -259,7 +259,7 @@ export default function Leaderboard() {
             <span className={`font-bold ${
               entry.rank === 1 ? 'text-brand-gold' :
               entry.rank === 2 ? 'text-brand-ink/80' :
-              entry.rank === 3 ? 'text-orange-400' : 'text-brand-dust'
+              entry.rank === 3 ? 'text-brand-accent' : 'text-brand-dust'
             }`}>
               {entry.rank <= 3 ? ['', '\u{1F947}', '\u{1F948}', '\u{1F949}'][entry.rank] : entry.rank}
             </span>

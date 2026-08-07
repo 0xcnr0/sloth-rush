@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { rigFor, drawRacer, cadence } from '../lib/racerRig'
-import { THEME } from '../config/theme'
+import { THEME, racerDisplayName, archetypeAccent } from '../config/theme'
 import RacerPortrait from '../components/RacerPortrait'
 import { getCommentary } from '../data/commentary'
 import { getDialogue, getEmote, getTrashTalk, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
@@ -44,7 +44,18 @@ interface FinalOrder {
 
 // The four locked archetype accents (ART_DIRECTION §3), reused as lane colours
 // so the stripes belong to the game rather than to Tailwind's default swatches.
+/**
+ * Fallback only. These four hexes are the archetype accents, and they live in
+ * theme.ts — this array held a second copy of them and, worse, was indexed by
+ * the racer's slot rather than by its archetype, so a Chomper was regularly
+ * drawn in the Jetster's red. Colour is how a player finds their toy
+ * (ART_DIRECTION §10); it has to follow the archetype.
+ */
 const RACER_COLORS = ['#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D', '#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D']
+
+function colorFor(archetype: string | undefined, fallbackIndex: number): string {
+  return archetypeAccent(archetype) ?? RACER_COLORS[fallbackIndex % RACER_COLORS.length]
+}
 
 /**
  * Canvas colours. The stylesheet's CSS variables cannot be read cheaply per
@@ -226,7 +237,7 @@ export default function RaceBroadcast() {
       (raceData.finalOrder ?? []).filter((f: any) => f.isBot).map((f: any) => f.id)
     )
     gridPositions.forEach((gp: any) => {
-      names.set(gp.id, gp.name)
+      names.set(gp.id, racerDisplayName(gp.name, gp.race))
       // `race` is the archetype code on the racer row — speedster / tank /
       // trickster / burst. Bots carry it too, so a lane of four reads as four
       // different toys rather than four Tinbots.
@@ -237,7 +248,7 @@ export default function RaceBroadcast() {
       if (fo.race && !archetypeRef.current[fo.id]) archetypeRef.current[fo.id] = fo.race
     })
     raceData.finalOrder?.forEach((fo: any) => {
-      if (!names.has(fo.id)) names.set(fo.id, fo.name)
+      if (!names.has(fo.id)) names.set(fo.id, racerDisplayName(fo.name, (fo as any).race))
     })
 
     const TOP_MARGIN = 22
@@ -510,7 +521,7 @@ export default function RaceBroadcast() {
         const depth = 0.86 + 0.30 * yFrac // nearer the camera, larger
         return {
           pos,
-          color: RACER_COLORS[Math.max(0, yOrder.indexOf(pos.id))] || PALETTE.dust,
+          color: colorFor(archetypeRef.current[pos.id], Math.max(0, yOrder.indexOf(pos.id))),
           yFrac,
           h: RACER_HEIGHT * depth,
           ground: RUN_TOP + RUN_H * (0.46 + 0.54 * yFrac),
@@ -673,7 +684,7 @@ export default function RaceBroadcast() {
           distance: pos.distance,
           name: names.get(pos.id) || `#${pos.id}`,
           speed: pos.speed,
-          color: RACER_COLORS[Math.max(0, yOrder.indexOf(pos.id))],
+          color: colorFor(archetypeRef.current[pos.id], Math.max(0, yOrder.indexOf(pos.id))),
           toGo: Math.max(0, Math.round(trackLength - pos.distance)),
           gap: Math.round(leadDist - pos.distance),
           isBot: bots.has(pos.id),
@@ -1142,13 +1153,13 @@ export default function RaceBroadcast() {
 
         {/* Weather visual overlay */}
         {raceData?.weather === 'rainy' && (
-          <div className="absolute inset-0 bg-blue-500/8 pointer-events-none" />
+          <div className="absolute inset-0 bg-brand-ink/10 pointer-events-none" />
         )}
         {raceData?.weather === 'stormy' && (
           <div className="absolute inset-0 bg-red-500/8 pointer-events-none animate-pulse" />
         )}
         {raceData?.weather === 'foggy' && (
-          <div className="absolute inset-0 bg-gray-400/10 pointer-events-none" />
+          <div className="absolute inset-0 bg-brand-shelf/10 pointer-events-none" />
         )}
 
         {/* Canvas flash effect on events */}
@@ -1399,7 +1410,7 @@ export default function RaceBroadcast() {
           const finalOrder: FinalOrder[] = raceData.finalOrder || []
           const names = new Map<number, string>()
           gridPositions.forEach((gp: any) => {
-      names.set(gp.id, gp.name)
+      names.set(gp.id, racerDisplayName(gp.name, gp.race))
       // `race` is the archetype code on the racer row — speedster / tank /
       // trickster / burst. Bots carry it too, so a lane of four reads as four
       // different toys rather than four Tinbots.
@@ -1409,7 +1420,7 @@ export default function RaceBroadcast() {
     raceData.finalOrder?.forEach((fo: any) => {
       if (fo.race && !archetypeRef.current[fo.id]) archetypeRef.current[fo.id] = fo.race
     })
-          finalOrder.forEach((fo: FinalOrder) => { if (!names.has(fo.id)) names.set(fo.id, fo.name) })
+          finalOrder.forEach((fo: FinalOrder) => { if (!names.has(fo.id)) names.set(fo.id, racerDisplayName(fo.name, (fo as any).race)) })
 
           // MVP 1: "Best Overtake" — Most positions gained (grid start → final)
           let bestClimber = { id: 0, name: '', gain: -99 }
@@ -1476,7 +1487,7 @@ export default function RaceBroadcast() {
                   const order = raceData.finalOrder as FinalOrder[]
                   const winTick = order[0]?.finishTick ?? 0
                   const RANK_LABEL = ['1.', '2.', '3.']
-                  const RANK_TINT = ['bg-brand-gold', 'bg-brand-shelf', 'bg-amber-700/70']
+                  const RANK_TINT = ['bg-brand-gold', 'bg-brand-shelf', 'bg-brand-accent/60']
                   return (
                     <div className="mb-8">
                       <div className="space-y-3">
@@ -1569,7 +1580,7 @@ export default function RaceBroadcast() {
                           initial={{ scale: 0, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ delay: 1.0 + i * 0.2, type: 'spring', stiffness: 300 }}
-                          className="bg-brand-bg/60 border border-brand-gold/30 rounded-xl p-3 text-center"
+                          className="bg-brand-surface border-2 border-brand-gold/40 rounded-xl p-3 text-center"
                         >
                           <div className="text-3xl mb-1">{award.emoji}</div>
                           <p className="text-brand-gold font-bold text-xs uppercase">{award.title}</p>

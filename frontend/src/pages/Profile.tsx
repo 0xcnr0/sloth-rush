@@ -66,9 +66,9 @@ export default function Profile() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {[
-          { label: 'XP', value: String(profile.xp), color: 'text-purple-400' },
+          { label: 'XP', value: String(profile.xp), color: 'text-brand-ink' },
           { label: 'Total Races', value: String(profile.totalRaces), color: 'text-brand-ink' },
-          { label: 'Win Rate', value: `${winRate}%`, color: 'text-yellow-400' },
+          { label: 'Win Rate', value: `${winRate}%`, color: 'text-brand-primary' },
           { label: 'Total Wins', value: String(profile.totalWins), color: 'text-brand-primary' },
           { label: 'Creatures', value: `${profile.freeRacerCount + profile.racerCount}`, color: 'text-brand-ink' },
         ].map((stat, i) => (
@@ -229,7 +229,7 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
                 <td className="px-4 py-3 text-brand-ink/80">{formatLabel(race.format)}</td>
                 <td className="px-4 py-3 text-brand-ink font-medium">{race.racerName}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className={race.position === 1 ? 'text-yellow-400 font-bold' : race.position === 2 ? 'text-brand-ink/80 font-bold' : race.position === 3 ? 'text-orange-400 font-bold' : 'text-brand-dust'}>
+                  <span className={race.position === 1 ? 'text-brand-gold font-bold' : race.position === 2 ? 'text-brand-ink/80 font-bold' : race.position === 3 ? 'text-brand-accent font-bold' : 'text-brand-dust'}>
                     {race.position === 1 ? '1st' : race.position === 2 ? '2nd' : race.position === 3 ? '3rd' : `${race.position}th`}
                   </span>
                 </td>
@@ -279,11 +279,11 @@ function InventorySection({ wallet }: { wallet: string }) {
   )
 
   const RARITY_BADGE: Record<string, string> = {
-    legendary: 'bg-yellow-500/20 text-yellow-400',
-    epic: 'bg-purple-500/20 text-purple-400',
-    rare: 'bg-blue-500/20 text-blue-400',
-    uncommon: 'bg-green-500/20 text-green-400',
-    common: 'bg-gray-500/20 text-brand-dust',
+    legendary: 'bg-brand-gold/20 text-brand-gold',
+    epic: 'bg-brand-accent/20 text-brand-accent',
+    rare: 'bg-brand-ink/10 text-brand-ink',
+    uncommon: 'bg-brand-primary/20 text-brand-primary',
+    common: 'bg-brand-shelf/20 text-brand-dust',
   }
 
   return (

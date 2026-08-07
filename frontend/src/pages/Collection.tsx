@@ -22,15 +22,15 @@ const RARITY_COLORS: Record<string, string> = {
   uncommon: 'bg-green-600 text-green-100',
   rare: 'bg-blue-600 text-blue-100',
   epic: 'bg-purple-600 text-purple-100',
-  legendary: 'bg-yellow-500 text-yellow-900',
+  legendary: 'bg-brand-gold text-brand-ink',
 }
 
 const RARITY_BORDER: Record<string, string> = {
   common: 'border-gray-600',
-  uncommon: 'border-green-500',
-  rare: 'border-blue-500',
-  epic: 'border-purple-500',
-  legendary: 'border-yellow-400',
+  uncommon: 'border-brand-primary',
+  rare: 'border-brand-ink',
+  epic: 'border-brand-accent',
+  legendary: 'border-brand-gold',
 }
 
 type UpgradeState = 'idle' | 'paying' | 'burning' | 'revealing' | 'done'
@@ -264,7 +264,7 @@ export default function Collection() {
               <button
                 onClick={() => handleQuickDemoRace(freeRacer.id)}
                 disabled={demoLoading === freeRacer.id}
-                className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-surface text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
+                className="toy-btn w-full py-4 bg-brand-primary text-brand-surface text-xl font-black"
               >
                 {demoLoading === freeRacer.id ? 'Starting Race...' : '\u26A1 Quick Race'}
               </button>
@@ -366,7 +366,7 @@ export default function Collection() {
                     <p className="text-brand-dust text-xs">
                       Racer #{racer.id}
                       {racer.tier && racer.tier > 1 && (
-                        <span className="ml-1 text-yellow-400" title={`Tier ${racer.tier}`}>
+                        <span className="ml-1 text-brand-gold" title={`Tier ${racer.tier}`}>
                           {'\u2B50'.repeat(racer.tier)}
                         </span>
                       )}
@@ -391,7 +391,7 @@ export default function Collection() {
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
                       streaks[racer.id].current_wins >= 5
                         ? 'bg-red-500/20 text-red-400 border border-red-500'
-                        : 'bg-orange-500/20 text-orange-400 border border-orange-500'
+                        : 'bg-brand-accent/20 text-brand-accent border border-brand-accent'
                     }`}>
                       {streaks[racer.id].current_wins >= 5 ? 'UNSTOPPABLE!' : `${streaks[racer.id].current_wins} Win Streak`} &#x1F525;
                     </span>
@@ -439,10 +439,10 @@ export default function Collection() {
                 {streaks[racer.id] && (() => {
                   const s = streaks[racer.id]
                   const badges: { icon: string; label: string; color: string }[] = []
-                  if (s.total_wins >= 1) badges.push({ icon: '\u2B50', label: 'First Win', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' })
-                  if (s.max_wins >= 3) badges.push({ icon: '\uD83D\uDD25', label: 'On Fire', color: 'bg-orange-500/20 text-orange-400 border-orange-500/50' })
-                  if (s.total_races >= 10) badges.push({ icon: '\uD83D\uDEE1\uFE0F', label: 'Veteran', color: 'bg-blue-500/20 text-blue-400 border-blue-500/50' })
-                  if (s.total_wins >= 10) badges.push({ icon: '\uD83C\uDFC6', label: 'Champion', color: 'bg-purple-500/20 text-purple-400 border-purple-500/50' })
+                  if (s.total_wins >= 1) badges.push({ icon: '\u2B50', label: 'First Win', color: 'bg-brand-gold/20 text-brand-gold border-brand-gold/50' })
+                  if (s.max_wins >= 3) badges.push({ icon: '\uD83D\uDD25', label: 'On Fire', color: 'bg-brand-accent/20 text-brand-accent border-brand-accent/50' })
+                  if (s.total_races >= 10) badges.push({ icon: '\uD83D\uDEE1\uFE0F', label: 'Veteran', color: 'bg-brand-ink/10 text-brand-ink border-brand-ink/40' })
+                  if (s.total_wins >= 10) badges.push({ icon: '\uD83C\uDFC6', label: 'Champion', color: 'bg-brand-accent/20 text-brand-accent border-brand-accent/50' })
                   if (s.current_wins >= 5) badges.push({ icon: '\uD83D\uDC51', label: 'Unbeatable', color: 'bg-red-500/20 text-red-400 border-red-500/50' })
                   if (badges.length === 0) return null
                   return (
@@ -479,7 +479,7 @@ export default function Collection() {
                   <button
                     onClick={() => handleQuickDemoRace(racer.id)}
                     disabled={demoLoading === racer.id}
-                    className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-brand-surface text-xl font-black rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all cursor-pointer shadow-lg shadow-yellow-500/30 disabled:opacity-50 animate-pulse hover:animate-none"
+                    className="toy-btn w-full py-4 bg-brand-primary text-brand-surface text-xl font-black"
                   >
                     {demoLoading === racer.id ? 'Starting Race...' : '\u26A1 Quick Race'}
                   </button>
@@ -537,7 +537,7 @@ export default function Collection() {
                     transition={{ delay: 0.5, duration: 1 }}
                     className="text-4xl mb-4"
                   >&#x1f525;</motion.div>
-                  <p className="text-xl font-bold mb-2 text-orange-400">Burning {THEME.tiers.free}...</p>
+                  <p className="text-xl font-bold mb-2 text-brand-accent">Burning {THEME.tiers.free}...</p>
                   <p className="text-brand-dust">Your racer is evolving!</p>
                 </>
               )}

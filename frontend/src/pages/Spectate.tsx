@@ -37,9 +37,9 @@ export default function Spectate() {
   }
 
   const statusColor = (s: string) => {
-    if (s === 'racing' || s === 'simulated') return 'text-green-400'
-    if (s === 'tuning') return 'text-yellow-400'
-    if (s === 'lobby') return 'text-blue-400'
+    if (s === 'racing' || s === 'simulated') return 'text-brand-primary'
+    if (s === 'tuning') return 'text-brand-gold'
+    if (s === 'lobby') return 'text-brand-ink'
     return 'text-brand-dust'
   }
 
@@ -101,8 +101,8 @@ export default function Spectate() {
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-green-400 text-xs font-semibold">LIVE</span>
+                  <span className="w-2 h-2 bg-brand-primary rounded-full animate-pulse" />
+                  <span className="text-brand-primary text-xs font-semibold">LIVE</span>
                 </div>
                 <button
                   onClick={() => navigate(`/race/${race.raceId || race.id}`)}
