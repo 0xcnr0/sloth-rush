@@ -133,7 +133,7 @@ export const THEME = {
    */
   items: {
     boost: { name: 'Over-Wind', blurb: 'A hard turn of your own key.' },
-    hinder: { name: 'Marble Under Foot', blurb: 'Rolls under whoever is leading.' },
+    hinder: { name: 'Marble Under Foot', blurb: 'Rolls under the racer you pick.' },
   } as Record<string, { name: string; blurb: string }>,
 
   /** Evolution tiers — form, not rarity. */

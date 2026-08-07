@@ -169,6 +169,7 @@ export default function RaceBroadcast() {
   // the client only ever asks — it never proposes a moment.
   const [itemsLeft, setItemsLeft] = useState<string[]>([])
   const [deploying, setDeploying] = useState(false)
+  const [aimingAt, setAimingAt] = useState<'hinder' | null>(null)
   const racerRacesRef = useRef<Map<number, string>>(new Map()) // id -> race type
   const currentTickRef = useRef(0)
   const pausedRef = useRef(false)
@@ -1265,56 +1266,100 @@ export default function RaceBroadcast() {
 
       </div>
 
-      {/* Item controls. Only the player who owns a racer in this race sees them,
-          and only while it is running. The button says what happens; the server
-          decides when, because a client-chosen tick could land in a moment the
-          player had already watched. */}
-      {!raceFinished && playerRacerId && (address || previewWallet) && itemsLeft.length > 0 && (
-        <div className="flex gap-3 mb-4">
-          {(['boost', 'hinder'] as const).map(code => {
-            const count = itemsLeft.filter(c => c === code).length
-            if (count === 0) return null
-            // Preview mode signs with a placeholder address the server rightly
-            // rejects. The button still renders — seeing it is the whole point
-            // of preview — but it says so instead of erroring on click.
-            const canDeploy = Boolean(address ?? previewWallet)
-            return (
-              <button
-                key={code}
-                type="button"
-                disabled={deploying || !canDeploy}
-                title={canDeploy ? undefined : 'Connect a wallet to deploy items'}
-                data-testid={`item-${code}`}
-                onClick={async () => {
-                  const wallet = address ?? previewWallet
-                  if (!id || !playerRacerId || !wallet) return
-                  setDeploying(true)
-                  try {
-                    await api.deployItem(id, playerRacerId, wallet, code)
-                    setItemsLeft(prev => {
-                      const next = [...prev]
-                      next.splice(next.indexOf(code), 1)
-                      return next
-                    })
-                    toast.success(`${THEME.items[code].name} away!`)
-                  } catch (err: any) {
-                    toast.error(err.message)
-                  }
-                  setDeploying(false)
-                }}
-                className={`toy-btn flex-1 py-3 px-4 ${
-                  canDeploy
-                    ? 'bg-brand-gold text-brand-ink'
-                    : 'bg-brand-shelf text-brand-dust cursor-not-allowed'
-                }`}
-              >
-                {THEME.items[code].name}
-                {count > 1 && <span className="ml-2 text-sm">×{count}</span>}
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {/* Item controls.
+          `hinder` names its victim. It used to land on whoever happened to be
+          leading, which looked like a decision and was not one — the game chose
+          the target and the player only chose a moment. Choosing who is the
+          decision: slow the leader, or slow the one closing on you. The server
+          still chooses the tick, because a client-chosen one could land in a
+          moment the player had already watched. */}
+      {!raceFinished && playerRacerId && (address || previewWallet) && itemsLeft.length > 0 && (() => {
+        const wallet = address ?? previewWallet
+        const canDeploy = Boolean(wallet)
+        const mine = livePositions.find(p => p.id === playerRacerId)
+        const targets = livePositions.filter(p => p.id !== playerRacerId)
+
+        async function send(code: 'boost' | 'hinder', targetId?: number) {
+          if (!id || !playerRacerId || !wallet) return
+          setDeploying(true)
+          try {
+            await api.deployItem(id, playerRacerId, wallet, code, targetId)
+            setItemsLeft(prev => {
+              const next = [...prev]
+              next.splice(next.indexOf(code), 1)
+              return next
+            })
+            toast.success(`${THEME.items[code].name} away!`)
+          } catch (err: any) {
+            toast.error(err.message)
+          }
+          setDeploying(false)
+          setAimingAt(null)
+        }
+
+        return (
+          <div className="mb-4">
+            <div className="flex gap-3">
+              {(['boost', 'hinder'] as const).map(code => {
+                const count = itemsLeft.filter(c => c === code).length
+                if (count === 0) return null
+                const arming = aimingAt === code
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    disabled={deploying || !canDeploy}
+                    title={canDeploy ? undefined : 'Connect a wallet to deploy items'}
+                    data-testid={`item-${code}`}
+                    onClick={() => {
+                      if (code === 'boost') { void send('boost'); return }
+                      setAimingAt(arming ? null : 'hinder')
+                    }}
+                    className={`toy-btn flex-1 py-3 px-4 ${
+                      !canDeploy ? 'bg-brand-shelf text-brand-dust cursor-not-allowed'
+                      : arming ? 'bg-brand-accent text-brand-surface'
+                      : 'bg-brand-gold text-brand-ink'
+                    }`}
+                  >
+                    {arming ? 'Pick a target' : THEME.items[code].name}
+                    {count > 1 && <span className="ml-2 text-sm">{'\u00D7'}{count}</span>}
+                  </button>
+                )
+              })}
+            </div>
+
+            {aimingAt === 'hinder' && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {targets.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    disabled={deploying}
+                    data-testid={`target-${t.id}`}
+                    onClick={() => void send('hinder', t.id)}
+                    className="toy-panel px-2 py-2 text-left"
+                  >
+                    <span
+                      className="block h-1 w-8 rounded-full mb-1"
+                      style={{ backgroundColor: t.color }}
+                    />
+                    <span className="block text-brand-ink text-xs font-semibold truncate">{t.name}</span>
+                    <span className="block text-brand-dust text-[10px]">
+                      {(() => {
+                        // Relative to the player, not to the leader — "18m
+                        // ahead of you" is the number that decides who to hit.
+                        const d = Math.round(t.distance - (mine?.distance ?? 0))
+                        if (t.gap === 0) return d > 0 ? `leader, +${d}m` : 'leader'
+                        return d >= 0 ? `+${d}m ahead` : `${-d}m behind`
+                      })()}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Live standings.
           Gap in metres, not a percentage. "47%" answers neither question a

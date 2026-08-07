@@ -317,13 +317,27 @@ router.post("/start", async (req: Request, res: Response) => {
 
     // Bots use both items at seeded moments. They are not smart about it — the
     // point is that a bot lane is not visibly inert while the player's is.
+    const gridIds = await getAll(
+      "SELECT racer_id FROM race_participants WHERE race_id = $1",
+      [raceId]
+    );
     for (const bot of botRows) {
       const r = mulberry32(seedFromString(seed + ":botitems:" + bot.racer_id));
       for (const code of ["boost", "hinder"] as const) {
         const tick = Math.floor(60 + r() * 240);
+        // A bot's hinder needs a victim for the same reason a player's does.
+        // Picked deterministically from the rest of the grid, so the race stays
+        // a function of the seed.
+        let target: number | null = null;
+        if (code === "hinder") {
+          const others = gridIds
+            .map((g: any) => g.racer_id)
+            .filter((rid: number) => rid !== bot.racer_id);
+          target = others.length ? others[Math.floor(r() * others.length)] : null;
+        }
         await query(
-          "INSERT INTO race_items (race_id, racer_id, wallet, code, tick) VALUES ($1, $2, $3, $4, $5)",
-          [raceId, bot.racer_id, `bot_${bot.racer_id}`, code, tick]
+          "INSERT INTO race_items (race_id, racer_id, wallet, code, target_id, tick) VALUES ($1, $2, $3, $4, $5, $6)",
+          [raceId, bot.racer_id, `bot_${bot.racer_id}`, code, target, tick]
         );
       }
     }
@@ -446,7 +460,7 @@ router.get("/:id/items", async (req: Request, res: Response) => {
 // the old Tactic Mode restart the race.
 router.post("/item", async (req: Request, res: Response) => {
   try {
-    const { raceId, racerId, wallet, code } = req.body;
+    const { raceId, racerId, wallet, code, targetId } = req.body;
     if (!raceId || !racerId || !wallet || !code) {
       res.status(400).json({ error: "raceId, racerId, wallet and code required" });
       return;
@@ -487,6 +501,31 @@ router.post("/item", async (req: Request, res: Response) => {
       return;
     }
 
+    // `hinder` names its victim. It used to hit whoever happened to be leading,
+    // which the player did not choose — the only thing they picked was a
+    // moment. The target must be someone else in this race.
+    let resolvedTarget: number | null = null;
+    if (code === "hinder") {
+      const parsedTarget = parseInt(String(targetId), 10);
+      if (!Number.isFinite(parsedTarget)) {
+        res.status(400).json({ error: "targetId required for this item" });
+        return;
+      }
+      if (parsedTarget === parseInt(String(racerId), 10)) {
+        res.status(400).json({ error: "cannot target yourself" });
+        return;
+      }
+      const inRace = await getOne(
+        "SELECT 1 FROM race_participants WHERE race_id = $1 AND racer_id = $2",
+        [raceId, parsedTarget]
+      );
+      if (!inRace) {
+        res.status(400).json({ error: "target is not in this race" });
+        return;
+      }
+      resolvedTarget = parsedTarget;
+    }
+
     const frontier = revealedTick(race);
     const tick = earliestSchedulableTick(frontier);
     if (!isSchedulable(tick, frontier)) {
@@ -495,11 +534,11 @@ router.post("/item", async (req: Request, res: Response) => {
     }
 
     await query(
-      "INSERT INTO race_items (race_id, racer_id, wallet, code, tick) VALUES ($1, $2, $3, $4, $5)",
-      [raceId, parseInt(String(racerId), 10), wallet, code, tick]
+      "INSERT INTO race_items (race_id, racer_id, wallet, code, target_id, tick) VALUES ($1, $2, $3, $4, $5, $6)",
+      [raceId, parseInt(String(racerId), 10), wallet, code, resolvedTarget, tick]
     );
 
-    res.json({ deployed: true, code, tick, revealedTick: frontier });
+    res.json({ deployed: true, code, targetId: resolvedTarget, tick, revealedTick: frontier });
   } catch (err) {
     console.error("POST /item error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -566,11 +605,14 @@ router.post("/simulate", async (req: Request, res: Response) => {
     // simulation, which is what lets this endpoint be called repeatedly during
     // a race and keep returning the same frames for the part already shown.
     const itemRows = await getAll(
-      "SELECT racer_id, code, tick FROM race_items WHERE race_id = $1 ORDER BY tick, id",
+      "SELECT racer_id, code, target_id, tick FROM race_items WHERE race_id = $1 ORDER BY tick, id",
       [raceId]
     );
     const items: ScheduledItem[] = itemRows.map((r: any) => ({
-      racerId: r.racer_id, code: r.code as ItemCode, tick: r.tick,
+      racerId: r.racer_id,
+      code: r.code as ItemCode,
+      targetId: r.target_id ?? undefined,
+      tick: r.tick,
     }));
 
     // Tactic Mode is cut, so no race carries actions. The engine still accepts

@@ -497,8 +497,7 @@ export function simulateRace(
           : 0;
       // Items multiply the target speed and draw no numbers from `rng`, so the
       // frames before an item's tick come out bit-identical with or without it.
-      const isLeader = s.distance >= leaderDist - 1e-9;
-      const itemMul = items.length ? itemMultiplier(items, s.id, isLeader, tick) : 1;
+      const itemMul = items.length ? itemMultiplier(items, s.id, tick) : 1;
       const targetSpeed = s.maxSpeed * staminaFactor * passiveSpeedMul * itemMul;
       if (s.speed < targetSpeed) {
         s.speed = Math.min(targetSpeed, s.speed + (s.acceleration + gridAccelBonus) * 0.1);

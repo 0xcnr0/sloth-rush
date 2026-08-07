@@ -59,7 +59,7 @@ test('several items stack without disturbing the shared prefix', () => {
   ]);
   const more = simulateRace(field(), SEED, [], false, 1600, [
     { racerId: 1, code: 'boost', tick: 60 },
-    { racerId: 2, code: 'hinder', tick: T },
+    { racerId: 2, code: 'hinder', targetId: 1, tick: T },
     { racerId: 3, code: 'boost', tick: T + 10 },
   ]);
   assert.equal(framesUpTo(more, T), framesUpTo(base, T));
@@ -74,28 +74,34 @@ test('nothing may be scheduled onto a tick the player has already seen', () => {
 });
 
 test('a racer cannot be slowed to a standstill', () => {
-  const many = Array.from({ length: 6 }, (_, i) => ({
-    racerId: 9, code: 'hinder' as const, tick: 0,
+  const many = Array.from({ length: 6 }, () => ({
+    racerId: 9, code: 'hinder' as const, targetId: 1, tick: 0,
   }));
-  const mul = itemMultiplier(many, 1, true, 10);
+  const mul = itemMultiplier(many, 1, 10);
   assert.ok(mul >= ITEM_TUNING.hinderFloor, `floor breached: ${mul}`);
 });
 
-test('boost applies to the user, hinder applies to the leader and not the user', () => {
+test('boost applies to the user, hinder applies to the racer it names', () => {
   const boost = [{ racerId: 1, code: 'boost' as const, tick: 0 }];
-  assert.ok(itemMultiplier(boost, 1, false, 10) > 1, 'the user should speed up');
-  assert.equal(itemMultiplier(boost, 2, false, 10), 1, 'nobody else should');
+  assert.ok(itemMultiplier(boost, 1, 10) > 1, 'the user should speed up');
+  assert.equal(itemMultiplier(boost, 2, 10), 1, 'nobody else should');
 
-  const hinder = [{ racerId: 1, code: 'hinder' as const, tick: 0 }];
-  assert.ok(itemMultiplier(hinder, 2, true, 10) < 1, 'the leader should slow');
-  assert.equal(itemMultiplier(hinder, 1, true, 10), 1, 'never the thrower, even if leading');
-  assert.equal(itemMultiplier(hinder, 3, false, 10), 1, 'and not a racer in the pack');
+  // The target is named by the player, not derived from the running order —
+  // deriving it would make the result depend on the state at the apply tick,
+  // and the same item list would stop reproducing the same race.
+  const hinder = [{ racerId: 1, code: 'hinder' as const, targetId: 3, tick: 0 }];
+  assert.ok(itemMultiplier(hinder, 3, 10) < 1, 'the named target should slow');
+  assert.equal(itemMultiplier(hinder, 2, 10), 1, 'a racer who was not named should not');
+  assert.equal(itemMultiplier(hinder, 1, 10), 1, 'and never the thrower');
+
+  const atSelf = [{ racerId: 1, code: 'hinder' as const, targetId: 1, tick: 0 }];
+  assert.equal(itemMultiplier(atSelf, 1, 10), 1, 'naming yourself does nothing');
 });
 
 test('an item stops mattering once its window closes', () => {
   const items = [{ racerId: 1, code: 'boost' as const, tick: 100 }];
-  assert.equal(itemMultiplier(items, 1, false, 99), 1);
-  assert.ok(itemMultiplier(items, 1, false, 100) > 1);
-  assert.ok(itemMultiplier(items, 1, false, 100 + ITEM_TUNING.durationTicks - 1) > 1);
-  assert.equal(itemMultiplier(items, 1, false, 100 + ITEM_TUNING.durationTicks), 1);
+  assert.equal(itemMultiplier(items, 1, 99), 1);
+  assert.ok(itemMultiplier(items, 1, 100) > 1);
+  assert.ok(itemMultiplier(items, 1, 100 + ITEM_TUNING.durationTicks - 1) > 1);
+  assert.equal(itemMultiplier(items, 1, 100 + ITEM_TUNING.durationTicks), 1);
 });

@@ -85,10 +85,16 @@ export const api = {
       durationTicks: number
     }>(`/race/${raceId}/items?racerId=${racerId}`),
 
-  deployItem: (raceId: string, racerId: number, wallet: string, code: 'boost' | 'hinder') =>
-    request<{ deployed: boolean; code: string; tick: number; revealedTick: number }>(
+  deployItem: (
+    raceId: string,
+    racerId: number,
+    wallet: string,
+    code: 'boost' | 'hinder',
+    targetId?: number,
+  ) =>
+    request<{ deployed: boolean; code: string; targetId: number | null; tick: number; revealedTick: number }>(
       '/race/item',
-      { method: 'POST', body: JSON.stringify({ raceId, racerId, wallet, code }) }
+      { method: 'POST', body: JSON.stringify({ raceId, racerId, wallet, code, targetId }) }
     ),
 
   simulateRace: (raceId: string) =>

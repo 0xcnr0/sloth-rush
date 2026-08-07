@@ -143,6 +143,11 @@ export async function initDB() {
       racer_id INTEGER NOT NULL,
       wallet TEXT NOT NULL,
       code TEXT NOT NULL CHECK(code IN ('boost', 'hinder')),
+      -- Who a hinder lands on. Named by the player and stored, not derived from
+      -- the running order at apply time — deriving it would make the same item
+      -- list produce a different race, and the whole verifiability claim rests
+      -- on it not doing that. NULL for boost, which acts on its user.
+      target_id INTEGER,
       -- The tick the effect starts on. Always ahead of the reveal frontier at
       -- the moment of submission.
       tick INTEGER NOT NULL,
@@ -350,6 +355,7 @@ export async function initDB() {
       ALTER TABLE racers ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0;
       ALTER TABLE racers ADD COLUMN IF NOT EXISTS evolution_path TEXT;
       ALTER TABLE racers ADD COLUMN IF NOT EXISTS passive TEXT;
+      ALTER TABLE race_items ADD COLUMN IF NOT EXISTS target_id INTEGER;
     `);
     // Set defaults for existing rows
     await pool.query(`UPDATE racers SET tier = 0 WHERE type = 'free' AND tier IS NULL`);

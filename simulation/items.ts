@@ -2,7 +2,12 @@
  * Race items — the one decision a player makes while a race is running.
  *
  * Two codes, theme-neutral as always (CLAUDE.md §0): `boost` acts on yourself,
- * `hinder` acts on whoever is leading. Labels live in theme.ts.
+ * `hinder` acts on a racer you name. Labels live in theme.ts.
+ *
+ * `hinder` used to hit whoever happened to be leading, which read as a decision
+ * and was not one: the game picked the target, and the only thing the player
+ * chose was a moment. Naming the target is the decision — hit the leader, or
+ * hit the one closing on you from behind.
  *
  * ## Why this can exist now when Tactic Mode could not
  *
@@ -32,6 +37,13 @@ export interface ScheduledItem {
   /** The racer who used it. */
   racerId: number;
   code: ItemCode;
+  /**
+   * Who it lands on. Required for `hinder`, ignored for `boost` (which always
+   * acts on its user). Stored rather than derived so a replay of the same item
+   * list reproduces the same race — deriving "the leader" at apply time would
+   * make the result depend on the state at that tick.
+   */
+  targetId?: number;
   /** Tick the effect starts on. Must be beyond the revealed frontier. */
   tick: number;
 }
@@ -45,7 +57,7 @@ export const ITEM_TUNING = {
   durationTicks: 50,
   /** Multiplier applied to the user's own speed. */
   boostMultiplier: 1.18,
-  /** Multiplier applied to the leader's speed. */
+  /** Multiplier applied to the named target's speed. */
   hinderMultiplier: 0.82,
   /**
    * Nothing may be slowed below this share of its own speed. A racer that can
@@ -65,7 +77,6 @@ export const ITEM_TUNING = {
 export function itemMultiplier(
   items: ScheduledItem[],
   racerId: number,
-  isLeader: boolean,
   tick: number
 ): number {
   let mul = 1;
@@ -73,7 +84,7 @@ export function itemMultiplier(
     if (tick < it.tick || tick >= it.tick + ITEM_TUNING.durationTicks) continue;
     if (it.code === 'boost' && it.racerId === racerId) {
       mul *= ITEM_TUNING.boostMultiplier;
-    } else if (it.code === 'hinder' && it.racerId !== racerId && isLeader) {
+    } else if (it.code === 'hinder' && it.targetId === racerId && it.racerId !== racerId) {
       mul *= ITEM_TUNING.hinderMultiplier;
     }
   }
