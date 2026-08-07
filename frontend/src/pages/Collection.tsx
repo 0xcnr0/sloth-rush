@@ -53,12 +53,12 @@ export default function Collection() {
     if (!address || demoLoading) return
     setDemoLoading(racerId)
     try {
-      const race = await api.createRace(address, racerId, 'exhibition')
+      const race = await api.createRace(address, racerId, 'sprint')
       await api.joinRace(race.raceId, racerId, address)
       await api.startRace(race.raceId)
       const result = await api.simulateRace(race.raceId)
       navigate(`/race/${race.raceId}`, {
-        state: { raceResult: result, format: 'exhibition', racerId, demo: true }
+        state: { raceResult: result, format: 'sprint', racerId, demo: true }
       })
     } catch (err: any) {
       toast.error(err.message)

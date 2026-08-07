@@ -8,7 +8,6 @@ import { api } from '../lib/api'
 import { THEME, rarityLabel, archetypeLabel, formatLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 import RacerPortrait from '../components/RacerPortrait'
-import { FEATURES } from '../config/features'
 
 type Phase = 'select' | 'starting'
 
@@ -22,17 +21,9 @@ const fmt = (id: string) => ({
   desc: THEME.raceFormats[id].blurb,
 })
 
-const FORMATS = [
-  fmt('exhibition'),
-  { id: 'demo_standard', name: 'Demo Race', desc: 'Quick 20s demo race' },
-  fmt('sprint'),
-  fmt('endurance'),
-]
+const FORMATS = [fmt('sprint'), fmt('endurance')]
 
-export const visibleFormats = FORMATS.filter(f => {
-  if (f.id === 'demo_standard' && !FEATURES.demoRace) return false
-  return true
-})
+export const visibleFormats = FORMATS
 
 export default function RaceLobby() {
   const { address, isConnected } = useWallet()
@@ -55,7 +46,6 @@ export default function RaceLobby() {
   const preselected = visibleFormats.find(f => f.id === (location.state as any)?.format)
   const [selectedFormat, setSelectedFormat] = useState(preselected ?? visibleFormats[0])
   const [loading, setLoading] = useState(false)
-  const [dailyRace, setDailyRace] = useState<{ raceId: string; weather: string; date: string } | null>(null)
 
   // Load creatures (racers + free racers)
   const [allCreatures, setAllCreatures] = useState<any[]>([])
@@ -68,18 +58,14 @@ export default function RaceLobby() {
 
   // Load daily race info
   useEffect(() => {
-    api.getDailyRace().then(setDailyRace).catch((err) => { console.error('Failed to load daily race:', err) })
   }, [])
 
-  // Free formats take any racer; paid formats are for upgraded racers only.
+  // Both formats take any racer. The filter used to hide every free racer from
+  // the paid formats, which meant the Wind-Up a new player mints could not
+  // enter either real race — a gate left over from when they cost money.
   useEffect(() => {
-    if (selectedFormat.id === 'exhibition' || selectedFormat.id === 'demo_standard') {
-      setRacers(allCreatures)
-    } else {
-      setRacers(allCreatures.filter((s: any) => s.type === 'pro'))
-    }
-    setSelectedRacer(null)
-  }, [selectedFormat, allCreatures])
+    setRacers(allCreatures)
+  }, [allCreatures])
 
   // Poll live races when on the Live Races tab
   useEffect(() => {
@@ -100,7 +86,7 @@ export default function RaceLobby() {
     if (!address || !selectedRacer) return
     setLoading(true)
     try {
-      const apiFormat = selectedFormat.id === 'demo_standard' ? 'exhibition' : selectedFormat.id
+      const apiFormat = selectedFormat.id
       const race = await api.createRace(address, selectedRacer.id, apiFormat)
 
       // The loadout goes with the join — it is the pre-race decision now, and
@@ -229,30 +215,6 @@ export default function RaceLobby() {
           >
             <h1 className="text-3xl font-bold mb-6">Race Lobby</h1>
 
-            {/* Daily Race Banner */}
-            {dailyRace && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-brand-accent/20 to-brand-primary/20 border border-brand-accent/30 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-brand-ink font-bold text-sm">Daily Race</p>
-                    <p className="text-brand-dust text-xs">
-                      Weather: <span className="text-brand-primary font-semibold capitalize">{dailyRace.weather}</span>
-                      {' \u2022 '}Daily Exhibition Race
-                    </p>
-                    <p className="text-brand-dust text-[10px] mt-0.5">Free exhibition race with today's weather. Play as many times as you want.</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedFormat(FORMATS[0]) // Practice Run
-                    }}
-                    className="px-4 py-1.5 bg-brand-accent text-brand-ink font-bold rounded-lg text-sm cursor-pointer hover:bg-brand-accent/80"
-                  >
-                    Join Daily
-                  </button>
-                </div>
-              </div>
-            )}
-
             {racers.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">{THEME.brand.mark}</div>
@@ -281,12 +243,7 @@ export default function RaceLobby() {
                           : 'hover:-translate-y-[2px]'
                       }`}
                     >
-                      <p className="text-brand-ink font-semibold">
-                        {fmt.name}
-                        {fmt.id === 'demo_standard' && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-brand-gold text-brand-ink text-[10px] font-bold rounded-full px-2 border-2 border-brand-ink">DEMO</span>
-                        )}
-                      </p>
+                      <p className="text-brand-ink font-semibold">{fmt.name}</p>
                       <p className="text-brand-dust text-sm mt-1">{fmt.desc}</p>
                     </button>
                   ))}

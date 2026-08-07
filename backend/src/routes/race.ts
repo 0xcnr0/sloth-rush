@@ -161,11 +161,11 @@ router.post("/join", async (req: Request, res: Response) => {
       return;
     }
 
-    // Free racers can only join exhibition races
-    if (racer.type === "free" && race.format !== "exhibition") {
-      res.status(400).json({ error: "Free Racers can only join Exhibition races. Upgrade to a Racer for other formats!" });
-      return;
-    }
+    // A free racer used to be barred from everything except the exhibition
+    // format, which made sense when the other formats cost money and paid out.
+    // Nothing costs anything now, so the gate only meant that the Wind-Up every
+    // new player mints — one per wallet, gasless, the entry point to the whole
+    // game — could not enter either of the two real races.
 
     // Racing is free. Entry fees, the prize pool and the daily-free-race
     // exemption all went with the in-game currency: with bots filling the grid

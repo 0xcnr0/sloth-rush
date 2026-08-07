@@ -27,7 +27,7 @@ const SECTIONS = [
     title: 'Racing',
     icon: '\u{1F3C1}',
     content: [
-      { q: 'What are the race formats?', a: `${THEME.raceFormats.exhibition.name} is practice. ${THEME.raceFormats.sprint.name} and ${THEME.raceFormats.endurance.name} differ in one thing only: distance.` },
+      { q: 'What are the race formats?', a: `${THEME.raceFormats.sprint.name} and ${THEME.raceFormats.endurance.name}. They differ in one thing only: distance — and distance is what decides whether raw speed or a balanced racer wins.` },
       { q: 'Which one should I enter?', a: `${THEME.raceFormats.sprint.name} is short, so raw top speed decides it. ${THEME.raceFormats.endurance.name} is twice as long, and a racer that is only fast fades before the line — the long track is won by balance. Pick the one your racer is built for.` },
       { q: 'What is the Wind-Up phase?', a: 'Before the grid is set, all four racers wind their springs at the same time, hidden from each other. Hold to wind, release to lock. Winding further gives a better grid slot but drains stamina faster, and winding past the limit snaps the spring and puts you last. The safe limit comes from your STA.' },
       { q: 'Who am I racing?', a: 'Bots fill any empty slot so a race always starts. They are labelled BOT and they are not competing for anything.' },

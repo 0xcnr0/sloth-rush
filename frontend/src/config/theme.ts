@@ -123,7 +123,6 @@ export const THEME = {
    * player choosing between them is really choosing which racer they own.
    */
   raceFormats: {
-    exhibition: { name: 'Practice Run', blurb: 'Free. No entry, no reward.' },
     sprint: { name: 'Sprint', blurb: 'Short track. Top speed wins.' },
     endurance: { name: 'Endurance', blurb: 'Long track. The spring has to last.' },
   } as Record<string, { name: string; blurb: string }>,

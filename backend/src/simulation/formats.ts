@@ -59,10 +59,21 @@ export const SPRINT_LENGTH = 800;
  */
 export const ENDURANCE_LENGTH = 1400;
 
+/**
+ * Two formats, and they really are two.
+ *
+ * There were five ways into a race — a Daily Race banner, Practice Run, Demo
+ * Race, Sprint, Endurance, plus two Quick Race buttons on the collection — and
+ * `exhibition` carried the identical trackLength to `sprint`. Once the currency
+ * was removed and the entry fee stopped being charged, nothing separated them
+ * at all: three of the five were the same 800-unit race under different names.
+ *
+ * The fees are 0 because nothing has charged them since the currency went; they
+ * were a number computed, stored and transmitted for no reader.
+ */
 export const RACE_FORMATS: Record<string, RaceFormat> = {
-  exhibition: { id: 'exhibition', entry: 0, trackLength: SPRINT_LENGTH },
-  sprint: { id: 'sprint', entry: 50, trackLength: SPRINT_LENGTH },
-  endurance: { id: 'endurance', entry: 50, trackLength: ENDURANCE_LENGTH },
+  sprint: { id: 'sprint', entry: 0, trackLength: SPRINT_LENGTH },
+  endurance: { id: 'endurance', entry: 0, trackLength: ENDURANCE_LENGTH },
 };
 
 export const DEFAULT_FORMAT = 'sprint';
@@ -75,6 +86,9 @@ export const DEFAULT_FORMAT = 'sprint';
  * the old 2800.
  */
 const RETIRED_FORMATS: Record<string, RaceFormat> = {
+  // Was Practice Run. Byte-for-byte a Sprint; kept here only so archived rows
+  // still resolve to a distance.
+  exhibition: { id: 'exhibition', entry: 0, trackLength: SPRINT_LENGTH },
   standard: { id: 'standard', entry: 50, trackLength: 2800 },
   grand_prix: { id: 'grand_prix', entry: 150, trackLength: 2800 },
   gp_qualify: { id: 'gp_qualify', entry: 0, trackLength: 2800 },
