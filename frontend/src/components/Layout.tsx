@@ -1,7 +1,7 @@
+import { useWallet } from '../hooks/useWallet'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import WalletConnect from './WalletConnect'
 import MiniAppAutoConnect from './MiniAppAutoConnect'
-import { useAccount } from 'wagmi'
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import OnboardingTutorial from './OnboardingTutorial'
@@ -19,7 +19,7 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   const location = useLocation()
-  const { address } = useAccount()
+  const { address } = useWallet()
   const [xp, setXp] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 

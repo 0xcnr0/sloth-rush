@@ -1,5 +1,5 @@
+import { useWallet } from '../hooks/useWallet'
 import { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
@@ -35,7 +35,7 @@ export const visibleFormats = FORMATS.filter(f => {
 })
 
 export default function RaceLobby() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const navigate = useNavigate()
   const location = useLocation()
 

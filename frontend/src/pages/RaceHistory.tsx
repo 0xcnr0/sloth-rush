@@ -1,5 +1,5 @@
+import { useWallet } from '../hooks/useWallet'
 import { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
@@ -25,7 +25,7 @@ function positionColor(pos: number): string {
 }
 
 export default function RaceHistory() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const [races, setRaces] = useState<RaceEntry[]>([])
   const [summary, setSummary] = useState({ totalRaces: 0, winRate: 0, totalEarnings: 0 })
   const [loading, setLoading] = useState(true)

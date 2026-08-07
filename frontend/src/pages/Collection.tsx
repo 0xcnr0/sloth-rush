@@ -1,5 +1,5 @@
+import { useWallet } from '../hooks/useWallet'
 import { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
@@ -36,7 +36,7 @@ const RARITY_BORDER: Record<string, string> = {
 type UpgradeState = 'idle' | 'paying' | 'burning' | 'revealing' | 'done'
 
 export default function Collection() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const navigate = useNavigate()
   const [racers, setRacers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

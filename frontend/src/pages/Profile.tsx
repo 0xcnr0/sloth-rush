@@ -1,5 +1,5 @@
+import { useWallet } from '../hooks/useWallet'
 import { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
@@ -21,7 +21,7 @@ interface ProfileData {
 
 
 export default function Profile() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'overview' | 'inventory'>('overview')

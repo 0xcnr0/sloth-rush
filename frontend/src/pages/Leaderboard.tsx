@@ -1,5 +1,5 @@
+import { useWallet } from '../hooks/useWallet'
 import { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
 import { THEME } from '../config/theme'
@@ -24,7 +24,7 @@ const RARITY_COLORS: Record<string, string> = {
 type MainTab = 'season' | 'career'
 
 export default function Leaderboard() {
-  const { address } = useAccount()
+  const { address } = useWallet()
   const [mainTab, setMainTab] = useState<MainTab>('season')
   const [league, setLeague] = useState<'bronze' | 'silver' | 'gold'>('silver')
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])

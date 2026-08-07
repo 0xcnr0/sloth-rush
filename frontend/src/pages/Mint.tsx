@@ -1,5 +1,5 @@
+import { useWallet } from '../hooks/useWallet'
 import { useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
@@ -11,7 +11,7 @@ import { CONTRACTS_DEPLOYED } from '../config/contracts'
 type MintState = 'idle' | 'minting' | 'success' | 'error' | 'already_minted'
 
 export default function Mint() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWallet()
   const navigate = useNavigate()
   const [state, setState] = useState<MintState>('idle')
   const [racer, setRacer] = useState<any>(null)

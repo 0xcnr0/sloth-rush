@@ -1,5 +1,5 @@
+import { useWallet } from '../hooks/useWallet'
 import { Link } from 'react-router-dom'
-import { useAccount } from 'wagmi'
 import WalletConnect from '../components/WalletConnect'
 import { THEME } from '../config/theme'
 import { motion } from 'framer-motion'
@@ -11,7 +11,7 @@ const BRAND_TAIL = BRAND_WORDS[BRAND_WORDS.length - 1]
 const BRAND_HEAD = BRAND_WORDS.slice(0, -1).join(' ')
 
 export default function Landing() {
-  const { isConnected } = useAccount()
+  const { isConnected } = useWallet()
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] px-4">

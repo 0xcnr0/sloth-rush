@@ -1,4 +1,4 @@
-import { useAccount } from 'wagmi'
+import { useWallet } from '../hooks/useWallet'
 import WalletConnect from './WalletConnect'
 import { THEME } from '../config/theme'
 
@@ -8,7 +8,7 @@ interface WalletGuardProps {
 }
 
 export default function WalletGuard({ children, message = 'Connect your wallet to continue' }: WalletGuardProps) {
-  const { isConnected } = useAccount()
+  const { isConnected } = useWallet()
 
   if (!isConnected) {
     return (
