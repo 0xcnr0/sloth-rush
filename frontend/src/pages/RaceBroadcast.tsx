@@ -112,7 +112,7 @@ export default function RaceBroadcast() {
   const [raceData, setRaceData] = useState<any>(location.state?.raceResult || null)
   const [currentTick, setCurrentTick] = useState(0)
   const [livePositions, setLivePositions] = useState<{
-    id: number; distance: number; name: string; speed: number
+    id: number; distance: number; name: string; speed: number; color: string
     toGo: number; gap: number; isBot: boolean; move: number
   }[]>([])
   /** Last frame's finishing order, so a change of place can be shown as it happens. */
@@ -217,30 +217,52 @@ export default function RaceBroadcast() {
       if (!names.has(fo.id)) names.set(fo.id, fo.name)
     })
 
-    const numRacers = frames[0]?.positions.length || 4
-    const TOP_MARGIN = 50
-    const BOTTOM_MARGIN = 50
+    const TOP_MARGIN = 22
+    const BOTTOM_MARGIN = 16
     const SIDE_MARGIN = 20
     const TRACK_HEIGHT = height - TOP_MARGIN - BOTTOM_MARGIN
     // Lanes stack vertically; racers travel along X. The finish chequer eats a
     // little width on the right, so the running surface stops short of it.
     const TRACK_WIDTH = width - SIDE_MARGIN * 2 - 16
-    const LANE_HEIGHT = TRACK_HEIGHT / numRacers
+
     /**
-     * Lane composition. The toy is sized FROM the lane, not clamped inside it.
+     * One corridor, not four lanes.
      *
-     * This read `Math.min(LANE_HEIGHT * 0.84 - 12, 60)`: a hard 60px ceiling on
-     * the racer while the lane height came from 65vh divided by four. On a tall
-     * screen the lane grew to ~137px and the toy stayed at 60, so 40% of every
-     * lane was empty wall — four times over, that is most of the track. The
-     * bigger the screen, the smaller the toys looked. That is the disproportion.
+     * Four parallel corridors meant no two racers could ever be in the same
+     * place, so nothing ever jostled: four toys travelling down four private
+     * tunnels, each one a quarter of the height and therefore small. Gigling
+     * runs a single open field between a top and a bottom wall — the racers
+     * scatter, clump, overlap and pass each other bodily, and each one gets to
+     * be more than twice as tall because it is no longer dividing the screen
+     * with three others.
      *
-     * Now the lane is built out of the toy: a shelf to stand on, the toy, and a
-     * little headroom for the rank badge.
+     * Identity moves off the track and into the standings: a shared field has
+     * nowhere to put four name plates without covering the race. What stays on
+     * the toy is its speed, and the player's own racer gets its name.
      */
-    const SHELF_SHARE = 0.17
-    const GROUND_AT = 1 - SHELF_SHARE
-    const RACER_HEIGHT = LANE_HEIGHT * GROUND_AT * 0.82
+    const WALL_SHARE = 0.10
+    const WALL_H = TRACK_HEIGHT * WALL_SHARE
+    const RUN_TOP = TOP_MARGIN + WALL_H
+    const RUN_H = TRACK_HEIGHT - WALL_H * 2
+    const RACER_HEIGHT = RUN_H * 0.46
+
+    /**
+     * Where a racer sits across the corridor.
+     *
+     * A hash looked like the honest way to scatter them and was not: hashes
+     * clump, and three of four toys ended up stacked in the same place with
+     * their speed plates covering each other. Gigling's field is not chaos
+     * either — its racers sit at clearly separate heights and weave. So:
+     * spread evenly by a stable order, then weave, which guarantees separation
+     * without rebuilding fixed lanes.
+     */
+    const yOrder = (frames[0]?.positions ?? []).map(pt => pt.id).sort((a, b) => a - b)
+    function laneFraction(id: number): number {
+      const n = yOrder.length
+      if (n <= 1) return 0.5
+      const slot = Math.max(0, yOrder.indexOf(id))
+      return slot / (n - 1)
+    }
     const FRAME_DELAY = isDemo ? 80 : 280 // demo: ~18s, normal: ~65s
 
     /**
@@ -310,45 +332,55 @@ export default function RaceBroadcast() {
       ctx.rect(SIDE_MARGIN, TOP_MARGIN, TRACK_WIDTH, TRACK_HEIGHT)
       ctx.clip()
 
-      // --- Diorama Speedway: four stacked horizontal lanes ------------------
-      // The track was a vertical tree trunk, left over from the first theme.
-      // CLAUDE.md locks the format as stacked horizontal lanes running left to
-      // right: it is the photo-finish framing, and on a phone it keeps four
-      // racers legible without shrinking them (ART_DIRECTION §8).
-      for (let i = 0; i < numRacers; i++) {
-        const top = TOP_MARGIN + i * LANE_HEIGHT
+      // --- Diorama Speedway: one open corridor ------------------------------
+      // Segment colour. Gigling repaints its walls at every segment boundary,
+      // and that is how you know you have got somewhere — the environment
+      // changes, not just a bar at the top. Six segments, six accents.
+      const SEG_COUNT = 6
+      const SEG_COLORS = [
+        PALETTE.gold, '#7FB7D9', '#C99BD6', '#8FCBA1', '#E8A87C', PALETTE.gold,
+      ]
 
-        // The deck tiles and scrolls. It used to be one copy stretched across
-        // the whole lane, which meant it never moved — a static backdrop behind
-        // a racer that barely moved either. Odd lanes are offset by half a tile
-        // so four repeats do not line up into one band.
-        const tileW = TRACK_WIDTH * 0.62
-        const scrolled = camPx + (i % 2) * tileW * 0.5
-        const period = tileW * 2 // one normal tile plus its mirror
-        const firstX = -(((scrolled % period) + period) % period)
-        if (laneDeck.complete && laneDeck.naturalWidth > 0) {
-          // Mirror every other tile. The deck art is not seamless, so plain
-          // repetition left a hard vertical join scrolling past every tile —
-          // very visible once the ground actually moves. Mirroring makes each
-          // join match itself.
-          let k = 0
-          for (let tx = firstX; tx < TRACK_WIDTH + tileW; tx += tileW, k++) {
-            ctx.save()
-            if (k % 2 === 1) {
-              ctx.translate(2 * (SIDE_MARGIN + tx) + tileW, 0)
-              ctx.scale(-1, 1)
-            }
-            ctx.drawImage(laneDeck, SIDE_MARGIN + tx, top, tileW, LANE_HEIGHT)
-            ctx.restore()
+      // Floor. One strip, tiled and scrolling, mirrored on alternate tiles
+      // because the art is not seamless.
+      const tileW = TRACK_WIDTH * 0.62
+      const period = tileW * 2
+      const firstX = -(((camPx % period) + period) % period)
+      if (laneDeck.complete && laneDeck.naturalWidth > 0) {
+        let k = 0
+        for (let tx = firstX; tx < TRACK_WIDTH + tileW; tx += tileW, k++) {
+          ctx.save()
+          if (k % 2 === 1) {
+            ctx.translate(2 * (SIDE_MARGIN + tx) + tileW, 0)
+            ctx.scale(-1, 1)
           }
-        } else {
-          ctx.fillStyle = PALETTE.floor
-          ctx.fillRect(SIDE_MARGIN, top, TRACK_WIDTH, LANE_HEIGHT)
+          ctx.drawImage(laneDeck, SIDE_MARGIN + tx, RUN_TOP, tileW, RUN_H)
+          ctx.restore()
         }
+      } else {
+        ctx.fillStyle = PALETTE.floor
+        ctx.fillRect(SIDE_MARGIN, RUN_TOP, TRACK_WIDTH, RUN_H)
+      }
 
-        // Lane accent stripe — which lane is whose, at a glance (§10).
-        ctx.fillStyle = RACER_COLORS[i] || PALETTE.ink
-        ctx.fillRect(SIDE_MARGIN, top, 4, LANE_HEIGHT)
+      // Top and bottom walls, repainted per segment. Drawn in world space so
+      // the boundary between two segments actually travels past you.
+      for (const wallTop of [TOP_MARGIN, TOP_MARGIN + TRACK_HEIGHT - WALL_H]) {
+        for (let sg = 0; sg < SEG_COUNT; sg++) {
+          const x0 = toScreen((sg / SEG_COUNT) * trackLength)
+          const x1 = toScreen(((sg + 1) / SEG_COUNT) * trackLength)
+          if (x1 < SIDE_MARGIN || x0 > SIDE_MARGIN + TRACK_WIDTH) continue
+          ctx.fillStyle = SEG_COLORS[sg]
+          ctx.fillRect(x0, wallTop, x1 - x0, WALL_H)
+        }
+        // Studs along the wall, so it reads as built rather than as a bar.
+        const STUD_EVERY = 25
+        const firstStud = Math.floor(camStart / STUD_EVERY) * STUD_EVERY
+        ctx.fillStyle = 'rgba(36, 26, 56, 0.30)'
+        for (let d = firstStud; d <= camStart + VIEW_UNITS + STUD_EVERY; d += STUD_EVERY) {
+          ctx.fillRect(toScreen(d) - 2, wallTop + WALL_H * 0.32, 4, WALL_H * 0.36)
+        }
+        ctx.fillStyle = PALETTE.ink
+        ctx.fillRect(SIDE_MARGIN, wallTop === TOP_MARGIN ? wallTop + WALL_H - 2 : wallTop, TRACK_WIDTH, 2)
       }
 
       // Push the printed deck back. Zooming in magnified the litho 2.7x, so a
@@ -356,7 +388,7 @@ export default function RaceBroadcast() {
       // the toys for attention. CLAUDE.md's colour budget already settles this:
       // the environment stays neutral and the accents live on the racers.
       ctx.fillStyle = 'rgba(255, 253, 247, 0.42)'
-      ctx.fillRect(SIDE_MARGIN, TOP_MARGIN, TRACK_WIDTH, TRACK_HEIGHT)
+      ctx.fillRect(SIDE_MARGIN, RUN_TOP, TRACK_WIDTH, RUN_H)
 
       // Start line, at world zero — it scrolls away behind you now instead of
       // being pinned to the left edge for the whole race.
@@ -365,8 +397,8 @@ export default function RaceBroadcast() {
         ctx.strokeStyle = PALETTE.ink
         ctx.lineWidth = 3
         ctx.beginPath()
-        ctx.moveTo(startX, TOP_MARGIN)
-        ctx.lineTo(startX, TOP_MARGIN + TRACK_HEIGHT)
+        ctx.moveTo(startX, RUN_TOP)
+        ctx.lineTo(startX, RUN_TOP + RUN_H)
         ctx.stroke()
       }
 
@@ -381,20 +413,20 @@ export default function RaceBroadcast() {
         ctx.strokeStyle = 'rgba(36, 26, 56, 0.18)'
         ctx.lineWidth = 1.5
         ctx.beginPath()
-        ctx.moveTo(px, TOP_MARGIN)
-        ctx.lineTo(px, TOP_MARGIN + TRACK_HEIGHT)
+        ctx.moveTo(px, RUN_TOP)
+        ctx.lineTo(px, RUN_TOP + RUN_H)
         ctx.stroke()
         if (d % (POST_EVERY * 2) === 0) {
           ctx.fillStyle = 'rgba(36, 26, 56, 0.45)'
           ctx.font = 'bold 9px ui-monospace, monospace'
           ctx.textAlign = 'center'
           ctx.textBaseline = 'top'
-          ctx.fillText(`${d}m`, px, TOP_MARGIN + 3)
+          ctx.fillText(`${d}m`, px, RUN_TOP + 3)
         }
       }
 
-      // Finish: a drawn chequered banner hung from a dowel, spanning all four
-      // lanes. This was a 16px-wide loop of alternating fillRect squares with
+      // Finish: a drawn chequered banner hung from a dowel, spanning the
+      // corridor. This was a 16px-wide loop of alternating fillRect squares with
       // the word FINISH above it — a legend in the margin rather than something
       // in the scene. The dowel is allowed to poke above the track box, which
       // is what the top margin is now for.
@@ -416,24 +448,17 @@ export default function RaceBroadcast() {
       // reading as one repeated texture. We cannot restyle the deck art per
       // segment without six more assets, but the boundaries themselves are free
       // and they are most of the effect: the eye gets a ruler.
-      const SEGMENTS = 6
-      for (let sgi = 1; sgi < SEGMENTS; sgi++) {
-        const sx = toScreen((sgi / SEGMENTS) * trackLength)
+      for (let sgi = 1; sgi < SEG_COUNT; sgi++) {
+        const sx = toScreen((sgi / SEG_COUNT) * trackLength)
         if (sx < SIDE_MARGIN - 12 || sx > SIDE_MARGIN + TRACK_WIDTH + 12) continue
-        ctx.strokeStyle = 'rgba(36, 26, 56, 0.28)'
+        ctx.strokeStyle = 'rgba(36, 26, 56, 0.24)'
         ctx.lineWidth = 2
         ctx.setLineDash([5, 6])
         ctx.beginPath()
-        ctx.moveTo(sx, TOP_MARGIN)
-        ctx.lineTo(sx, TOP_MARGIN + TRACK_HEIGHT)
+        ctx.moveTo(sx, RUN_TOP)
+        ctx.lineTo(sx, RUN_TOP + RUN_H)
         ctx.stroke()
         ctx.setLineDash([])
-        // A post at the top of each boundary, so distance is countable at a
-        // glance rather than estimated from a bar.
-        ctx.fillStyle = PALETTE.ink
-        ctx.fillRect(sx - 1.5, TOP_MARGIN - 6, 3, 8)
-        ctx.fillStyle = PALETTE.gold
-        ctx.fillRect(sx - 4, TOP_MARGIN - 9, 8, 4)
       }
 
       ctx.restore() // end of the scrolling scenery clip
@@ -441,58 +466,87 @@ export default function RaceBroadcast() {
       // Sort for ranking
       const sorted = [...frame.positions].sort((a, b) => b.distance - a.distance)
 
-      frame.positions.forEach((pos, i) => {
-        const cx = toScreen(pos.distance)
-        const top = TOP_MARGIN + i * LANE_HEIGHT
-        const ground = top + LANE_HEIGHT * GROUND_AT
-        const rank = sorted.findIndex(s => s.id === pos.id) + 1
-        const isBot = bots.has(pos.id)
+      /**
+       * Place every racer in the corridor, then draw back to front.
+       *
+       * Depth is the whole reason the open field works: a racer nearer the
+       * bottom of the screen is nearer the camera, so it is drawn later and
+       * drawn bigger. Without that, four toys at four heights read as four
+       * lanes again, just without the lines.
+       */
+      const placed = frame.positions.map(pos => {
+        const base = laneFraction(pos.id)
+        const weave = Math.sin(frame.tick / 34 + pos.id) * 0.045
+        const yFrac = Math.max(0, Math.min(1, base * 0.9 + 0.05 + weave))
+        const depth = 0.86 + 0.30 * yFrac // nearer the camera, larger
+        return {
+          pos,
+          color: RACER_COLORS[Math.max(0, yOrder.indexOf(pos.id))] || PALETTE.dust,
+          yFrac,
+          h: RACER_HEIGHT * depth,
+          ground: RUN_TOP + RUN_H * (0.46 + 0.54 * yFrac),
+          cx: toScreen(pos.distance),
+          rank: sorted.findIndex(sr => sr.id === pos.id) + 1,
+          isBot: bots.has(pos.id),
+        }
+      })
+      placed.sort((a, b) => a.ground - b.ground)
 
-        if (cx < SIDE_MARGIN - RACER_HEIGHT * 0.6) {
-          // Dropped out of the back of the camera. Mark the lane edge so the
-          // lane does not just read as empty.
-          const ground0 = top + LANE_HEIGHT * GROUND_AT
-          ctx.fillStyle = RACER_COLORS[i] || PALETTE.ink
+      for (const r of placed) {
+        const { pos, cx, ground, rank, isBot } = r
+
+        if (cx < SIDE_MARGIN - r.h * 0.6) {
+          // Dropped out of the back of the camera. Mark the edge so the field
+          // does not just look like it lost a member.
+          ctx.fillStyle = r.color
           ctx.beginPath()
-          ctx.moveTo(SIDE_MARGIN + 14, ground0 - 10)
-          ctx.lineTo(SIDE_MARGIN + 4, ground0 - 18)
-          ctx.lineTo(SIDE_MARGIN + 14, ground0 - 26)
+          ctx.moveTo(SIDE_MARGIN + 14, ground - 10)
+          ctx.lineTo(SIDE_MARGIN + 4, ground - 18)
+          ctx.lineTo(SIDE_MARGIN + 14, ground - 26)
           ctx.closePath()
           ctx.fill()
           ctx.fillStyle = PALETTE.ink
           ctx.font = 'bold 9px ui-monospace, monospace'
           ctx.textAlign = 'left'
           ctx.textBaseline = 'middle'
-          ctx.fillText(`${Math.round(camStart - pos.distance)}m`, SIDE_MARGIN + 18, ground0 - 18)
-          return
+          ctx.fillText(`${Math.round(camStart - pos.distance)}m`, SIDE_MARGIN + 18, ground - 18)
+          continue
         }
 
+        // Contact shadow, in the racer's own accent. With no lane stripe left
+        // to own, this is where identity lives on the track — and it also
+        // plants the toy on the floor, which matters a lot more now that the
+        // floor is shared and toys overlap each other.
+        ctx.save()
+        ctx.globalAlpha = 0.34
+        ctx.fillStyle = r.color
+        ctx.beginPath()
+        ctx.ellipse(cx, ground + 2, r.h * 0.30, r.h * 0.075, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+
         // The seven-part rig, driven from race state. Cadence comes from ground
-        // speed so the planted foot tracks the shelf instead of moonwalking, and
-        // the key's spin rate is stamina — the gauge the player learned in the
-        // Wind-Up phase (ART_DIRECTION §7.2).
+        // speed so the planted foot tracks the floor instead of moonwalking, and
+        // the key's spin rate is stamina (ART_DIRECTION §7.2).
         const phase = phaseRef.current[pos.id] ?? 0
         const stamina = Math.max(0, Math.min(1, pos.speed / 12))
         keyRef.current[pos.id] = (keyRef.current[pos.id] ?? 0) + stamina * 14
         drawRacer(ctx, rigFor(archetypeRef.current[pos.id] ?? 'tank'), {
           x: cx,
           y: ground + 2,
-          height: RACER_HEIGHT,
+          height: r.h,
           phase,
           keyAngle: -keyRef.current[pos.id],
           facing: 1,
           dimmed: isBot,
           rarity: rarityRef.current[pos.id],
         })
-        phaseRef.current[pos.id] = phase + cadence(pos.speed * 2.2, RACER_HEIGHT) * 0.28
+        phaseRef.current[pos.id] = phase + cadence(pos.speed * 2.2, r.h) * 0.28
 
-        // Leader bracket. Gigling draws corner marks around whoever is in front
-        // and labels them LEADER CAM. The camera does not actually move — the
-        // bracket is the whole effect, and it is what makes eight tiny racers
-        // legible. Ours does not move either.
+        // Leader bracket.
         if (rank === 1) {
-          const bw = RACER_HEIGHT * 0.9
-          const bh = RACER_HEIGHT * 1.15
+          const bw = r.h * 0.9
+          const bh = r.h * 1.15
           const bx = cx - bw / 2
           const by = ground - bh
           const arm = Math.max(6, bw * 0.28)
@@ -510,53 +564,27 @@ export default function RaceBroadcast() {
           ctx.stroke()
         }
 
-        // Live speed, set larger than the racer on purpose. This is the single
-        // change that makes a small sprite readable: the eye reads the number,
-        // not the toy, and the toy is then free to stay small.
+        // Rank and speed, on one plate above the toy. The four name plates that
+        // used to live here belonged to four private lanes; in a shared field
+        // they cover the race. Names are in the standings, where they can be
+        // read without anything moving underneath them.
         const speedText = pos.speed.toFixed(1)
         ctx.font = 'bold 13px ui-monospace, monospace'
-        const sw = ctx.measureText(speedText).width + 16
-        const sh = 19
+        const sw = ctx.measureText(speedText).width + 34
+        const sh = 21
         const sx0 = Math.min(SIDE_MARGIN + TRACK_WIDTH - sw, Math.max(SIDE_MARGIN, cx - sw / 2))
-        const sy0 = ground - RACER_HEIGHT - sh - 4
-        ctx.fillStyle = rank === 1 ? PALETTE.gold : PALETTE.paper
-        ctx.strokeStyle = PALETTE.ink
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.roundRect(sx0, sy0, sw, sh, 5)
-        ctx.fill()
-        ctx.stroke()
-        ctx.fillStyle = PALETTE.ink
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(speedText, sx0 + sw / 2, sy0 + sh / 2 + 0.5)
-
-        // Name plate. The text used to be drawn straight onto the lane, which
-        // worked on a flat fill and stopped working the moment the lane became
-        // a printed surface — the labels landed on top of the gear band and
-        // were unreadable. A stamped ink plate reads over anything and matches
-        // the toy-packaging language the rest of the UI uses.
-        const label = isBot ? `${names.get(pos.id) || '#' + pos.id}  BOT` : (names.get(pos.id) || '#' + pos.id)
-        ctx.font = 'bold 10px sans-serif'
-        const plateW = Math.max(ctx.measureText(label).width, 46) + 30
-        const plateH = 22
-        const plateX = SIDE_MARGIN + 4
-        const plateY = top + 4
-
+        const sy0 = ground - r.h - sh - 6
         ctx.fillStyle = PALETTE.paper
         ctx.strokeStyle = PALETTE.ink
         ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.roundRect(plateX, plateY, plateW, plateH, 6)
+        ctx.roundRect(sx0, sy0, sw, sh, 6)
         ctx.fill()
         ctx.stroke()
 
-        // The plate carries the rank now. It used to repeat the speed, which is
-        // already on the racer at three times the size — two readings of the
-        // same number and neither of them the one you actually want mid-race.
-        ctx.fillStyle = rank === 1 ? PALETTE.gold : PALETTE.shelf
+        ctx.fillStyle = rank === 1 ? PALETTE.gold : r.color
         ctx.beginPath()
-        ctx.roundRect(plateX + 3, plateY + 3, 18, plateH - 6, 4)
+        ctx.roundRect(sx0 + 3, sy0 + 3, 17, sh - 6, 4)
         ctx.fill()
         ctx.strokeStyle = PALETTE.ink
         ctx.lineWidth = 1.5
@@ -565,14 +593,32 @@ export default function RaceBroadcast() {
         ctx.font = 'bold 11px ui-monospace, monospace'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(String(rank), plateX + 12, plateY + plateH / 2 + 0.5)
+        ctx.fillText(String(rank), sx0 + 11.5, sy0 + sh / 2 + 0.5)
 
-        ctx.fillStyle = isBot ? PALETTE.dust : PALETTE.ink
-        ctx.font = 'bold 10px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(label, plateX + 26, plateY + plateH / 2 + 0.5)
-      })
+        ctx.font = 'bold 13px ui-monospace, monospace'
+        ctx.fillText(speedText, sx0 + 22 + (sw - 26) / 2, sy0 + sh / 2 + 0.5)
+
+        // Only the player's own racer keeps a name on the track — the one toy
+        // you have to be able to find without reading anything.
+        if (playerRacerId && pos.id === playerRacerId) {
+          const label = names.get(pos.id) || 'You'
+          ctx.font = 'bold 10px sans-serif'
+          const nw = ctx.measureText(label).width + 14
+          const nx = Math.min(SIDE_MARGIN + TRACK_WIDTH - nw, Math.max(SIDE_MARGIN, cx - nw / 2))
+          const ny = sy0 - 17
+          ctx.fillStyle = PALETTE.gold
+          ctx.strokeStyle = PALETTE.ink
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.roundRect(nx, ny, nw, 15, 5)
+          ctx.fill()
+          ctx.stroke()
+          ctx.fillStyle = PALETTE.ink
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(label, nx + nw / 2, ny + 8)
+        }
+      }
     }
 
     /**
@@ -598,6 +644,7 @@ export default function RaceBroadcast() {
           distance: pos.distance,
           name: names.get(pos.id) || `#${pos.id}`,
           speed: pos.speed,
+          color: RACER_COLORS[Math.max(0, yOrder.indexOf(pos.id))],
           toGo: Math.max(0, Math.round(trackLength - pos.distance)),
           gap: Math.round(leadDist - pos.distance),
           isBot: bots.has(pos.id),
@@ -959,7 +1006,7 @@ export default function RaceBroadcast() {
                   className="absolute top-0 h-4 w-[3px] rounded-full"
                   style={{
                     left: `calc(${Math.min(100, (pos.distance / len) * 100)}% - 1.5px)`,
-                    backgroundColor: RACER_COLORS[i],
+                    backgroundColor: pos.color,
                     opacity: i === 0 ? 1 : 0.55,
                   }}
                 />
@@ -1052,10 +1099,11 @@ export default function RaceBroadcast() {
           ref={canvasRef}
           className="w-full"
           style={{
-            // Four lanes of a legible toy plus margins. Taking a share of the
-            // viewport instead meant the track kept growing while the toys did
-            // not, which is what made the lanes read as empty bands.
-            height: 'clamp(360px, 58vh, 520px)',
+            // One corridor, not four lanes: a wide band rather than a tall box.
+            // Left at four lanes' height the corridor came out nearly square,
+            // the floor art stretched to fit it, and the toys had to be
+            // enormous to fill it. Freed height goes to the standings.
+            height: 'clamp(230px, 32vh, 300px)',
             // Fog used to darken (brightness 0.85), which read as atmosphere on a
             // black background and as "the whole scene is faded" on a lit one.
             // Lift and desaturate instead.
@@ -1252,10 +1300,10 @@ export default function RaceBroadcast() {
           >
             <span
               className="self-stretch w-2 shrink-0"
-              style={{ backgroundColor: RACER_COLORS[i] }}
+              style={{ backgroundColor: pos.color }}
               aria-hidden
             />
-            <span className="text-xl font-extrabold w-6 text-center" style={{ color: RACER_COLORS[i] }}>
+            <span className="text-xl font-extrabold w-6 text-center" style={{ color: pos.color }}>
               {i + 1}
             </span>
             <span className="w-4 text-center text-sm" aria-hidden>

@@ -1,0 +1,7 @@
+Flat tileable texture swatch, 4:3. Fills the frame edge to edge, no border or margin. Orthographic front view, camera perpendicular, zero perspective. Not a photo of an object: no drop shadow, no backdrop, no scene.
+
+VERY quiet and low contrast — this sits BEHIND bright toys and must not compete. Pale, desaturated, even in value across the whole frame. No dark blobs, no focal point. Faint HORIZONTAL structure only, so scrolling reads as motion. If in doubt, plainer.
+
+SURFACE: pale warm ivory pressed cardstock of a vintage board game, faint paper speckle, two hairline horizontal rules.
+
+No characters, toys, gears, cogs, springs, animals, hands, faces, text, numbers, logos, borders.
