@@ -65,6 +65,13 @@ export default function RaceLobby() {
   // enter either real race — a gate left over from when they cost money.
   useEffect(() => {
     setRacers(allCreatures)
+    // With one racer, tapping it is a step that decides nothing — the Race
+    // button just sits disabled until the player taps the only card there is.
+    setSelectedRacer((prev: any) =>
+      allCreatures.length === 1 ? allCreatures[0]
+      : prev && allCreatures.some((c: any) => c.id === prev.id) ? prev
+      : null
+    )
   }, [allCreatures])
 
   // Poll live races when on the Live Races tab
@@ -249,8 +256,16 @@ export default function RaceLobby() {
                   ))}
                 </div>
 
-                {/* Racer selection */}
-                <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">Select Your Racer</h2>
+                {/* Racer selection.
+                    A wallet holds at most one Wind-Up and one Showcase, and
+                    upgrading burns the Wind-Up — so for almost every player
+                    this list is exactly one card under a heading that promises
+                    a choice. With one racer it states who is racing; the
+                    heading and the picker only appear when there is something
+                    to pick. */}
+                <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">
+                  {racers.length > 1 ? 'Select Your Racer' : 'Racing As'}
+                </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
                   {racers.map(racer => (
                     <button
