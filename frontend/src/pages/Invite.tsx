@@ -59,7 +59,7 @@ export default function Invite() {
           <div className="space-y-4">
             <div className="bg-brand-primary/10 border border-brand-primary/30 rounded-xl p-4">
               <p className="text-brand-primary font-bold">Referral Applied!</p>
-              <p className="text-brand-dust text-xs mt-1">Your friend has been rewarded</p>
+              <p className="text-brand-dust text-xs mt-1">You are on their invite list</p>
             </div>
             <button
               onClick={() => navigate('/mint')}

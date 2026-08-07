@@ -242,7 +242,7 @@ export default function Leaderboard() {
       <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
         <div className="grid grid-cols-[3rem_1fr_1fr_5rem] gap-2 px-4 py-2 border-b border-brand-border text-xs text-brand-dust font-semibold">
           <span>#</span>
-          <span>Racer</span>
+          <span>Owner</span>
           <span>Racer</span>
           <span className="text-right">RP</span>
         </div>

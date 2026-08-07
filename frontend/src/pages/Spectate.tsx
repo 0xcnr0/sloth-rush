@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
 import Spinner from '../components/Spinner'
-import { THEME } from '../config/theme'
+import { THEME, formatLabel as themeFormatLabel } from '../config/theme'
 
 /**
  * Watch-only broadcast view.
@@ -28,18 +28,12 @@ export default function Spectate() {
     return () => clearInterval(interval)
   }, [])
 
-  const formatLabel = (f: string) => {
-    if (f === 'exhibition') return 'Exhibition'
-    if (f === 'standard') return 'Standard'
-    if (f === 'grand_prix') return 'Grand Prix'
-    if (f === 'tactic') return 'Tactic'
-    return f.charAt(0).toUpperCase() + f.slice(1)
-  }
-
+  // Labels come from theme.ts, which is the only place allowed to hold them.
+  // These branches hand-named formats the server now refuses to create, and
+  // anything they missed fell through to a capitalise that printed the raw code
+  // — 'gp_qualify' reached players as "Gp_qualify".
   const statusColor = (s: string) => {
-    if (s === 'racing' || s === 'simulated') return 'text-brand-primary'
-    if (s === 'tuning') return 'text-brand-gold'
-    if (s === 'lobby') return 'text-brand-ink'
+    if (s === 'racing') return 'text-brand-primary'
     return 'text-brand-dust'
   }
 
@@ -90,7 +84,7 @@ export default function Spectate() {
                 </div>
                 <div>
                   <p className="text-brand-ink font-semibold">
-                    {formatLabel(race.format) || 'Race'}
+                    {themeFormatLabel(race.format) || 'Race'}
                   </p>
                   <p className="text-brand-dust text-xs">
                     {race.participantCount || race.participants?.length || '?'} racers

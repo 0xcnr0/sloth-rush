@@ -39,9 +39,7 @@ export const THEME = {
     windUp: 'Wind-Up',
     gridReveal: 'Grid Reveal',
     grid: 'Starting Grid',
-    prizePool: 'Prize Pool',
     entryFee: 'Entry Fee',
-    reward: 'Reward',
   },
 
   /** Where the racer art lives. Swapping a theme swaps this folder. */
@@ -339,12 +337,17 @@ export function archetypeAccent(archetype: string | undefined | null): string | 
 export function formatLabel(format: string | undefined | null): string {
   if (!format) return ''
   if (THEME.raceFormats[format]) return THEME.raceFormats[format].name
+  // Formats a player can no longer enter but whose races are still in their
+  // history. Without a name here the profile table renders a blank cell — the
+  // database holds 38 exhibition races and 6 standard ones from before the
+  // lobby was cut to two formats.
   const retired: Record<string, string> = {
-    standard: 'Standard Race',
-    grand_prix: 'Grand Prix',
-    gp_qualify: 'Grand Prix — Qualifier',
-    gp_final: 'Grand Prix — Final',
-    tactic: 'Tactic Challenge',
+    exhibition: 'Practice Run (retired)',
+    standard: 'Standard Race (retired)',
+    grand_prix: 'Grand Prix (retired)',
+    gp_qualify: 'Grand Prix Qualifier (retired)',
+    gp_final: 'Grand Prix Final (retired)',
+    tactic: 'Tactic Challenge (retired)',
   }
   return retired[format] || ''
 }

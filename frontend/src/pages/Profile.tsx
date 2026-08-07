@@ -13,7 +13,6 @@ interface ProfileData {
   xp: number
   totalRaces: number
   totalWins: number
-  totalEarnings: number
   freeRacerCount: number
   racerCount: number
 }
@@ -70,7 +69,7 @@ export default function Profile() {
           { label: 'Total Races', value: String(profile.totalRaces), color: 'text-brand-ink' },
           { label: 'Win Rate', value: `${winRate}%`, color: 'text-brand-primary' },
           { label: 'Total Wins', value: String(profile.totalWins), color: 'text-brand-primary' },
-          { label: 'Creatures', value: `${profile.freeRacerCount + profile.racerCount}`, color: 'text-brand-ink' },
+          { label: 'Racers', value: `${profile.freeRacerCount + profile.racerCount}`, color: 'text-brand-ink' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -214,7 +213,6 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
               <th className="text-left px-4 py-3 font-medium">Format</th>
               <th className="text-left px-4 py-3 font-medium">Racer</th>
               <th className="text-center px-4 py-3 font-medium">Position</th>
-              <th className="text-right px-4 py-3 font-medium">Earnings</th>
             </tr>
           </thead>
           <tbody>
@@ -232,13 +230,6 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
                   <span className={race.position === 1 ? 'text-brand-gold font-bold' : race.position === 2 ? 'text-brand-ink/80 font-bold' : race.position === 3 ? 'text-brand-accent font-bold' : 'text-brand-dust'}>
                     {race.position === 1 ? '1st' : race.position === 2 ? '2nd' : race.position === 3 ? '3rd' : `${race.position}th`}
                   </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {race.reward > 0 ? (
-                    <span className="text-brand-dust">—</span>
-                  ) : (
-                    <span className="text-brand-dust">0</span>
-                  )}
                 </td>
               </tr>
             ))}

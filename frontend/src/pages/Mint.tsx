@@ -88,7 +88,7 @@ export default function Mint() {
             <div className="text-7xl mb-6">{THEME.brand.mark}</div>
             <h1 className="text-3xl font-bold mb-2">Mint Your {THEME.tiers.free}</h1>
             <p className="text-brand-dust mb-8 max-w-md">
-              Every wallet gets one {THEME.tiers.free}. Mint yours and upgrade it to a {THEME.tiers.pro} to start racing!
+              Every wallet gets one {THEME.tiers.free}. Mint yours and race it — upgrading to a {THEME.tiers.pro} is about how it looks, not how fast it is.
             </p>
             <button
               onClick={handleMint}
