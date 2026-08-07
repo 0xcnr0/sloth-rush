@@ -604,15 +604,14 @@ export default function RaceBroadcast() {
     }
 
     function showEmote(lane: number, moment: EmoteMoment, xPercent?: number) {
-      emoteIdRef.current++
+      const capturedId = ++emoteIdRef.current
       const emoji = getEmote(moment)
       const x = xPercent ?? (15 + Math.random() * 70) // random x position on track
       setEmotes(prev => {
-        const next = [...prev, { id: emoteIdRef.current, emoji, lane, x }]
+        const next = [...prev, { id: capturedId, emoji, lane, x }]
         // Max 2 emotes at a time — remove oldest if over limit
         return next.length > 2 ? next.slice(-2) : next
       })
-      const capturedId = emoteIdRef.current
       setTimeout(() => {
         setEmotes(prev => prev.filter(e => e.id !== capturedId))
       }, 1800)
@@ -1033,16 +1032,22 @@ export default function RaceBroadcast() {
           {(['boost', 'hinder'] as const).map(code => {
             const count = itemsLeft.filter(c => c === code).length
             if (count === 0) return null
+            // Preview mode signs with a placeholder address the server rightly
+            // rejects. The button still renders — seeing it is the whole point
+            // of preview — but it says so instead of erroring on click.
+            const canDeploy = Boolean(address)
             return (
               <button
                 key={code}
                 type="button"
-                disabled={deploying}
+                disabled={deploying || !canDeploy}
+                title={canDeploy ? undefined : 'Connect a wallet to deploy items'}
                 onClick={async () => {
-                  if (!id || !playerRacerId || !address) return
+                  const wallet = address
+                  if (!id || !playerRacerId || !wallet) return
                   setDeploying(true)
                   try {
-                    await api.deployItem(id, playerRacerId, address, code)
+                    await api.deployItem(id, playerRacerId, wallet, code)
                     setItemsLeft(prev => {
                       const next = [...prev]
                       next.splice(next.indexOf(code), 1)
@@ -1054,7 +1059,9 @@ export default function RaceBroadcast() {
                   }
                   setDeploying(false)
                 }}
-                className="toy-btn flex-1 py-3 px-4 bg-brand-gold text-brand-ink"
+                className={`toy-btn flex-1 py-3 px-4 bg-brand-gold text-brand-ink ${
+                  canDeploy ? '' : 'opacity-50 cursor-not-allowed'
+                }`}
               >
                 {THEME.items[code].name}
                 {count > 1 && <span className="ml-2 text-sm">×{count}</span>}
