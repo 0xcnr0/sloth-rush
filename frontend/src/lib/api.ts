@@ -176,7 +176,7 @@ export const api = {
 
   // Upgrade progress (free path)
   getUpgradeProgress: (wallet: string) =>
-    request<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean }>(
+    request<{ xp: number; races: number; wins: number; requirements: { xp: number; races: number; wins: number }; eligible: boolean }>(
       `/racer/upgrade-progress/${wallet}`
     ),
 

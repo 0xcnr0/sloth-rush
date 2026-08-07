@@ -46,7 +46,7 @@ export default function Collection() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [streaks, setStreaks] = useState<Record<number, { current_wins: number; max_wins: number; current_losses: number; total_races: number; total_wins: number }>>({})
-  const [upgradeProgress, setUpgradeProgress] = useState<{ xp: number; races: number; wins: number; loginDays: number; requirements: { xp: number; races: number; wins: number; loginDays: number }; eligible: boolean } | null>(null)
+  const [upgradeProgress, setUpgradeProgress] = useState<{ xp: number; races: number; wins: number; requirements: { xp: number; races: number; wins: number }; eligible: boolean } | null>(null)
   const [demoLoading, setDemoLoading] = useState<number | null>(null)
 
   async function handleQuickDemoRace(racerId: number) {
@@ -195,7 +195,7 @@ export default function Collection() {
         <div>
           <h1 className="text-3xl font-bold">Your {THEME.locations.home}</h1>
           <p className="text-brand-dust mt-1">
-            {racers.length === 0 ? 'No racers yet' : `${racers.length} creature${racers.length > 1 ? 's' : ''}`}
+            {racers.length === 0 ? 'No racers yet' : `${racers.length} racer${racers.length > 1 ? 's' : ''}`}
           </p>
         </div>
       </div>
@@ -291,7 +291,6 @@ export default function Collection() {
                   { label: 'XP', current: upgradeProgress.xp, target: upgradeProgress.requirements.xp },
                   { label: 'Races', current: upgradeProgress.races, target: upgradeProgress.requirements.races },
                   { label: 'Wins', current: upgradeProgress.wins, target: upgradeProgress.requirements.wins },
-                  { label: 'Login Days', current: upgradeProgress.loginDays, target: upgradeProgress.requirements.loginDays },
                 ].map(item => {
                   const pct = Math.min(100, (item.current / item.target) * 100)
                   const done = item.current >= item.target
