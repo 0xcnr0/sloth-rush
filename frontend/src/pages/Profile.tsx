@@ -14,7 +14,6 @@ interface ProfileData {
   totalRaces: number
   totalWins: number
   totalEarnings: number
-  loginDays: number
   freeRacerCount: number
   racerCount: number
 }
@@ -71,7 +70,6 @@ export default function Profile() {
           { label: 'Total Races', value: String(profile.totalRaces), color: 'text-brand-ink' },
           { label: 'Win Rate', value: `${winRate}%`, color: 'text-yellow-400' },
           { label: 'Total Wins', value: String(profile.totalWins), color: 'text-brand-primary' },
-          { label: 'Login Days', value: String(profile.loginDays), color: 'text-blue-400' },
           { label: 'Creatures', value: `${profile.freeRacerCount + profile.racerCount}`, color: 'text-brand-ink' },
         ].map((stat, i) => (
           <motion.div

@@ -76,7 +76,7 @@ export default function Layout() {
             {address && xp > 0 && (
               <div className="flex items-center gap-1 sm:gap-1.5 bg-brand-accent/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
                 <span className="text-brand-accent font-bold text-xs sm:text-sm">{xp}</span>
-                <span className="text-brand-accent/70 text-[10px] sm:text-xs hidden sm:inline">XP</span>
+                <span className="text-brand-accent/70 text-[10px] sm:text-xs">XP</span>
               </div>
             )}
             <WalletConnect

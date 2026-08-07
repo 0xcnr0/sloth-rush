@@ -212,16 +212,17 @@ router.post("/referral/apply", async (req: Request, res: Response) => {
         [referrer.wallet, w, code]
       );
 
-      // Reward referrer: 25 coins
-      
-      // Mark rewarded
+      // There is no reward. The currency was removed from V1, and the award
+      // code went with it — but the response kept claiming referrerRewarded,
+      // so a player who completed a referral was told they had been paid.
+      // Mark recorded
       await client.query(
         "UPDATE referrals SET rewarded = 1 WHERE referee_wallet = $1",
         [w]
       );
     });
 
-    res.json({ applied: true, referrerRewarded: true });
+    res.json({ applied: true, referrerRewarded: false });
   } catch (err) {
     console.error("POST /referral/apply error:", err);
     res.status(500).json({ error: "Internal server error" });

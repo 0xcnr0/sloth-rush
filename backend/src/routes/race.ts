@@ -1036,15 +1036,36 @@ router.get("/:id/replay", async (req: Request, res: Response) => {
 });
 
 // GET /api/race/active — List active races
+/**
+ * A race only leaves 'racing' when somebody asks for its frames after its
+ * clock has run out, so a race nobody watched stays 'racing' in the database
+ * forever. Eleven of those had already piled up in testing and every one of
+ * them would have been listed as live.
+ *
+ * The clock is the authority here as well: the longest format runs about a
+ * minute, so anything older than three has finished whether or not a row says
+ * so. The stale rows themselves are left alone — settling them needs a write,
+ * and a GET is the wrong place for one.
+ */
 router.get("/active", async (_req: Request, res: Response) => {
   try {
     const races = await getAll(
-      `SELECT r.*, COUNT(rp.id) as participant_count
+      // Races that are actually running. This asked for 'lobby' and 'tuning'
+      // — races that had not started, and a status left over from the retired
+      // Wind-Up phase — while the spectate screen labelled every row LIVE with
+      // a pulsing dot. Watching a live race opened one that was standing still.
+      //
+      // The count is aliased to camelCase because that is what both readers
+      // ask for; as participant_count it never matched and every row printed
+      // '?' rather than a number.
+      `SELECT r.*, COUNT(rp.id) AS "participantCount"
        FROM races r
        LEFT JOIN race_participants rp ON r.id = rp.race_id
-       WHERE r.status IN ('lobby', 'tuning')
+       WHERE r.status = 'racing'
+         AND r.started_at IS NOT NULL
+         AND r.started_at > NOW() - INTERVAL '3 minutes'
        GROUP BY r.id
-       ORDER BY r.created_at DESC
+       ORDER BY r.started_at DESC NULLS LAST
        LIMIT 20`
     );
 
