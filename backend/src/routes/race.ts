@@ -11,6 +11,9 @@ import { recordRaceResultOnchain } from "../lib/onchain";
 
 const router = Router();
 
+const IS_PRODUCTION =
+  process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT === "production";
+
 const VALID_STATS = ['spd', 'acc', 'sta', 'agi', 'ref', 'lck'] as const;
 type StatName = typeof VALID_STATS[number];
 
@@ -353,6 +356,47 @@ function revealedTick(race: any): number {
 }
 
 // GET /api/race/:id/items — what this racer has left and when it may be used.
+/**
+ * Dev-only: hand the browser the wallet that owns a racer in this race.
+ *
+ * Why this exists. The whole in-race decision — deploy an item, server picks
+ * the tick — was unreachable without a connected wallet, so it could not be
+ * played or looked at locally at all. It was never a real authorisation gate:
+ * /item takes a wallet string and compares it to the participant row, with no
+ * signature anywhere, so anyone who knows an address can already act for it.
+ * This endpoint therefore gives away nothing that endpoint does not, and it
+ * refuses to exist in production regardless.
+ *
+ * When wallet auth is done properly (sign a nonce), this route and the preview
+ * identity that uses it both go.
+ */
+router.get("/:id/preview-identity", async (req: Request, res: Response) => {
+  if (IS_PRODUCTION) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  try {
+    const { id } = req.params;
+    const racerId = parseInt(String(req.query.racerId), 10);
+    if (!Number.isFinite(racerId)) {
+      res.status(400).json({ error: "racerId required" });
+      return;
+    }
+    const participant = await getOne(
+      "SELECT wallet FROM race_participants WHERE race_id = $1 AND racer_id = $2",
+      [id, racerId]
+    );
+    if (!participant) {
+      res.status(404).json({ error: "racer is not in this race" });
+      return;
+    }
+    res.json({ wallet: participant.wallet });
+  } catch (err) {
+    console.error("preview-identity failed:", err);
+    res.status(500).json({ error: "failed" });
+  }
+});
+
 router.get("/:id/items", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -550,11 +594,34 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const resultHash = crypto.createHash("sha256").update(JSON.stringify(result.finalOrder)).digest("hex");
     const winnerWallet = result.finalOrder[0]?.wallet || "";
 
-    await runTransaction(async (client) => {
-      await client.query(
-        "UPDATE races SET status = 'finished', seed = $1, result_hash = $2, winner_wallet = $3, finished_at = NOW() WHERE id = $4",
+    /**
+     * Settle only when the race is actually over.
+     *
+     * This used to close the race the moment anyone asked for the frames — and
+     * asking for the frames is exactly what the client does when it opens the
+     * broadcast to watch. So by the time a player could reach for an item the
+     * race was already `finished`, and /item refuses anything that is not
+     * `racing`. The in-race decision the whole loadout exists for was
+     * unreachable in the product, not only in preview.
+     *
+     * It survived every gate: the engine tests drive simulateRace directly, and
+     * driving the endpoints by curl passes too as long as you deploy before you
+     * ever ask to watch. Only clicking the button in a browser finds it.
+     *
+     * A race is over when its own clock says so — the same server-clock
+     * frontier that decides what a player has already seen.
+     */
+    const lastTick = result.frames[result.frames.length - 1]?.tick ?? 0;
+    const raceIsOver = race.status === "finished" || revealedTick(race) >= lastTick;
+
+    if (raceIsOver) await runTransaction(async (client) => {
+      // Conditional so two viewers arriving at the line together cannot both
+      // award the streaks, XP and race points.
+      const settled = await client.query(
+        "UPDATE races SET status = 'finished', seed = $1, result_hash = $2, winner_wallet = $3, finished_at = NOW() WHERE id = $4 AND status <> 'finished'",
         [seed, resultHash, winnerWallet, raceId]
       );
+      if (settled.rowCount === 0) return;
 
       for (const order of result.finalOrder) {
         const position = result.finalOrder.indexOf(order) + 1;
@@ -634,7 +701,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
 
     // Record race result on-chain (best-effort, non-blocking)
     const raceWinner = result.finalOrder[0];
-    if (raceWinner && !raceWinner.isBot && resultHash) {
+    if (raceIsOver && raceWinner && !raceWinner.isBot && resultHash) {
       recordRaceResultOnchain(raceId, resultHash, raceWinner.wallet).catch(() => {});
     }
 

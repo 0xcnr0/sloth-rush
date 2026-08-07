@@ -102,7 +102,22 @@ export default function RaceBroadcast() {
   const previewRacerId = previewMode
     ? Number(new URLSearchParams(window.location.search).get('racer')) || undefined
     : undefined
-  const previewWallet = previewMode ? '0xPREVIEW' : undefined
+  // Preview asks the server (dev-only route) for the address that actually owns
+  // this racer, instead of the 0xPREVIEW placeholder it used to invent. The
+  // placeholder was refused by /item on every press, so the one decision the
+  // game asks a player to make could not be played or looked at without a
+  // wallet. Nothing about connecting a wallet needs to be finished for the rest
+  // of the game to be built and seen.
+  const [previewWallet, setPreviewWallet] = useState<string | undefined>()
+  useEffect(() => {
+    if (!previewMode || !id || !previewRacerId) return
+    let cancelled = false
+    fetch(`/api/race/${id}/preview-identity?racerId=${previewRacerId}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d?.wallet) setPreviewWallet(d.wallet) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [previewMode, id, previewRacerId])
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Each archetype's art loads once and is shared; the rig draws nothing until
   // all seven of its PNGs are in.
@@ -1251,15 +1266,16 @@ export default function RaceBroadcast() {
             // Preview mode signs with a placeholder address the server rightly
             // rejects. The button still renders — seeing it is the whole point
             // of preview — but it says so instead of erroring on click.
-            const canDeploy = Boolean(address)
+            const canDeploy = Boolean(address ?? previewWallet)
             return (
               <button
                 key={code}
                 type="button"
                 disabled={deploying || !canDeploy}
                 title={canDeploy ? undefined : 'Connect a wallet to deploy items'}
+                data-testid={`item-${code}`}
                 onClick={async () => {
-                  const wallet = address
+                  const wallet = address ?? previewWallet
                   if (!id || !playerRacerId || !wallet) return
                   setDeploying(true)
                   try {
