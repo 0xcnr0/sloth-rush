@@ -243,12 +243,72 @@ export default function RaceBroadcast() {
     const RACER_HEIGHT = LANE_HEIGHT * GROUND_AT * 0.82
     const FRAME_DELAY = isDemo ? 80 : 280 // demo: ~18s, normal: ~65s
 
-    function drawFrame(fi: number) {
+    /**
+     * The camera, and why there now is one.
+     *
+     * The whole track used to be drawn end to end: 800 units squeezed into
+     * ~370px, so 0.47px per unit. A racer travelling 40 units a second crossed
+     * 19px a second while standing 37px tall — half a body length per second.
+     * That is not a racer that looks slow, that is a racer that is slow, and no
+     * amount of decoration was ever going to fix it.
+     *
+     * Gigling shows a 100m window of a 500m race, with a zoom control on it.
+     * The whole track is never on screen, and that is the entire source of the
+     * speed: the ground moves past you.
+     *
+     * A window of ~18% of the track gives about six times the pixels per unit.
+     * The camera clamps at both ends, so the start line is still under you at
+     * the start and the finish is on screen for the run-in.
+     */
+    const VIEW_UNITS = Math.max(120, trackLength * 0.18)
+    const PX_PER_UNIT = TRACK_WIDTH / VIEW_UNITS
+    const LEADER_AT = 0.72 // where across the viewport the leader sits
+    const CAM_MAX = Math.max(0, trackLength - VIEW_UNITS)
+
+    /**
+     * Blend two sampled frames. The server sends every third tick — 158 frames
+     * for a 47-second race, which played back at 3.6 frames a second. That is a
+     * slide show, and it read as walking just as much as the scale did.
+     * Rendering now runs every animation frame and interpolates between the two
+     * nearest samples, so the motion is continuous at 60fps.
+     */
+    function frameAt(fp: number): RaceFrame {
+      const i0 = Math.max(0, Math.min(frames.length - 1, Math.floor(fp)))
+      const i1 = Math.min(frames.length - 1, i0 + 1)
+      const t = i1 === i0 ? 0 : Math.max(0, Math.min(1, fp - i0))
+      const a = frames[i0]
+      const b = frames[i1]
+      const next = new Map(b.positions.map(q => [q.id, q]))
+      return {
+        tick: Math.round(a.tick + (b.tick - a.tick) * t),
+        positions: a.positions.map(pt => {
+          const q = next.get(pt.id) ?? pt
+          return {
+            ...pt,
+            distance: pt.distance + (q.distance - pt.distance) * t,
+            speed: pt.speed + (q.speed - pt.speed) * t,
+          }
+        }),
+      }
+    }
+
+    function renderFrame(frame: RaceFrame) {
       if (!ctx) return
-      const frame = frames[fi]
-      if (!frame) return
 
       ctx.clearRect(0, 0, width, height)
+
+      // Camera position for this frame. Everything below is placed in world
+      // units and mapped through toScreen, rather than being squeezed to fit.
+      const lead = frame.positions.reduce((m, pt) => Math.max(m, pt.distance), 0)
+      const camStart = Math.max(0, Math.min(CAM_MAX, lead - VIEW_UNITS * LEADER_AT))
+      const camPx = camStart * PX_PER_UNIT
+      const toScreen = (d: number) => SIDE_MARGIN + (d - camStart) * PX_PER_UNIT
+
+      // The scenery scrolls now, so it has to be kept inside the track box.
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(SIDE_MARGIN, TOP_MARGIN, TRACK_WIDTH, TRACK_HEIGHT)
+      ctx.clip()
 
       // --- Diorama Speedway: four stacked horizontal lanes ------------------
       // The track was a vertical tree trunk, left over from the first theme.
@@ -258,16 +318,29 @@ export default function RaceBroadcast() {
       for (let i = 0; i < numRacers; i++) {
         const top = TOP_MARGIN + i * LANE_HEIGHT
 
-        // The drawn deck fills the lane. Odd lanes are mirrored so four
-        // repeats of one image do not read as a repeating pattern.
+        // The deck tiles and scrolls. It used to be one copy stretched across
+        // the whole lane, which meant it never moved — a static backdrop behind
+        // a racer that barely moved either. Odd lanes are offset by half a tile
+        // so four repeats do not line up into one band.
+        const tileW = TRACK_WIDTH * 0.62
+        const scrolled = camPx + (i % 2) * tileW * 0.5
+        const period = tileW * 2 // one normal tile plus its mirror
+        const firstX = -(((scrolled % period) + period) % period)
         if (laneDeck.complete && laneDeck.naturalWidth > 0) {
-          ctx.save()
-          if (i % 2 === 1) {
-            ctx.translate(SIDE_MARGIN * 2 + TRACK_WIDTH, 0)
-            ctx.scale(-1, 1)
+          // Mirror every other tile. The deck art is not seamless, so plain
+          // repetition left a hard vertical join scrolling past every tile —
+          // very visible once the ground actually moves. Mirroring makes each
+          // join match itself.
+          let k = 0
+          for (let tx = firstX; tx < TRACK_WIDTH + tileW; tx += tileW, k++) {
+            ctx.save()
+            if (k % 2 === 1) {
+              ctx.translate(2 * (SIDE_MARGIN + tx) + tileW, 0)
+              ctx.scale(-1, 1)
+            }
+            ctx.drawImage(laneDeck, SIDE_MARGIN + tx, top, tileW, LANE_HEIGHT)
+            ctx.restore()
           }
-          ctx.drawImage(laneDeck, SIDE_MARGIN, top, TRACK_WIDTH, LANE_HEIGHT)
-          ctx.restore()
         } else {
           ctx.fillStyle = PALETTE.floor
           ctx.fillRect(SIDE_MARGIN, top, TRACK_WIDTH, LANE_HEIGHT)
@@ -278,13 +351,47 @@ export default function RaceBroadcast() {
         ctx.fillRect(SIDE_MARGIN, top, 4, LANE_HEIGHT)
       }
 
-      // Start line (left) and chequered finish (right).
-      ctx.strokeStyle = PALETTE.ink
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(SIDE_MARGIN, TOP_MARGIN)
-      ctx.lineTo(SIDE_MARGIN, TOP_MARGIN + TRACK_HEIGHT)
-      ctx.stroke()
+      // Push the printed deck back. Zooming in magnified the litho 2.7x, so a
+      // gear became the size of a racer's torso and the ground competed with
+      // the toys for attention. CLAUDE.md's colour budget already settles this:
+      // the environment stays neutral and the accents live on the racers.
+      ctx.fillStyle = 'rgba(255, 253, 247, 0.42)'
+      ctx.fillRect(SIDE_MARGIN, TOP_MARGIN, TRACK_WIDTH, TRACK_HEIGHT)
+
+      // Start line, at world zero — it scrolls away behind you now instead of
+      // being pinned to the left edge for the whole race.
+      const startX = toScreen(0)
+      if (startX > SIDE_MARGIN - 4 && startX < SIDE_MARGIN + TRACK_WIDTH) {
+        ctx.strokeStyle = PALETTE.ink
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.moveTo(startX, TOP_MARGIN)
+        ctx.lineTo(startX, TOP_MARGIN + TRACK_HEIGHT)
+        ctx.stroke()
+      }
+
+      // Distance posts every 50 units. These are the speed cue: something has
+      // to visibly stream past, and with the whole track on screen nothing ever
+      // did. Every other one is labelled so the number is readable.
+      const POST_EVERY = 50
+      const firstPost = Math.floor(camStart / POST_EVERY) * POST_EVERY
+      for (let d = firstPost; d <= camStart + VIEW_UNITS + POST_EVERY; d += POST_EVERY) {
+        if (d <= 0 || d >= trackLength) continue
+        const px = toScreen(d)
+        ctx.strokeStyle = 'rgba(36, 26, 56, 0.18)'
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(px, TOP_MARGIN)
+        ctx.lineTo(px, TOP_MARGIN + TRACK_HEIGHT)
+        ctx.stroke()
+        if (d % (POST_EVERY * 2) === 0) {
+          ctx.fillStyle = 'rgba(36, 26, 56, 0.45)'
+          ctx.font = 'bold 9px ui-monospace, monospace'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          ctx.fillText(`${d}m`, px, TOP_MARGIN + 3)
+        }
+      }
 
       // Finish: a drawn chequered banner hung from a dowel, spanning all four
       // lanes. This was a 16px-wide loop of alternating fillRect squares with
@@ -292,7 +399,7 @@ export default function RaceBroadcast() {
       // in the scene. The dowel is allowed to poke above the track box, which
       // is what the top margin is now for.
       const bannerW = 34
-      const bannerX = SIDE_MARGIN + TRACK_WIDTH - bannerW * 0.45
+      const bannerX = toScreen(trackLength) - bannerW * 0.45
       if (finishBanner.complete && finishBanner.naturalWidth > 0) {
         ctx.drawImage(
           finishBanner,
@@ -311,7 +418,8 @@ export default function RaceBroadcast() {
       // and they are most of the effect: the eye gets a ruler.
       const SEGMENTS = 6
       for (let sgi = 1; sgi < SEGMENTS; sgi++) {
-        const sx = SIDE_MARGIN + (sgi / SEGMENTS) * TRACK_WIDTH
+        const sx = toScreen((sgi / SEGMENTS) * trackLength)
+        if (sx < SIDE_MARGIN - 12 || sx > SIDE_MARGIN + TRACK_WIDTH + 12) continue
         ctx.strokeStyle = 'rgba(36, 26, 56, 0.28)'
         ctx.lineWidth = 2
         ctx.setLineDash([5, 6])
@@ -328,16 +436,36 @@ export default function RaceBroadcast() {
         ctx.fillRect(sx - 4, TOP_MARGIN - 9, 8, 4)
       }
 
+      ctx.restore() // end of the scrolling scenery clip
+
       // Sort for ranking
       const sorted = [...frame.positions].sort((a, b) => b.distance - a.distance)
 
       frame.positions.forEach((pos, i) => {
-        const progress = Math.min(1, pos.distance / trackLength)
-        const cx = SIDE_MARGIN + progress * TRACK_WIDTH
+        const cx = toScreen(pos.distance)
         const top = TOP_MARGIN + i * LANE_HEIGHT
         const ground = top + LANE_HEIGHT * GROUND_AT
         const rank = sorted.findIndex(s => s.id === pos.id) + 1
         const isBot = bots.has(pos.id)
+
+        if (cx < SIDE_MARGIN - RACER_HEIGHT * 0.6) {
+          // Dropped out of the back of the camera. Mark the lane edge so the
+          // lane does not just read as empty.
+          const ground0 = top + LANE_HEIGHT * GROUND_AT
+          ctx.fillStyle = RACER_COLORS[i] || PALETTE.ink
+          ctx.beginPath()
+          ctx.moveTo(SIDE_MARGIN + 14, ground0 - 10)
+          ctx.lineTo(SIDE_MARGIN + 4, ground0 - 18)
+          ctx.lineTo(SIDE_MARGIN + 14, ground0 - 26)
+          ctx.closePath()
+          ctx.fill()
+          ctx.fillStyle = PALETTE.ink
+          ctx.font = 'bold 9px ui-monospace, monospace'
+          ctx.textAlign = 'left'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(`${Math.round(camStart - pos.distance)}m`, SIDE_MARGIN + 18, ground0 - 18)
+          return
+        }
 
         // The seven-part rig, driven from race state. Cadence comes from ground
         // speed so the planted foot tracks the shelf instead of moonwalking, and
@@ -445,6 +573,18 @@ export default function RaceBroadcast() {
         ctx.textBaseline = 'middle'
         ctx.fillText(label, plateX + 26, plateY + plateH / 2 + 0.5)
       })
+    }
+
+    /**
+     * Everything that is not drawing: React state, commentary, sound, emotes.
+     *
+     * This has to be separate from rendering now. Rendering runs every
+     * animation frame so the motion is smooth; the data still arrives every
+     * third tick. Left together, a setState and a sound cue would fire about
+     * seventeen times per sample.
+     */
+    function advanceFrame(fi: number, frame: RaceFrame) {
+      const sorted = [...frame.positions].sort((a, b) => b.distance - a.distance)
 
       // Standings rows carry the two things a viewer actually wants: how far is
       // left, and how far behind the leader you are. A percentage answers
@@ -630,21 +770,35 @@ export default function RaceBroadcast() {
     setRacePhase('racing')
 
     let lastTime = 0
-    let fi = 0
+    let framePos = 0
+    let lastAdvanced = -1
     pausedRef.current = false
 
     function animate(time: number) {
       if (pausedRef.current) {
+        lastTime = 0 // so the pause does not count as elapsed race time
         resumeCallbackRef.current = () => {
           animFrameRef.current = requestAnimationFrame(animate)
         }
         return
       }
-      if (time - lastTime >= FRAME_DELAY) {
-        drawFrame(fi)
-        fi++
-        lastTime = time
-        if (fi >= frames.length) {
+      if (lastTime === 0) lastTime = time
+      // Clamped: a backgrounded tab must not fast-forward the race on return.
+      const dt = Math.min(120, time - lastTime)
+      lastTime = time
+      framePos += dt / FRAME_DELAY
+
+      const fi = Math.floor(framePos)
+      if (framePos < frames.length - 1) {
+        renderFrame(frameAt(framePos))
+        if (fi !== lastAdvanced) {
+          lastAdvanced = fi
+          advanceFrame(fi, frames[fi])
+        }
+      } else {
+        renderFrame(frames[frames.length - 1])
+        advanceFrame(frames.length - 1, frames[frames.length - 1])
+        {
           const winnerName = names.get(frames[frames.length - 1]?.positions.sort((a, b) => b.distance - a.distance)[0]?.id || 0)
           if (winnerName) {
             setCommentary(getCommentary('finish', { name: winnerName }))
@@ -1059,8 +1213,10 @@ export default function RaceBroadcast() {
                   }
                   setDeploying(false)
                 }}
-                className={`toy-btn flex-1 py-3 px-4 bg-brand-gold text-brand-ink ${
-                  canDeploy ? '' : 'opacity-50 cursor-not-allowed'
+                className={`toy-btn flex-1 py-3 px-4 ${
+                  canDeploy
+                    ? 'bg-brand-gold text-brand-ink'
+                    : 'bg-brand-shelf text-brand-dust cursor-not-allowed'
                 }`}
               >
                 {THEME.items[code].name}

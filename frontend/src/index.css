@@ -119,7 +119,14 @@ body {
     transform: translateY(5px);
     box-shadow: 0 0 0 0 var(--color-brand-ink);
   }
-  .toy-btn:disabled { opacity: 0.45; box-shadow: 0 3px 0 0 var(--color-brand-ink); cursor: not-allowed; }
+  /* Disabled must not be transparent: these buttons sit over drawn scenery,
+     and opacity let the room show through so they read as broken rather than
+     unavailable. Desaturate instead. */
+  .toy-btn:disabled {
+    filter: grayscale(0.6) brightness(0.94);
+    box-shadow: 0 3px 0 0 var(--color-brand-ink);
+    cursor: not-allowed;
+  }
 
   /* Headline treatment — outlined like the art, not just bold. */
   .toy-title {
