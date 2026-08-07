@@ -102,6 +102,7 @@ export const api = {
       raceId: string
       seed: string
       resultHash: string
+      statAwards?: { racerId: number; stat: string; gain: number; dayTotal: number; dayCap: number }[]
       gridPositions: {
         id: number
         name: string

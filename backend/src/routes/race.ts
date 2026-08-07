@@ -807,6 +807,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
      * so the two agree by construction.
      */
     const today = justSettled ? localDateKey() : "";
+    const statAwards: { racerId: number; stat: string; gain: number; dayTotal: number; dayCap: number }[] = [];
     for (let i = 0; justSettled && i < result.finalOrder.length; i++) {
       const entry = result.finalOrder[i];
       if (entry.isBot) continue;
@@ -822,7 +823,11 @@ router.post("/simulate", async (req: Request, res: Response) => {
         "SELECT total_gain FROM daily_stat_gains WHERE racer_id = $1 AND gain_date = $2",
         [entry.id, today]
       );
-      if ((dailyGain?.total_gain || 0) >= DAILY_STAT_CAP) continue;
+      const spentToday = dailyGain?.total_gain || 0;
+      if (spentToday >= DAILY_STAT_CAP) {
+        statAwards.push({ racerId: entry.id, stat: statToGrow, gain: 0, dayTotal: spentToday, dayCap: DAILY_STAT_CAP });
+        continue;
+      }
 
       // Check stat cap (with evolution support)
       assertValidStat(statToGrow);
@@ -834,9 +839,19 @@ router.post("/simulate", async (req: Request, res: Response) => {
         if (pathStats[racer.evolution_path]?.includes(statToGrow)) cap += 5;
         if ((racer.tier || 0) >= 4) cap += 3;
       }
-      if (racer.current_val >= cap) continue;
+      if (racer.current_val >= cap) {
+        statAwards.push({ racerId: entry.id, stat: statToGrow, gain: 0, dayTotal: spentToday, dayCap: DAILY_STAT_CAP });
+        continue;
+      }
 
-      const gain = Math.min(PER_RACE_STAT_GAIN, cap - racer.current_val);
+      const gain = Math.min(PER_RACE_STAT_GAIN, cap - racer.current_val, DAILY_STAT_CAP - spentToday);
+      statAwards.push({
+        racerId: entry.id,
+        stat: statToGrow,
+        gain: Math.round(gain * 100) / 100,
+        dayTotal: Math.round((spentToday + gain) * 100) / 100,
+        dayCap: DAILY_STAT_CAP,
+      });
       await query(
         `UPDATE racers SET ${statToGrow} = ${statToGrow} + $1 WHERE id = $2`,
         [gain, entry.id]
@@ -889,6 +904,10 @@ router.post("/simulate", async (req: Request, res: Response) => {
       raceId,
       seed,
       resultHash,
+      // What this race gave, so the finish screen can say so. Empty until the
+      // race settles; a zero gain with dayTotal at dayCap is the answer to
+      // "why did nothing happen".
+      statAwards,
       gridPositions: gridded.map((g) => ({
         id: g.id,
         name: g.name,

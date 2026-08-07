@@ -143,6 +143,13 @@ export default function RaceBroadcast() {
   // The settled result, once the server has it. The podium prefers this over
   // the frames it animated, because an item deployed mid-race changes both.
   const finalOrderRef = useRef<any[] | null>(null)
+  // What the race gave this racer. The daily cap is real and invisible: a
+  // player at the cap races, wins, and watches nothing move with no
+  // explanation anywhere on screen. A playtest with database access read that
+  // silence as a dead feature; a player would read it the same way.
+  const [statAward, setStatAward] = useState<
+    { stat: string; gain: number; dayTotal: number; dayCap: number } | null
+  >(null)
 
   const isDemo = location.state?.demo === true
   const playerRacerId = (location.state?.racerId as number | undefined) ?? previewRacerId
@@ -189,10 +196,12 @@ export default function RaceBroadcast() {
       const fresh = await api.simulateRace(id)
       if (fresh?.frames?.length) framesRef.current = fresh.frames as RaceFrame[]
       if (fresh?.finalOrder) finalOrderRef.current = fresh.finalOrder
+      const mine = fresh?.statAwards?.find(a => a.racerId === playerRacerId)
+      if (mine) setStatAward(mine)
     } catch (err) {
       console.error('Failed to refresh simulation:', err)
     }
-  }, [id])
+  }, [id, playerRacerId])
   const racerRacesRef = useRef<Map<number, string>>(new Map()) // id -> race type
   const currentTickRef = useRef(0)
   const pausedRef = useRef(false)
@@ -1671,6 +1680,45 @@ export default function RaceBroadcast() {
                       You finished <span className="text-brand-gold font-bold">{gapSeconds.toFixed(2)}s</span> behind.
                       {' One item held back a little longer could have taken it.'}
                     </p>
+                  </motion.div>
+                )}
+
+                {/* What the race did to the racer.
+                    This is the only screen where a player finds out, and until
+                    now it said nothing at all — so a racer that had spent its
+                    daily budget looked identical to one the game had forgotten
+                    about. The cap is a rule; a rule the player cannot see is
+                    indistinguishable from a bug. */}
+                {statAward && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55 }}
+                    className="toy-panel px-4 py-3 mb-6"
+                  >
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="text-brand-ink font-bold text-sm">
+                        {statAward.gain > 0
+                          ? `+${statAward.gain.toFixed(1)} ${statAward.stat.toUpperCase()}`
+                          : 'No gain from this race'}
+                      </span>
+                      <span className="text-brand-dust text-xs tabular-nums">
+                        {statAward.dayTotal.toFixed(1)} / {statAward.dayCap.toFixed(1)} today
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-brand-ink/10 overflow-hidden border-2 border-brand-ink">
+                      <div
+                        className="h-full bg-brand-gold"
+                        style={{ width: `${Math.min(100, (statAward.dayTotal / statAward.dayCap) * 100)}%` }}
+                      />
+                    </div>
+                    {statAward.gain === 0 && (
+                      <p className="text-brand-dust text-[11px] mt-2">
+                        {statAward.dayTotal >= statAward.dayCap
+                          ? 'This racer has used up today. The cap resets at midnight.'
+                          : 'This stat is already at its ceiling for this tier and rarity.'}
+                      </p>
+                    )}
                   </motion.div>
                 )}
 
