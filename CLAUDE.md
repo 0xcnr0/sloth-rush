@@ -122,9 +122,16 @@ OFFCHAIN (Server):
 ### Yarış Mekaniği
 
 - 4 yarışçı per yarış (bot doldurur, ama botlar ödül kazanamaz)
-- **Pist formatı: dikey ekranda üst üste 4 yatay şerit** — foto-finiş görünümü. Hem mobil ergonomi hem tema-otantiklik (bir model tren dioraması gibi). Yarışçılar soldan sağa ilerler.
+- **Pist formatı: tek açık koridor + kayan kamera** (2026-08-08). Yarışçılar
+  soldan sağa ilerler, üstte ve altta duvar var, derinlik sırasına göre çizilir
+  ve üst üste binerler. Kimlik şeritten değil **arketip renginden** gelir.
+- **Kamera pistin ~%18'ini gösterir** ve lideri %72 hizasında tutar, iki uçta
+  sabitlenir. Kamerasız hâlde tüm pist aynı anda ekrandaydı: birim başına 0,47
+  piksel, yani yarışçı saniyede kendi boyunun yarısı kadar ilerliyordu. Ölçüm ve
+  gerekçe aşağıda "Şeritler niye kalktı".
 - **Loadout** (yarış öncesi): İki item seçilir — `boost` (kendine) veya `hinder`
-  (lidere). Yarışçı ve mesafeyle **aynı ekranda**, ayrı bir faz değil.
+  (**oyuncunun seçtiği bir rakibe**). Yarışçı ve mesafeyle **aynı ekranda**,
+  ayrı bir faz değil.
 - **Item kullanımı** (yarış sırasında): Zamanı oyuncu seçer. Tick'i **sunucu**
   belirler — istemcinin tick önermesi, oyuncunun zaten izlediği bir ana item
   düşürmesine izin verirdi ve Taktik Mod'u bozan şey tam olarak buydu.
@@ -133,28 +140,34 @@ OFFCHAIN (Server):
 > **Wind-Up fazı 2026-08-07'de emekliye ayrıldı.** Bir butonu doğru sürede basılı
 > tutmayı ölçüyordu — refleks testi, karar değil — ve her yarışın önünde
 > duruyordu. Tarihî kayıt: [docs/RETIRED_WIND_UP_PHASE.md](docs/RETIRED_WIND_UP_PHASE.md).
-- Prize pool: Platform %15 keser, kalan %85 dağıtılır (1.:%50, 2.:%30, 3.:%15, 4.:%5)
-
 > **Bu mekanik üçüncü halidir.** Tune-Up (gizli para harcaması) → Wind-Up fazı
 > (beceri bazlı basılı tutma) → loadout + yarış içi item. İlk ikisi de yarış
 > öncesineydi; şimdiki tek fark, kararın **yarışın içinde** de sürmesi.
 > `docs/REBRAND_AND_VISUAL_PLAN.md` §3.3 hâlâ Tune-Up'ı anlatıyor — eskidir.
 
-### Yarış Formatları (V1 — iki mesafe, aynı ücret)
-
-V1'de iki ücretli format var ve **tek farkları mesafe.** Bu bilinçli: ikinci bir
-format ancak farklı bir soru soruyorsa yerini hak eder, ve ölçülen tek kaldıraç
-mesafe. İkisi de 50 SPRING — Endurance daha pahalı olsaydı oyuncu cüzdanına göre
-seçerdi, sahip olduğu oyuncağa göre değil.
+### Yarış Formatları (V1 — iki mesafe)
 
 | Format | Mesafe | Süre (taze yarışçı) | Neyi ödüllendirir |
 |---|---|---|---|
-| **Practice Run** | 800 | ~22s | Isınma |
 | **Sprint** | 800 | ~22s | En yüksek SPD kazanır |
 | **Endurance** | 1.400 | ~53s | Dengeli dağılım kazanır |
 
-**V1'de yarış ücretsizdir ve ödül vermez.** Üç formatın da girişi bedava; fark
-sadece mesafede. Ayrıntı için aşağıdaki "Para birimi V1'den çıkarıldı" bölümü.
+**Tek farkları mesafe.** Bu bilinçli: ikinci bir format ancak farklı bir soru
+soruyorsa yerini hak eder, ve ölçülen tek kaldıraç mesafe.
+
+> **2026-08-08'de üç format iki oldu.** Lobide beş giriş noktası vardı — Daily
+> Race afişi, Practice Run, Demo Race, Sprint, Endurance — ve `exhibition` ile
+> `sprint` **aynı `trackLength`'i** taşıyordu. Para kalkıp giriş ücreti
+> ödenmeyince aralarında hiçbir fark kalmamıştı: beşin üçü aynı 800 birimlik
+> yarıştı.
+>
+> `exhibition`'ı kaldırınca neyi taşıdığı çıktı ve o daha kötüydü: **ücretsiz
+> yarışçılar diğer bütün formatlardan men edilmişti.** Diğerleri para isterken
+> mantıklıydı; artık hiçbiri istemediği için o kapının tek yaptığı, her yeni
+> oyuncunun bastığı Wind-Up'ın iki gerçek yarışa da girememesiydi. Kaldırıldı.
+
+**V1'de yarış ücretsizdir ve ödül vermez.** Ayrıntı için aşağıdaki "Para birimi
+V1'den çıkarıldı" bölümü.
 
 Sayılar tahminden değil ölçümden geldi: `backend/src/simulation/distanceLever.check.ts`
 ve `fatigueSweep.ts`. Mesafe sabitleri `backend/src/simulation/formats.ts`'te;
@@ -422,7 +435,7 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 5. Sprint ve Endurance yarış akışı (tek pist: Diorama Speedway, iki mesafe)
 6. Wind-Up fazı UI (beceri bazlı grid belirleme)
 7. Grid gösterimi
-8. Broadcast görünüm (4 yatay şerit, yarış animasyonu)
+8. Broadcast görünüm (tek koridor + kayan kamera, yarış animasyonu)
 9. SPRING bakiye sistemi
 10. Prize pool dağıtımı
 
@@ -457,9 +470,31 @@ Simülasyon kodu açık kaynak olacak → anyone-can-verify
 
 ## Şu An Neredeyiz
 
-V1 kapsamı sadeleştirildi ve `main`'de. Oyun döngüsü: **mint → mesafe ve loadout
-seç → yarış → yarışçı gelişir.** Oyun içi para yok; tek ödeme $3 Showcase
-upgrade'i ve o da görünüşü değiştiriyor.
+V1 kapsamı sadeleştirildi. Oyun döngüsü: **mint → mesafe ve loadout seç →
+yarış → yarışçı gelişir.** Oyun içi para yok; tek ödeme $3 Showcase upgrade'i
+ve o da görünüşü değiştiriyor.
+
+**Döngü 2026-08-08'de ilk kez gerçekten kapandı.** O güne kadar oynanan yarış
+hiçbir yere yazılmıyordu: sunucu yarışı ancak kendi saati dolduktan sonra
+sorulunca kapatıyor, istemci ise sadece **başlangıçta** soruyordu — yani hiç
+dolmadığı anda. Bitmiş yarış sonsuza dek `racing` kalıyor, bitiş sırası, seri ve
+stat kazancı hiç işlenmiyordu. Bir playtest bunu yakaladı; ayrıntı aşağıda.
+
+### Şeritler niye kalktı (2026-08-08)
+
+Dört paralel şerit, iki yarışçının aynı yerde olamaması demekti — kimse kimseyi
+bedenen geçmiyordu ve her oyuncak ekranın dörtte birine sıkışıyordu. Yerine tek
+açık koridor ve kayan kamera geldi.
+
+**Gerekçenin yarısı yanlıştı ve kayda geçiyor.** "Gigling'de şerit yok,
+yarışçılar dağılıp çakışıyor" diye başlandı; kaydın 19 karesi incelenince
+Gigling'de **sekiz sabit şerit** olduğu ve yarışçıların hiç çakışmadığı çıktı.
+Doğru olan taraf ölçüldü ve duruyor: yarışçı boyu 37px → ~80px, zemin saniyede
+127 piksel akıyor (öncesi sıfırdı, çünkü zemin tuvale çivilenmişti).
+
+**Hâlâ çözülmemiş olan:** playtest "kimin önde olduğunu viewport'tan değil,
+alttaki listeden okudum" dedi. Koridor yarışçıları büyüttü, **kim kim** sorusunu
+çözmedi.
 
 Kapılar tek komut: **`npm run verify`** (typecheck + `lint:vocab` +
 `check:verifier` + 17 birim testi). Uçtan uca: `QA_BYPASS_TOKEN=local-dev` ile
@@ -493,18 +528,47 @@ Kontratlar yeniden adlandırıldı (`FreeRacer` / `Racer` / `RaceCore`), derlend
 
 **Tetikleyici:** kontrat *mantığı* değişince, ya da **başvurudan önce** — hangisi önce gelirse. `DEVFOLIO_ANSWERS.md` başvuruda kullanılacak üç adresi listeliyor ve üstünde "NOTE BEFORE SUBMITTING" uyarısı duruyor: o adresler redeploy öncesi bytecode'a ait. Deploy sonrası `contracts/scripts/verify-deployment.ts` dört bağlantıyı geri okuyup doğruluyor.
 
+### ⚠ Günlük stat tavanı görünmez ve bir kez teşhis şaşırttı
+
+Yarış başına +0.4, günde en fazla +4.0. Tavana çarpan oyuncu yarışıyor,
+kazanıyor, hiçbir şey kımıldamıyor ve **ekranda hiçbir açıklama yok.**
+Veritabanı erişimi olan bir playtest ajanı buna bakıp "stat büyümesi bozuk"
+sonucuna vardı; sistem çalışıyordu, yarışçı doluydu.
+
+Gün sınırı `toISOString()` ile UTC tutuluyordu; UTC+3'te gece 00:00–03:00
+arasındaki her yarış **dünün** bütçesine yazılıyordu. Artık sunucunun kendi yerel
+tarihi. Ama **tavanın oyuncuya gösterilmesi hâlâ yapılmadı** — rehberde yazıyor,
+ekranda yazmıyor.
+
 ### Sıradaki iş kalemleri
 
-1. **Cüzdan bağlı tam oyun denemesi.** Uçtan uca API ile doğrulandı (57/57) ve
-   ekranla bakıldı, ama gerçek bir oyuncu tarafından baştan sona oynanmadı.
-   Özellikle yarış içi item butonları cüzdan gerektiriyor, o yüzden önizleme
-   modunda hiç görünmediler.
-2. **Mint stat tabanı.** Mint stat başına ~10 veriyor, tavanlar 15 (free) ve
+Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
+üretildi. Kapanan maddeler oradan düşürüldü; kalanlar aşağıda.
+
+1. **Yarış içi okunabilirlik.** Playtest: *"kimin önde olduğunu viewport'tan
+   değil, alttaki listeden okudum"* ve *"liste şu anda yarışın kendisinden daha
+   iyi iş yapıyor."* Koridor oyuncakları büyüttü, kimliği çözmedi.
+2. **Günlük tavan görünmüyor** — yukarıdaki açık kalem. Oyuncuya "bugün +2.8 /
+   4.0" demek, yarışıp hiçbir şey olmamasını açıklayan tek şey.
+3. **Mint stat tabanı.** Mint stat başına ~10 veriyor, tavanlar 15 (free) ve
    22-35 (rarity). Taze yarışçı bütün sayıların ayarlandığı aralığın altında
    başlıyor; Endurance'ı 53 saniyede koşmasının sebebi bu. Denge kararı.
-3. **Passive'ler** — yukarıdaki açık kalem.
-4. **Ücretsiz yarışçılara arketip atanmıyor**, hepsi Tinbot çiziliyor.
-5. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
+4. **Passive'ler** — yukarıdaki açık kalem.
+5. **Ücretsiz yarışçılara arketip atanmıyor**, hepsi Tinbot çiziliyor.
+6. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
+   sahiplik hissi yok. Gigling'de önceden ediniliyor ve tek seferlik. V1'de para
+   olmadığı için kaynak ancak **yarışmak** olabilir. Karar alınmadı.
+7. **Ölü ekranlar ve kalıntılar.** Profil "Inventory" sekmesi kaldırılmış Shop'a
+   bağlı (iki 404), referans sistemi ödülsüz ayakta, leaderboard Career'da 0
+   yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri bildirim
+   vermiyor. Playtest raporunda 5, 9, 10, 11, 14 numaralı maddeler.
+8. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
+   backend süreci bulundu ve 3001'i en eskisi tutuyordu — yani ölçülen kod
+   çalışan kod değildi. Bu, o gün alınan her ölçümü şüpheli yapardı.
+9. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
+10. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
+    ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
+    onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
 
 ### Sanat hattı — kanıtlanmış ve tekrarlanabilir
 

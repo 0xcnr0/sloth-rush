@@ -29,7 +29,9 @@ const SECTIONS = [
     content: [
       { q: 'What are the race formats?', a: `${THEME.raceFormats.sprint.name} and ${THEME.raceFormats.endurance.name}. They differ in one thing only: distance — and distance is what decides whether raw speed or a balanced racer wins.` },
       { q: 'Which one should I enter?', a: `${THEME.raceFormats.sprint.name} is short, so raw top speed decides it. ${THEME.raceFormats.endurance.name} is twice as long, and a racer that is only fast fades before the line — the long track is won by balance. Pick the one your racer is built for.` },
-      { q: 'What is the Wind-Up phase?', a: 'Before the grid is set, all four racers wind their springs at the same time, hidden from each other. Hold to wind, release to lock. Winding further gives a better grid slot but drains stamina faster, and winding past the limit snaps the spring and puts you last. The safe limit comes from your STA.' },
+      { q: 'What do the two items do?', a: `${THEME.items.boost.name} speeds you up for five seconds. ${THEME.items.hinder.name} slows one racer you name for the same five seconds — you choose who, not the game. You pack two before the race and spend them during it.` },
+      { q: 'When should I use them?', a: 'The server decides the exact tick, always a few seconds ahead of what you have already watched — that is what stops an item from rewriting a moment you have seen. So play it early rather than at the line: an item pressed on the last stretch may land after it.' },
+      { q: 'Does the grid position matter?', a: 'A little. Starting nearer the front gives a small acceleration bonus for the first few seconds, and it runs out. Nobody gets a head start — the grid is drawn from the race seed.' },
       { q: 'Who am I racing?', a: 'Bots fill any empty slot so a race always starts. They are labelled BOT and they are not competing for anything.' },
       { q: 'Can a race be rigged?', a: 'No. Every race is a deterministic simulation of one seed, the code is open, and the result hash is written to Base. The same seed always produces the same race.' },
     ]
@@ -39,7 +41,8 @@ const SECTIONS = [
     title: 'Getting Better',
     icon: '\u{1F4C8}',
     content: [
-      { q: 'How does my racer improve?', a: 'By racing. Every finish adds a little to one of its six stats, based on where it placed, up to a daily limit. There is nothing to buy and no timer to wait out.' },
+      { q: 'How does my racer improve?', a: 'By racing, and only by racing. Every finish adds +0.4 to one stat — which stat depends on where you placed — up to +4.0 a day, so about ten races fills a day. There is nothing to buy and no timer to wait out.' },
+      { q: 'Why did my stats not go up?', a: 'You have most likely used up the day. The cap is +4.0 per racer per day and it resets at midnight. Stats also stop at a ceiling set by your tier and rarity, so a racer already at its ceiling in that stat will not move.' },
       { q: 'What are the six stats?', a: 'SPD (top speed), ACC (acceleration), STA (stamina), AGI (agility), REF (reflex) and LCK (luck). SPD is the base currency of a race; STA is what protects it over distance.' },
       { q: 'What is evolution?', a: 'As total stats cross a threshold your racer changes form — bigger, more finished, more detail. It happens on its own the moment you cross it. Evolution is how big you got.' },
       { q: 'What is rarity?', a: `Surface, not power. Fair through Mint changes how well kept your racer looks and never changes how it races. Rarity is how well kept you are — a separate axis from evolution.` },
