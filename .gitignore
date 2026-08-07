@@ -44,3 +44,6 @@ contracts/cache/
 *.local
 scripts/.env
 scripts/generated/
+
+# Third-party screen recordings kept for reference only — not ours to ship.
+records/

@@ -35,6 +35,11 @@ interface FinalOrder {
   isBot: boolean
   position: number
   reward: number
+  /** Tick the racer crossed the line; null if the simulation capped out. */
+  finishTick?: number | null
+  /** Archetype and rarity codes, so the podium can draw the actual toy. */
+  race?: string
+  rarity?: string
 }
 
 // The four locked archetype accents (ART_DIRECTION §3), reused as lane colours
@@ -106,7 +111,12 @@ export default function RaceBroadcast() {
 
   const [raceData, setRaceData] = useState<any>(location.state?.raceResult || null)
   const [currentTick, setCurrentTick] = useState(0)
-  const [livePositions, setLivePositions] = useState<{ id: number; distance: number; name: string; speed: number }[]>([])
+  const [livePositions, setLivePositions] = useState<{
+    id: number; distance: number; name: string; speed: number
+    toGo: number; gap: number; isBot: boolean; move: number
+  }[]>([])
+  /** Last frame's finishing order, so a change of place can be shown as it happens. */
+  const prevRankRef = useRef<Record<number, number>>({})
   const [activeEvent, setActiveEvent] = useState<RaceEvent | null>(null)
   const [raceFinished, setRaceFinished] = useState(false)
   const [loading, setLoading] = useState(!raceData)
@@ -294,6 +304,30 @@ export default function RaceBroadcast() {
         ctx.fillRect(SIDE_MARGIN + TRACK_WIDTH, TOP_MARGIN, 6, TRACK_HEIGHT)
       }
 
+      // Segment posts. Gigling splits a race into six segments and changes the
+      // track decoration at each boundary, which is what stops a long lane from
+      // reading as one repeated texture. We cannot restyle the deck art per
+      // segment without six more assets, but the boundaries themselves are free
+      // and they are most of the effect: the eye gets a ruler.
+      const SEGMENTS = 6
+      for (let sgi = 1; sgi < SEGMENTS; sgi++) {
+        const sx = SIDE_MARGIN + (sgi / SEGMENTS) * TRACK_WIDTH
+        ctx.strokeStyle = 'rgba(36, 26, 56, 0.28)'
+        ctx.lineWidth = 2
+        ctx.setLineDash([5, 6])
+        ctx.beginPath()
+        ctx.moveTo(sx, TOP_MARGIN)
+        ctx.lineTo(sx, TOP_MARGIN + TRACK_HEIGHT)
+        ctx.stroke()
+        ctx.setLineDash([])
+        // A post at the top of each boundary, so distance is countable at a
+        // glance rather than estimated from a bar.
+        ctx.fillStyle = PALETTE.ink
+        ctx.fillRect(sx - 1.5, TOP_MARGIN - 6, 3, 8)
+        ctx.fillStyle = PALETTE.gold
+        ctx.fillRect(sx - 4, TOP_MARGIN - 9, 8, 4)
+      }
+
       // Sort for ranking
       const sorted = [...frame.positions].sort((a, b) => b.distance - a.distance)
 
@@ -324,21 +358,50 @@ export default function RaceBroadcast() {
         })
         phaseRef.current[pos.id] = phase + cadence(pos.speed * 2.2, RACER_HEIGHT) * 0.28
 
-        // Rank above the racer, name and speed pinned to the lane's left edge.
-        // Rank badge: gold for the leader, then shelf grey. Outlined in ink so
-        // it holds against both the pale wall and the warm shelf.
-        ctx.fillStyle = rank === 1 ? PALETTE.gold : PALETTE.shelf
-        ctx.beginPath()
-        ctx.arc(cx, ground - RACER_HEIGHT - 10, 8, 0, Math.PI * 2)
-        ctx.fill()
+        // Leader bracket. Gigling draws corner marks around whoever is in front
+        // and labels them LEADER CAM. The camera does not actually move — the
+        // bracket is the whole effect, and it is what makes eight tiny racers
+        // legible. Ours does not move either.
+        if (rank === 1) {
+          const bw = RACER_HEIGHT * 0.9
+          const bh = RACER_HEIGHT * 1.15
+          const bx = cx - bw / 2
+          const by = ground - bh
+          const arm = Math.max(6, bw * 0.28)
+          ctx.strokeStyle = PALETTE.gold
+          ctx.lineWidth = 2.5
+          ctx.beginPath()
+          for (const [ox, oy, dx, dy] of [
+            [bx, by, 1, 1], [bx + bw, by, -1, 1],
+            [bx, by + bh, 1, -1], [bx + bw, by + bh, -1, -1],
+          ] as const) {
+            ctx.moveTo(ox + dx * arm, oy)
+            ctx.lineTo(ox, oy)
+            ctx.lineTo(ox, oy + dy * arm)
+          }
+          ctx.stroke()
+        }
+
+        // Live speed, set larger than the racer on purpose. This is the single
+        // change that makes a small sprite readable: the eye reads the number,
+        // not the toy, and the toy is then free to stay small.
+        const speedText = pos.speed.toFixed(1)
+        ctx.font = 'bold 13px ui-monospace, monospace'
+        const sw = ctx.measureText(speedText).width + 16
+        const sh = 19
+        const sx0 = Math.min(SIDE_MARGIN + TRACK_WIDTH - sw, Math.max(SIDE_MARGIN, cx - sw / 2))
+        const sy0 = ground - RACER_HEIGHT - sh - 4
+        ctx.fillStyle = rank === 1 ? PALETTE.gold : PALETTE.paper
         ctx.strokeStyle = PALETTE.ink
-        ctx.lineWidth = 1.5
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.roundRect(sx0, sy0, sw, sh, 5)
+        ctx.fill()
         ctx.stroke()
         ctx.fillStyle = PALETTE.ink
-        ctx.font = 'bold 10px ui-monospace, monospace'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(String(rank), cx, ground - RACER_HEIGHT - 10)
+        ctx.fillText(speedText, sx0 + sw / 2, sy0 + sh / 2 + 0.5)
 
         // Name plate. The text used to be drawn straight onto the lane, which
         // worked on a flat fill and stopped working the moment the lane became
@@ -346,10 +409,9 @@ export default function RaceBroadcast() {
         // were unreadable. A stamped ink plate reads over anything and matches
         // the toy-packaging language the rest of the UI uses.
         const label = isBot ? `${names.get(pos.id) || '#' + pos.id}  BOT` : (names.get(pos.id) || '#' + pos.id)
-        const speedText = pos.speed.toFixed(1) + ' u/t'
         ctx.font = 'bold 10px sans-serif'
-        const plateW = Math.max(ctx.measureText(label).width, 42) + 14
-        const plateH = 26
+        const plateW = Math.max(ctx.measureText(label).width, 46) + 30
+        const plateH = 22
         const plateX = SIDE_MARGIN + 4
         const plateY = top + 4
 
@@ -361,21 +423,51 @@ export default function RaceBroadcast() {
         ctx.fill()
         ctx.stroke()
 
+        // The plate carries the rank now. It used to repeat the speed, which is
+        // already on the racer at three times the size — two readings of the
+        // same number and neither of them the one you actually want mid-race.
+        ctx.fillStyle = rank === 1 ? PALETTE.gold : PALETTE.shelf
+        ctx.beginPath()
+        ctx.roundRect(plateX + 3, plateY + 3, 18, plateH - 6, 4)
+        ctx.fill()
+        ctx.strokeStyle = PALETTE.ink
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.fillStyle = PALETTE.ink
+        ctx.font = 'bold 11px ui-monospace, monospace'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(rank), plateX + 12, plateY + plateH / 2 + 0.5)
+
         ctx.fillStyle = isBot ? PALETTE.dust : PALETTE.ink
+        ctx.font = 'bold 10px sans-serif'
         ctx.textAlign = 'left'
-        ctx.textBaseline = 'top'
-        ctx.fillText(label, plateX + 7, plateY + 4)
-        ctx.fillStyle = PALETTE.dust
-        ctx.font = '9px ui-monospace, monospace'
-        ctx.fillText(speedText, plateX + 7, plateY + 15)
+        ctx.textBaseline = 'middle'
+        ctx.fillText(label, plateX + 26, plateY + plateH / 2 + 0.5)
       })
 
-      const live = frame.positions.map((pos) => ({
-        id: pos.id,
-        distance: pos.distance,
-        name: names.get(pos.id) || `#${pos.id}`,
-        speed: pos.speed,
-      })).sort((a, b) => b.distance - a.distance)
+      // Standings rows carry the two things a viewer actually wants: how far is
+      // left, and how far behind the leader you are. A percentage answers
+      // neither — "47%" tells you nothing about whether the race is close.
+      const ordered = [...frame.positions].sort((a, b) => b.distance - a.distance)
+      const leadDist = ordered[0]?.distance ?? 0
+      const live = ordered.map((pos, idx) => {
+        const prev = prevRankRef.current[pos.id]
+        return {
+          id: pos.id,
+          distance: pos.distance,
+          name: names.get(pos.id) || `#${pos.id}`,
+          speed: pos.speed,
+          toGo: Math.max(0, Math.round(trackLength - pos.distance)),
+          gap: Math.round(leadDist - pos.distance),
+          isBot: bots.has(pos.id),
+          // -1 climbed, 1 dropped, 0 held. Compared against the previous frame,
+          // so an overtake is visible for the moment it happens rather than
+          // having to be inferred from two numbers moving past each other.
+          move: prev == null ? 0 : Math.sign(idx - prev),
+        }
+      })
+      live.forEach((r, idx) => { prevRankRef.current[r.id] = idx })
 
       setLivePositions(live)
       setCurrentTick(frame.tick)
@@ -664,12 +756,72 @@ export default function RaceBroadcast() {
           >
             {soundMuted ? '\u{1F507}' : '\u{1F50A}'}
           </button>
-          <div className="bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5">
-            <span className="text-brand-dust text-xs">TICK</span>
-            <p className="text-brand-ink font-mono font-bold">{currentTick}</p>
+          <div className="toy-chip px-3 py-1.5">
+            <span className="text-brand-dust text-[10px] tracking-widest">TICK</span>
+            <p className="text-brand-ink font-mono font-bold leading-none tabular-nums">{currentTick}</p>
           </div>
         </div>
       </div>
+
+      {/* Segment bar.
+          The whole race as one line, split into segments, with a crown on the
+          leader. Gigling puts this above the track and it does the job the lanes
+          cannot: it says how much race is left, in one glance, without reading
+          four positions and comparing them. */}
+      {racePhase === 'racing' && livePositions.length > 0 && (() => {
+        const len = raceData?.trackLength || 1000
+        const leadPct = Math.min(100, ((livePositions[0]?.distance ?? 0) / len) * 100)
+        const SEGMENTS = 6
+        const segment = Math.min(SEGMENTS, Math.floor((leadPct / 100) * SEGMENTS) + 1)
+        return (
+          <div className="toy-panel px-4 py-3 mb-4">
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-brand-dust text-[10px] tracking-widest uppercase">
+                Segment {segment}/{SEGMENTS}
+              </span>
+              <span className="text-brand-dust text-[10px] tabular-nums">
+                {Math.round(len - (livePositions[0]?.distance ?? 0))}m to go
+              </span>
+            </div>
+            <div className="relative h-4">
+              <div className="absolute inset-0 flex gap-[3px]">
+                {Array.from({ length: SEGMENTS }, (_, i) => {
+                  const done = leadPct >= ((i + 1) / SEGMENTS) * 100
+                  const active = !done && leadPct > (i / SEGMENTS) * 100
+                  return (
+                    <span
+                      key={i}
+                      className={`flex-1 rounded-[3px] border-2 border-brand-ink ${
+                        done ? 'bg-brand-gold' : active ? 'bg-brand-gold/40' : 'bg-brand-ink/10'
+                      }`}
+                    />
+                  )
+                })}
+              </div>
+              {/* Every racer as a tick, so the spread of the field is visible
+                  even when four lanes make it hard to compare. */}
+              {livePositions.map((pos, i) => (
+                <span
+                  key={pos.id}
+                  className="absolute top-0 h-4 w-[3px] rounded-full"
+                  style={{
+                    left: `calc(${Math.min(100, (pos.distance / len) * 100)}% - 1.5px)`,
+                    backgroundColor: RACER_COLORS[i],
+                    opacity: i === 0 ? 1 : 0.55,
+                  }}
+                />
+              ))}
+              <span
+                className="absolute -top-3 text-xs leading-none -translate-x-1/2 select-none"
+                style={{ left: `${leadPct}%` }}
+                aria-hidden
+              >
+                {'\u{1F451}'}
+              </span>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Pre-Race Trash Talk Phase */}
       <AnimatePresence>
@@ -912,27 +1064,53 @@ export default function RaceBroadcast() {
         </div>
       )}
 
-      {/* Live standings */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+      {/* Live standings.
+          Gap in metres, not a percentage. "47%" answers neither question a
+          viewer has — how much is left, and is this close? The lane colour
+          runs down the left edge so a row and its lane are the same object,
+          and a change of place flashes on the row that changed. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
         {livePositions.map((pos, i) => (
-          <div
+          <motion.div
             key={pos.id}
-            // Opaque. These tinted panels were translucent over a drawn room,
-            // so the standings sat on top of a window and a pile of blocks and
-            // could not be read at all.
-            className="toy-panel flex items-center gap-3 p-3"
-            style={{ borderColor: RACER_COLORS[i] || undefined }}
+            layout
+            // The flash is an inset shadow, not a background. Animating
+            // backgroundColor here wrote an inline transparent fill over
+            // .toy-panel's own surface and the whole row went see-through on
+            // top of the drawn room — unreadable, and only visible by looking.
+            animate={{
+              boxShadow:
+                pos.move < 0 ? 'inset 0 0 0 999px rgba(46,125,79,0.16), 0 4px 0 0 var(--color-brand-ink)'
+                : pos.move > 0 ? 'inset 0 0 0 999px rgba(194,67,78,0.14), 0 4px 0 0 var(--color-brand-ink)'
+                : 'inset 0 0 0 999px rgba(0,0,0,0), 0 4px 0 0 var(--color-brand-ink)',
+            }}
+            transition={{ duration: 0.45 }}
+            className="toy-panel flex items-center gap-3 py-2 pr-3 pl-0 overflow-hidden"
           >
-            <span className="text-2xl font-extrabold" style={{ color: RACER_COLORS[i] }}>
+            <span
+              className="self-stretch w-2 shrink-0"
+              style={{ backgroundColor: RACER_COLORS[i] }}
+              aria-hidden
+            />
+            <span className="text-xl font-extrabold w-6 text-center" style={{ color: RACER_COLORS[i] }}>
               {i + 1}
             </span>
+            <span className="w-4 text-center text-sm" aria-hidden>
+              {pos.move < 0 ? '\u25B2' : pos.move > 0 ? '\u25BC' : ''}
+            </span>
             <div className="flex-1 min-w-0">
-              <p className="text-brand-ink font-semibold text-sm truncate">{pos.name}</p>
-              <p className="text-brand-dust text-xs">
-                {((pos.distance / (raceData.trackLength || 1000)) * 100).toFixed(0)}% — {pos.speed.toFixed(1)} u/t
+              <p className="text-brand-ink font-semibold text-sm truncate">
+                {pos.name}
+                {pos.isBot && <span className="text-brand-dust font-normal text-xs ml-1.5">BOT</span>}
+              </p>
+              <p className="text-brand-dust text-xs tabular-nums">
+                {pos.toGo}m to go {i === 0 ? '\u00B7 leader' : `\u00B7 ${pos.gap}m back`}
               </p>
             </div>
-          </div>
+            <span className="text-brand-dust text-xs tabular-nums shrink-0">
+              {pos.speed.toFixed(1)}
+            </span>
+          </motion.div>
         ))}
       </div>
 
@@ -957,7 +1135,6 @@ export default function RaceBroadcast() {
         {raceFinished && raceData.finalOrder && (() => {
           // Compute stats from frames/events
           const frames: RaceFrame[] = raceData.frames || []
-          const trackLen = raceData.trackLength || 1000
 
           // Max speed per racer
           const maxSpeeds: Record<number, number> = {}
@@ -971,10 +1148,10 @@ export default function RaceBroadcast() {
           // "Peki Ya" — find the closest loser to the winner
           const winner = raceData.finalOrder[0]
           const runnerUp = raceData.finalOrder[1]
-          const lastFrame = frames[frames.length - 1]
-          const winnerDist = lastFrame?.positions.find((p: any) => p.id === winner?.id)?.distance || trackLen
-          const runnerDist = lastFrame?.positions.find((p: any) => p.id === runnerUp?.id)?.distance || 0
-          const gap = Math.round(winnerDist - runnerDist)
+          const gapSeconds =
+            winner?.finishTick != null && runnerUp?.finishTick != null
+              ? (runnerUp.finishTick - winner.finishTick) / 10
+              : null
 
           // ====== MVP Awards Computation ======
           const gridPositions = raceData.gridPositions || []
@@ -1043,51 +1220,84 @@ export default function RaceBroadcast() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="fixed inset-0 z-50 overflow-y-auto"
+              className="fixed inset-0 z-50 overflow-y-auto bg-brand-bg"
             >
               <div className="max-w-2xl mx-auto px-4 py-8">
-                {/* Winner */}
-                <motion.div
-                  initial={{ scale: 0.5 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring' }}
-                  className="text-center mb-8"
-                >
-                  <div className="text-7xl mb-3">&#x1f3c6;</div>
-                  <h2 className="text-4xl font-extrabold text-brand-gold mb-1">{winner?.name} WINS!</h2>
-                </motion.div>
+                {/* Podium.
+                    The whole trade is settled here. During the race the toys are
+                    small on purpose — the speed readouts carry the reading — so
+                    the finish is where they finally get to be large. Gigling does
+                    exactly this: tiny for twenty seconds, enormous at the line.
 
-                {/* Standings table */}
-                <div className="bg-brand-surface border border-brand-border rounded-xl p-4 mb-6">
-                  <h3 className="text-brand-dust text-xs font-bold uppercase mb-3">Final Standings</h3>
-                  <div className="space-y-2">
-                    {raceData.finalOrder.map((fo: FinalOrder, i: number) => (
-                      <motion.div
-                        key={fo.id}
-                        initial={{ x: -40, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.2 + i * 0.15 }}
-                        className={`flex items-center gap-3 p-3 rounded-lg ${
-                          i === 0 ? 'bg-brand-gold/10 border border-brand-gold' : 'bg-brand-bg/50 border border-brand-border'
-                        }`}
-                      >
-                        <span className={`text-xl font-extrabold w-8 ${
-                          i === 0 ? 'text-brand-gold' : i === 1 ? 'text-brand-ink/80' : i === 2 ? 'text-amber-600' : 'text-brand-dust'
-                        }`}>{i + 1}.</span>
-                        <div className="flex-1 text-left">
-                          <p className="text-brand-ink font-semibold">{fo.name}</p>
-                          <p className="text-brand-dust text-xs">
-                            Max: {(maxSpeeds[fo.id] || 0).toFixed(1)} u/t
-                            {fo.isBot && ' | BOT'}
-                          </p>
+                    Times are gaps, not absolutes: "+0.4s" says the race was close,
+                    "23.1s" says nothing without doing the arithmetic yourself. */}
+                {(() => {
+                  const order = raceData.finalOrder as FinalOrder[]
+                  const winTick = order[0]?.finishTick ?? 0
+                  const RANK_LABEL = ['1.', '2.', '3.']
+                  const RANK_TINT = ['bg-brand-gold', 'bg-brand-shelf', 'bg-amber-700/70']
+                  return (
+                    <div className="mb-8">
+                      <div className="space-y-3">
+                        {order.slice(0, 3).map((fo, i) => (
+                          <motion.div
+                            key={fo.id}
+                            initial={{ x: i % 2 ? 60 : -60, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.15 + i * 0.25, type: 'spring', stiffness: 120 }}
+                            className="relative"
+                          >
+                            <div className={`toy-panel flex items-center gap-4 pl-4 pr-5 ${i === 0 ? 'py-7' : 'py-4'}`}>
+                              <span className={`shrink-0 rounded-lg border-[3px] border-brand-ink px-3 ${RANK_TINT[i]} ${i === 0 ? 'text-3xl py-1' : 'text-xl'} font-extrabold text-brand-ink`}>
+                                {RANK_LABEL[i]}
+                              </span>
+                              <div className="w-16 sm:w-20 shrink-0 -my-1 flex justify-center">
+                                <RacerPortrait
+                                  archetype={(fo as any).race ?? archetypeRef.current[fo.id]}
+                                  rarity={(fo as any).rarity ?? rarityRef.current[fo.id]}
+                                  height={i === 0 ? 104 : 70}
+                                  still
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0 text-left">
+                                <p className={`text-brand-ink font-semibold truncate ${i === 0 ? 'text-xl' : ''}`}>
+                                  {fo.name}
+                                </p>
+                                <p className="text-brand-dust text-xs">
+                                  {fo.isBot ? 'BOT' : 'Player'} · top {(maxSpeeds[fo.id] || 0).toFixed(1)}
+                                </p>
+                              </div>
+                              <span className={`shrink-0 tabular-nums font-bold ${i === 0 ? 'text-brand-gold text-xl' : 'text-brand-dust'}`}>
+                                {fo.finishTick == null
+                                  ? '—'
+                                  : i === 0
+                                    ? `${(fo.finishTick / 10).toFixed(2)}s`
+                                    : `+${((fo.finishTick - winTick) / 10).toFixed(2)}s`}
+                              </span>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {order.length > 3 && (
+                        <div className="toy-panel mt-3 divide-y-2 divide-brand-ink/10">
+                          {order.slice(3).map((fo, k) => (
+                            <div key={fo.id} className="flex items-center gap-3 px-4 py-2">
+                              <span className="text-brand-dust font-bold w-6">{k + 4}.</span>
+                              <span className="flex-1 text-brand-ink text-sm truncate">{fo.name}</span>
+                              <span className="text-brand-dust text-xs tabular-nums">
+                                {fo.finishTick == null ? '—' : `+${((fo.finishTick - winTick) / 10).toFixed(2)}s`}
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* "Peki Ya" section */}
-                {runnerUp && gap <= 50 && (
+                {runnerUp && gapSeconds != null && gapSeconds <= 1.5 && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1096,8 +1306,8 @@ export default function RaceBroadcast() {
                   >
                     <h3 className="text-brand-accent font-bold text-sm mb-2">What If...?</h3>
                     <p className="text-brand-ink/80 text-sm">
-                      {runnerUp.name} was only <span className="text-brand-gold font-bold">{gap} units</span> from the finish line.
-                      {' A tighter wind could have taken Pole Position.'}
+                      {runnerUp.name} finished <span className="text-brand-gold font-bold">{gapSeconds.toFixed(2)}s</span> behind.
+                      {' One item held back a little longer could have taken it.'}
                     </p>
                   </motion.div>
                 )}

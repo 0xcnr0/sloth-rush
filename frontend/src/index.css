@@ -33,6 +33,7 @@
   --color-brand-surface: #FFFDF7; /* paper: cards, panels */
   --color-brand-floor: #E8C99B;   /* floor: warm wood, the track runs on this */
   --color-brand-border: #9AA6B2;  /* shelf: edges and dividers */
+  --color-brand-shelf: #9AA6B2;   /* same grey, named for use as a fill */
   --color-brand-ink: #241A38;     /* ink: outlines and primary text */
   --color-brand-dust: #7A7488;    /* dust: secondary text */
 
