@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAccount } from 'wagmi'
 import WalletConnect from '../components/WalletConnect'
@@ -139,6 +139,10 @@ export default function RaceBroadcast() {
   const phaseRef = useRef<Record<number, number>>({})
   const keyRef = useRef<Record<number, number>>({})
   const animFrameRef = useRef<number>(0)
+  const framesRef = useRef<RaceFrame[]>([])
+  // The settled result, once the server has it. The podium prefers this over
+  // the frames it animated, because an item deployed mid-race changes both.
+  const finalOrderRef = useRef<any[] | null>(null)
 
   const isDemo = location.state?.demo === true
   const playerRacerId = (location.state?.racerId as number | undefined) ?? previewRacerId
@@ -170,6 +174,25 @@ export default function RaceBroadcast() {
   const [itemsLeft, setItemsLeft] = useState<string[]>([])
   const [deploying, setDeploying] = useState(false)
   const [aimingAt, setAimingAt] = useState<'hinder' | null>(null)
+
+  /**
+   * Re-ask the server for the simulation.
+   *
+   * Called after an item is deployed (the future changed) and once the
+   * animation reaches the line (the server can now settle). It replaces the
+   * frame array in place; it must never go through setState for raceData,
+   * because that would re-run the animation effect and restart the race.
+   */
+  const refreshSimulation = useCallback(async () => {
+    if (!id) return
+    try {
+      const fresh = await api.simulateRace(id)
+      if (fresh?.frames?.length) framesRef.current = fresh.frames as RaceFrame[]
+      if (fresh?.finalOrder) finalOrderRef.current = fresh.finalOrder
+    } catch (err) {
+      console.error('Failed to refresh simulation:', err)
+    }
+  }, [id])
   const racerRacesRef = useRef<Map<number, string>>(new Map()) // id -> race type
   const currentTickRef = useRef(0)
   const pausedRef = useRef(false)
@@ -227,6 +250,22 @@ export default function RaceBroadcast() {
     canvas.height = height * dpr
     ctx.scale(dpr, dpr)
 
+    /**
+     * Frames live in a ref, not a closure variable, because two things have to
+     * replace them mid-race and neither may restart the animation — restarting
+     * it is exactly the bug that killed Tactic Mode.
+     *
+     *  - Deploying an item changes the future. The server schedules it beyond
+     *    the revealed frontier and applying it consumes no randomness, so the
+     *    already-played prefix comes back bit-identical (proved in
+     *    itemsPreserveHistory.test.ts). Swapping the array is therefore
+     *    invisible. Without it the player watches the race they would have had
+     *    if they had never pressed the button — and the podium then disagrees
+     *    with the result the server recorded.
+     *  - Reaching the line has to settle the race, and the server settles only
+     *    when asked after its own clock has run out.
+     */
+    framesRef.current = raceData.frames
     const frames: RaceFrame[] = raceData.frames
     const events: RaceEvent[] = raceData.events || []
     const trackLength = raceData.trackLength || 1000
@@ -249,7 +288,7 @@ export default function RaceBroadcast() {
       if (fo.race && !archetypeRef.current[fo.id]) archetypeRef.current[fo.id] = fo.race
     })
     raceData.finalOrder?.forEach((fo: any) => {
-      if (!names.has(fo.id)) names.set(fo.id, racerDisplayName(fo.name, (fo as any).race))
+      if (!names.has(fo.id)) names.set(fo.id, racerDisplayName(fo.name, (fo as any).race ?? archetypeRef.current[fo.id]))
     })
 
     const TOP_MARGIN = 22
@@ -330,11 +369,12 @@ export default function RaceBroadcast() {
      * nearest samples, so the motion is continuous at 60fps.
      */
     function frameAt(fp: number): RaceFrame {
-      const i0 = Math.max(0, Math.min(frames.length - 1, Math.floor(fp)))
-      const i1 = Math.min(frames.length - 1, i0 + 1)
+      const src = framesRef.current
+      const i0 = Math.max(0, Math.min(src.length - 1, Math.floor(fp)))
+      const i1 = Math.min(src.length - 1, i0 + 1)
       const t = i1 === i0 ? 0 : Math.max(0, Math.min(1, fp - i0))
-      const a = frames[i0]
-      const b = frames[i1]
+      const a = src[i0]
+      const b = src[i1]
       const next = new Map(b.positions.map(q => [q.id, q]))
       return {
         tick: Math.round(a.tick + (b.tick - a.tick) * t),
@@ -876,25 +916,31 @@ export default function RaceBroadcast() {
       lastTime = time
       framePos += dt / FRAME_DELAY
 
+      const live = framesRef.current
       const fi = Math.floor(framePos)
-      if (framePos < frames.length - 1) {
+      if (framePos < live.length - 1) {
         renderFrame(frameAt(framePos))
         if (fi !== lastAdvanced) {
           lastAdvanced = fi
-          advanceFrame(fi, frames[fi])
+          advanceFrame(fi, live[fi])
         }
       } else {
-        renderFrame(frames[frames.length - 1])
-        advanceFrame(frames.length - 1, frames[frames.length - 1])
-        {
-          const winnerName = names.get(frames[frames.length - 1]?.positions.sort((a, b) => b.distance - a.distance)[0]?.id || 0)
-          if (winnerName) {
-            setCommentary(getCommentary('finish', { name: winnerName }))
-          }
-          sfxFinish()
-          setTimeout(() => { setCommentary(null); setRaceFinished(true) }, isDemo ? 1000 : 2500)
-          return
-        }
+        const lastFrame = live[live.length - 1]
+        renderFrame(lastFrame)
+        advanceFrame(live.length - 1, lastFrame)
+        const winnerName = names.get(
+          lastFrame?.positions.slice().sort((a, b) => b.distance - a.distance)[0]?.id || 0
+        )
+        if (winnerName) setCommentary(getCommentary('finish', { name: winnerName }))
+        sfxFinish()
+        // Ask once more, now the clock has run out. The server settles a race
+        // only when its own clock says it is over, and the client asked exactly
+        // once — at the start, when it never is. So a race the player finished
+        // stayed `racing` forever: no finishing position, no streak, no stat
+        // growth, nothing recorded anywhere.
+        void refreshSimulation()
+        setTimeout(() => { setCommentary(null); setRaceFinished(true) }, isDemo ? 1000 : 2500)
+        return
       }
       animFrameRef.current = requestAnimationFrame(animate)
     }
@@ -1284,6 +1330,7 @@ export default function RaceBroadcast() {
           setDeploying(true)
           try {
             await api.deployItem(id, playerRacerId, wallet, code, targetId)
+            await refreshSimulation()
             setItemsLeft(prev => {
               const next = [...prev]
               next.splice(next.indexOf(code), 1)
@@ -1431,7 +1478,11 @@ export default function RaceBroadcast() {
       <AnimatePresence>
         {raceFinished && raceData.finalOrder && (() => {
           // Compute stats from frames/events
-          const frames: RaceFrame[] = raceData.frames || []
+          // The frames actually animated, which after an item deploy are not
+          // the ones raceData was first loaded with. Max speed and the MVP
+          // awards are computed from these, so they have to agree with the
+          // podium above them.
+          const frames: RaceFrame[] = framesRef.current.length ? framesRef.current : (raceData.frames || [])
 
           // Max speed per racer
           const maxSpeeds: Record<number, number> = {}
@@ -1444,10 +1495,20 @@ export default function RaceBroadcast() {
 
           // "Peki Ya" — find the closest loser to the winner
           const winner = raceData.finalOrder[0]
-          const runnerUp = raceData.finalOrder[1]
+          // Only the player's own near miss is worth a "what if". Second place
+          // being close to first says nothing to a reader who came fourth, and
+          // says something actively wrong to one who came first.
+          const playerEntry = playerRacerId
+            ? raceData.finalOrder.find((f: any) => f.id === playerRacerId)
+            : undefined
+          const playerLostNarrowly = Boolean(
+            playerEntry && winner && playerEntry.id !== winner.id &&
+            playerEntry.finishTick != null && winner.finishTick != null &&
+            (playerEntry.finishTick - winner.finishTick) / 10 <= 1.5
+          )
           const gapSeconds =
-            winner?.finishTick != null && runnerUp?.finishTick != null
-              ? (runnerUp.finishTick - winner.finishTick) / 10
+            playerEntry?.finishTick != null && winner?.finishTick != null
+              ? (playerEntry.finishTick - winner.finishTick) / 10
               : null
 
           // ====== MVP Awards Computation ======
@@ -1465,7 +1526,7 @@ export default function RaceBroadcast() {
     raceData.finalOrder?.forEach((fo: any) => {
       if (fo.race && !archetypeRef.current[fo.id]) archetypeRef.current[fo.id] = fo.race
     })
-          finalOrder.forEach((fo: FinalOrder) => { if (!names.has(fo.id)) names.set(fo.id, racerDisplayName(fo.name, (fo as any).race)) })
+          finalOrder.forEach((fo: FinalOrder) => { if (!names.has(fo.id)) names.set(fo.id, racerDisplayName(fo.name, (fo as any).race ?? archetypeRef.current[fo.id])) })
 
           // MVP 1: "Best Overtake" — Most positions gained (grid start → final)
           let bestClimber = { id: 0, name: '', gain: -99 }
@@ -1474,7 +1535,7 @@ export default function RaceBroadcast() {
             const endPos = fo.position
             const gain = startPos - endPos // positive = climbed up
             if (gain > bestClimber.gain) {
-              bestClimber = { id: fo.id, name: fo.name, gain }
+              bestClimber = { id: fo.id, name: racerDisplayName(fo.name, (fo as any).race ?? archetypeRef.current[fo.id]), gain }
             }
           }
 
@@ -1529,7 +1590,11 @@ export default function RaceBroadcast() {
                     Times are gaps, not absolutes: "+0.4s" says the race was close,
                     "23.1s" says nothing without doing the arithmetic yourself. */}
                 {(() => {
-                  const order = raceData.finalOrder as FinalOrder[]
+                  // Prefer the settled result over the one fetched before the
+                  // player touched anything. Deploying an item changes the
+                  // outcome, and the podium used to replay the pre-item race —
+                  // so a boost that won you the race showed you losing it.
+                  const order = (finalOrderRef.current ?? raceData.finalOrder) as FinalOrder[]
                   const winTick = order[0]?.finishTick ?? 0
                   const RANK_LABEL = ['1.', '2.', '3.']
                   const RANK_TINT = ['bg-brand-gold', 'bg-brand-shelf', 'bg-brand-accent/60']
@@ -1558,7 +1623,7 @@ export default function RaceBroadcast() {
                               </div>
                               <div className="flex-1 min-w-0 text-left">
                                 <p className={`text-brand-ink font-semibold truncate ${i === 0 ? 'text-xl' : ''}`}>
-                                  {fo.name}
+                                  {racerDisplayName(fo.name, (fo as any).race ?? archetypeRef.current[fo.id])}
                                 </p>
                                 <p className="text-brand-dust text-xs">
                                   {fo.isBot ? 'BOT' : 'Player'} · top {(maxSpeeds[fo.id] || 0).toFixed(1)}
@@ -1581,7 +1646,7 @@ export default function RaceBroadcast() {
                           {order.slice(3).map((fo, k) => (
                             <div key={fo.id} className="flex items-center gap-3 px-4 py-2">
                               <span className="text-brand-dust font-bold w-6">{k + 4}.</span>
-                              <span className="flex-1 text-brand-ink text-sm truncate">{fo.name}</span>
+                              <span className="flex-1 text-brand-ink text-sm truncate">{racerDisplayName(fo.name, (fo as any).race ?? archetypeRef.current[fo.id])}</span>
                               <span className="text-brand-dust text-xs tabular-nums">
                                 {fo.finishTick == null ? '—' : `+${((fo.finishTick - winTick) / 10).toFixed(2)}s`}
                               </span>
@@ -1594,7 +1659,7 @@ export default function RaceBroadcast() {
                 })()}
 
                 {/* "Peki Ya" section */}
-                {runnerUp && gapSeconds != null && gapSeconds <= 1.5 && (
+                {playerLostNarrowly && gapSeconds != null && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1603,7 +1668,7 @@ export default function RaceBroadcast() {
                   >
                     <h3 className="text-brand-accent font-bold text-sm mb-2">What If...?</h3>
                     <p className="text-brand-ink/80 text-sm">
-                      {runnerUp.name} finished <span className="text-brand-gold font-bold">{gapSeconds.toFixed(2)}s</span> behind.
+                      You finished <span className="text-brand-gold font-bold">{gapSeconds.toFixed(2)}s</span> behind.
                       {' One item held back a little longer could have taken it.'}
                     </p>
                   </motion.div>
@@ -1670,7 +1735,7 @@ export default function RaceBroadcast() {
                   <button
                     onClick={async () => {
                       const standings = raceData.finalOrder
-                        .map((fo: FinalOrder, i: number) => `${i + 1}. ${fo.name}`)
+                        .map((fo: FinalOrder, i: number) => `${i + 1}. ${racerDisplayName(fo.name, (fo as any).race ?? archetypeRef.current[fo.id])}`)
                         .join('\n')
                       const frameUrl = `https://app.winduprush.xyz/api/social/frame/${id}`
                       const text = `${THEME.brand.mark} ${THEME.brand.name} Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\n${frameUrl}`

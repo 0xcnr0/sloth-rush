@@ -41,6 +41,11 @@ function getResetDate(period: string): string {
 }
 /** Stat added to one stat per finish, and the most a racer can gain in a day. */
 const PER_RACE_STAT_GAIN = 0.4;
+
+/** YYYY-MM-DD in the server's own timezone, matching what Postgres reports. */
+function localDateKey(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 const DAILY_STAT_CAP = 4.0;
 
 // Stat caps by rarity (and type)
@@ -656,6 +661,16 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const lastTick = result.frames[result.frames.length - 1]?.tick ?? 0;
     const raceIsOver = race.status === "finished" || revealedTick(race) >= lastTick;
 
+    /**
+     * Everything below the settle has to happen exactly once per race.
+     *
+     * Stat growth and the weather log used to sit outside this guard, so they
+     * ran on every /simulate call. That was survivable only because the client
+     * asked exactly once, at the start — which is also why a finished race was
+     * never recorded. Now that the client asks again after deploying an item
+     * and again at the line, a single race handed out four times the growth.
+     */
+    let justSettled = false;
     if (raceIsOver) await runTransaction(async (client) => {
       // Conditional so two viewers arriving at the line together cannot both
       // award the streaks, XP and race points.
@@ -664,6 +679,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
         [seed, resultHash, winnerWallet, raceId]
       );
       if (settled.rowCount === 0) return;
+      justSettled = true;
 
       for (const order of result.finalOrder) {
         const position = result.finalOrder.indexOf(order) + 1;
@@ -748,7 +764,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
     }
 
     // Log weather for weekly quest (weather_variety)
-    if (result.weather) {
+    if (justSettled && result.weather) {
       const weekStart = getResetDate("weekly");
       for (const entry of result.finalOrder) {
         if (entry.isBot) continue;
@@ -777,8 +793,21 @@ router.post("/simulate", async (req: Request, res: Response) => {
     // Now +0.4 per finish, capped at +4.0/day, so ten races is a full day's
     // progress and the first tier arrives in about a week of playing. See
     // simulation/evolution.ts for where the tiers themselves land.
-    const today = new Date().toISOString().split("T")[0];
-    for (let i = 0; i < result.finalOrder.length; i++) {
+    /**
+     * The day a gain belongs to.
+     *
+     * This was `toISOString()`, which is UTC. For a player three hours east of
+     * it, every race between midnight and 03:00 local counted against the
+     * previous day's budget — usually already spent — so they raced, won, and
+     * watched nothing happen with no explanation given. A playtest hit exactly
+     * that and reported stat growth as broken; it was the cap, invisible.
+     *
+     * The server's own local date is the day boundary now: one boundary, the
+     * same one the database reports, and in production the server runs on UTC
+     * so the two agree by construction.
+     */
+    const today = justSettled ? localDateKey() : "";
+    for (let i = 0; justSettled && i < result.finalOrder.length; i++) {
       const entry = result.finalOrder[i];
       if (entry.isBot) continue;
       const statToGrow = POSITION_STAT[i + 1];
