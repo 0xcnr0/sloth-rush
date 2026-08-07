@@ -60,8 +60,16 @@ const RACER_COLORS = ['#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D', '#E63946', '#2
  * standing in open sky with a sliver of floor under its soles, which is why a
  * carefully drawn toy looked pasted onto a diagram no matter what size it was.
  */
+// The corridor's own surfaces. lane-deck.webp was drawn for one lane of four,
+// with the gear litho scaled to a 55px strip; at the corridor's height the same
+// image stretched into ovals the size of a racer's torso. These are drawn for
+// the shape the track actually has, and deliberately quiet — the toys are the
+// only saturated thing on screen (CLAUDE.md, colour budget).
 const laneDeck = new Image()
-laneDeck.src = '/art/lane-deck.webp'
+laneDeck.src = '/art/corridor-floor.webp'
+
+const wallStrip = new Image()
+wallStrip.src = '/art/corridor-wall.webp'
 
 /** The finish line, hung across all four lanes. */
 const finishBanner = new Image()
@@ -372,12 +380,18 @@ export default function RaceBroadcast() {
           ctx.fillStyle = SEG_COLORS[sg]
           ctx.fillRect(x0, wallTop, x1 - x0, WALL_H)
         }
-        // Studs along the wall, so it reads as built rather than as a bar.
-        const STUD_EVERY = 25
-        const firstStud = Math.floor(camStart / STUD_EVERY) * STUD_EVERY
-        ctx.fillStyle = 'rgba(36, 26, 56, 0.30)'
-        for (let d = firstStud; d <= camStart + VIEW_UNITS + STUD_EVERY; d += STUD_EVERY) {
-          ctx.fillRect(toScreen(d) - 2, wallTop + WALL_H * 0.32, 4, WALL_H * 0.36)
+        // A neutral panel texture multiplied over the tint: the wall keeps its
+        // segment colour but stops reading as a flat block of it.
+        if (wallStrip.complete && wallStrip.naturalWidth > 0) {
+          ctx.save()
+          ctx.globalCompositeOperation = 'multiply'
+          ctx.globalAlpha = 0.55
+          const wTile = TRACK_WIDTH * 0.5
+          const wFirst = -(((camPx % wTile) + wTile) % wTile)
+          for (let tx = wFirst; tx < TRACK_WIDTH + wTile; tx += wTile) {
+            ctx.drawImage(wallStrip, SIDE_MARGIN + tx, wallTop, wTile, WALL_H)
+          }
+          ctx.restore()
         }
         ctx.fillStyle = PALETTE.ink
         ctx.fillRect(SIDE_MARGIN, wallTop === TOP_MARGIN ? wallTop + WALL_H - 2 : wallTop, TRACK_WIDTH, 2)
