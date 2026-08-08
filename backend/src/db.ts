@@ -59,6 +59,66 @@ export async function runTransaction<T>(
   }
 }
 
+/**
+ * Rebuild the streak counters from the race log.
+ *
+ * `streaks` is a denormalised counter and it has drifted badly: racer 171 reads
+ * 127 races and 23 wins while the race log holds 83 participations, 60 of them
+ * settled, 14 of them won. The cause is historical and is already fixed —
+ * /simulate used to award streaks on every call instead of once per race, so a
+ * single race could be counted four times. The guard exists now; the numbers it
+ * inflated were never corrected.
+ *
+ * This matters more than a wrong number on a card. The Career leaderboard sorts
+ * on total_wins, so the board has been ranking players by how many times they
+ * happened to reload a race page.
+ *
+ * The repair recomputes every column from `race_participants`, which is the
+ * source of truth — one row per racer per race, finish_position filled in by
+ * the settle. It runs on every boot on purpose: it is a recompute rather than a
+ * patch, so if the counter ever drifts again a restart heals it, and at this
+ * scale it costs milliseconds.
+ */
+async function repairStreaks(): Promise<void> {
+  const rows = await pool.query<{ racer_id: number; finish_position: number }>(
+    `SELECT rp.racer_id, rp.finish_position
+       FROM race_participants rp
+       JOIN races r ON r.id = rp.race_id
+      WHERE rp.finish_position IS NOT NULL
+      ORDER BY rp.racer_id, r.created_at`
+  );
+
+  const byRacer = new Map<number, number[]>();
+  for (const row of rows.rows) {
+    const list = byRacer.get(row.racer_id) ?? [];
+    list.push(row.finish_position);
+    byRacer.set(row.racer_id, list);
+  }
+
+  for (const [racerId, places] of byRacer) {
+    let totalWins = 0, curWins = 0, maxWins = 0, curLosses = 0, maxLosses = 0;
+    for (const place of places) {
+      if (place === 1) {
+        totalWins++;
+        curWins++; curLosses = 0;
+        if (curWins > maxWins) maxWins = curWins;
+      } else {
+        curLosses++; curWins = 0;
+        if (curLosses > maxLosses) maxLosses = curLosses;
+      }
+    }
+    await pool.query(
+      `INSERT INTO streaks (racer_id, current_wins, max_wins, current_losses, max_losses, total_races, total_wins)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (racer_id) DO UPDATE SET
+         current_wins = $2, max_wins = $3, current_losses = $4,
+         max_losses = $5, total_races = $6, total_wins = $7`,
+      [racerId, curWins, maxWins, curLosses, maxLosses, places.length, totalWins]
+    );
+  }
+  console.log(`initDB: streak counters rebuilt for ${byRacer.size} racers`);
+}
+
 export async function initDB() {
   // === MIGRATION BLOCK: rename old schema to new (safe to re-run) ===
   // Each statement is idempotent-by-try/catch: on an already-migrated database
@@ -319,6 +379,31 @@ export async function initDB() {
     );
   `);
 
+  /**
+   * Provenance moments that cannot be derived from anything else.
+   *
+   * Almost everything a collector's passport wants is already in the database:
+   * how many races, how many wins, the first win, the longest streak, the mint
+   * date. Those are read live rather than copied here, so there is one source
+   * and it cannot drift.
+   *
+   * What is NOT recoverable is the moment a racer changed form. Tier is a pure
+   * function of current stats, so once a racer is past 90 there is no way to
+   * know when it crossed — the information was never written down. That is the
+   * one thing worth a table.
+   */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS racer_milestones (
+      id SERIAL PRIMARY KEY,
+      racer_id INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      detail TEXT,
+      race_id TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_racer_milestones_racer ON racer_milestones(racer_id);
+  `);
+
   console.log("initDB: altering columns and seeding data...");
   // ALTER stat columns to REAL if they are still INTEGER
   try {
@@ -388,6 +473,8 @@ export async function initDB() {
       "INSERT INTO seasons (number, start_date, end_date, is_active) VALUES (1, NOW(), NOW() + interval '4 weeks', 1)"
     );
   }
+  await repairStreaks();
+
   console.log("initDB: creating indexes...");
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_racers_wallet ON racers(wallet);

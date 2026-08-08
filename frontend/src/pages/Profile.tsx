@@ -1,4 +1,5 @@
 import { useWallet } from '../hooks/useWallet'
+import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
@@ -69,11 +70,19 @@ export default function Profile() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="mb-5">
-        <h1 className="toy-title text-3xl font-bold">Your Record</h1>
-        <p className="text-brand-dust text-sm mt-1 font-mono">
-          {address?.slice(0, 6)}...{address?.slice(-4)}
-        </p>
+      <div className="flex items-start justify-between gap-3 mb-5">
+        <div>
+          <h1 className="toy-title text-3xl font-bold">Your Record</h1>
+          <p className="text-brand-dust text-sm mt-1 font-mono">
+            {address?.slice(0, 6)}...{address?.slice(-4)}
+          </p>
+        </div>
+        <Link
+          to={`/shelf/${address}`}
+          className="toy-chip px-3 py-1.5 text-xs shrink-0 mt-1"
+        >
+          Public shelf
+        </Link>
       </div>
 
       {/* Kept per wallet, not per racer — see the note at the top of this file. */}

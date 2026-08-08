@@ -13,7 +13,7 @@ const STEPS = [
   },
   {
     title: `Visit Your ${THEME.locations.home}`,
-    description: `Check your racer's stats, upgrade and evolve, and manage your collection.`,
+    description: `Your shelf. Check stats, see how close the next form is, and how much your racer can still grow today.`,
     icon: '\u{1F3DA}\uFE0F',
     cta: `Go to ${THEME.locations.home}`,
     path: '/collection',
@@ -26,9 +26,13 @@ const STEPS = [
     path: '/race',
   },
   {
-    title: 'Train & Evolve',
-    description: `Train your racer to boost stats, play mini games, and evolve through 4 tiers! Check your ${THEME.locations.home} for training options.`,
-    icon: '\u{1F4AA}',
+    // This step used to promise training and mini games and four tiers of
+    // evolution to press a button for. Training and the mini games were cut
+    // from V1 and evolution happens on its own — so the first thing a new
+    // player read was a description of a game that does not exist.
+    title: 'Watch It Change',
+    description: `Stats decide the shape. Cross 90 in total and your toy becomes one of four characters — whichever stat you grew hardest picks which. No button, no fee.`,
+    icon: '\u{2728}',
     cta: 'Start Playing!',
     path: '/collection',
   },

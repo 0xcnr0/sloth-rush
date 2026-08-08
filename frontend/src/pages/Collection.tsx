@@ -190,11 +190,13 @@ export default function Collection() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-2xl font-bold">{THEME.locations.home}</h1>
-        </div>
+      {/* Header.
+          The shelf link is the only way anyone reaches the public page, and a
+          page nothing points at is a page nobody finds — the profile learned
+          that the hard way when the footer was deleted. */}
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <h1 className="text-2xl font-bold">{THEME.locations.home}</h1>
+        {racers.length > 0 && <ShelfLink wallet={address!} />}
       </div>
 
       {/* Empty state */}
@@ -631,6 +633,49 @@ export default function Collection() {
  * So it sits next to the button that starts the race, which is where the person
  * deciding whether to race is looking.
  */
+/**
+ * Your shelf, and a link to it that other people can open.
+ *
+ * Copying the URL rather than only navigating to it, because the whole reason
+ * the page is public is so it can be sent to somebody. A view button alone
+ * would make it a second copy of this screen.
+ */
+function ShelfLink({ wallet }: { wallet: string }) {
+  const navigate = useNavigate()
+  const url = `${window.location.origin}/shelf/${wallet}`
+
+  async function share() {
+    // Every branch has to say something: the clipboard write throws whenever
+    // permission has not been granted, and a silent throw is a dead button.
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `My ${THEME.locations.home}`, url })
+        return
+      } catch { /* fall through to the clipboard */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Shelf link copied')
+    } catch {
+      toast.error('Could not copy — your browser blocked it.')
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <button
+        onClick={() => navigate(`/shelf/${wallet}`)}
+        className="toy-chip px-3 py-1.5 text-xs cursor-pointer"
+      >
+        View shelf
+      </button>
+      <button onClick={share} className="toy-chip px-3 py-1.5 text-xs cursor-pointer">
+        Share
+      </button>
+    </div>
+  )
+}
+
 function ItemStock({ racer }: { racer: any }) {
   const cap = Number(racer.itemStockCap ?? 0)
   if (!cap) return null

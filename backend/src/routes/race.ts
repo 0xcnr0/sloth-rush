@@ -962,6 +962,20 @@ router.post("/simulate", async (req: Request, res: Response) => {
         const earned = tierForStats(totalStats(grown));
         if (earned !== (grown.tier ?? 0)) {
           await query("UPDATE racers SET tier = $1 WHERE id = $2", [earned, entry.id]);
+          /**
+           * The one provenance moment that cannot be reconstructed later.
+           *
+           * Tier is a pure function of current stats, so a racer already past 90
+           * carries no record of when it crossed — ask tomorrow and the answer
+           * is gone. Everything else a passport wants (first race, first win,
+           * longest streak, totals) is still derivable from race history and is
+           * read live rather than copied, so it cannot drift. This is written
+           * because it is the only thing that would otherwise be lost.
+           */
+          await query(
+            "INSERT INTO racer_milestones (racer_id, kind, detail, race_id) VALUES ($1, 'form', $2, $3)",
+            [entry.id, String(earned), raceId]
+          ).catch((err) => console.error("milestone insert failed:", err));
         }
         // A Wind-Up starts plain and takes its form here, the first time it
         // reaches a tier — from whichever stat the player pushed hardest, so

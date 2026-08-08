@@ -796,6 +796,46 @@ Yarış ekranında dördüncü sıra bir stat adı yerine **WEAKEST** yazıyor, 
 gerçekten öyle: cevap yarışçıya göre değişiyor ve tek bir stat adı yazmak
 kadronun dörtte üçü için yalan olurdu.
 
+### Provenance ve herkese açık raf — 2026-08-09
+
+Koleksiyon tezinin ilk sınanabilir parçası. **Yeni mekanik yok** — oyun ilk
+yarıştan beri koleksiyoncunun umursadığı her şeyi yazıyordu ve hiçbirini
+göstermiyordu.
+
+- **`GET /api/shelf/:wallet`** ve **`/shelf/racer/:id`** — kimlik doğrulama yok,
+  cüzdan yok. Girilebilir bir sayfa olmayan raf, raf değil çekmecedir.
+- **`/shelf/:wallet` sayfası** — oyuncaklar bir rafın üstünde duruyor, altlarında
+  birer **pasaport kartı**: form, derece, statlar, ve *nerede bulunmuş* —
+  mint tarihi, kaç yarış, kaç galibiyet, ilk yarış, ilk galibiyet, en uzun seri,
+  en çok koştuğu mesafe.
+- Kart bilinçli olarak **ikiye bölünmüş**: üst yarı oyuncağın *ne olduğu*, alt
+  yarı *nerede bulunduğu*. Gerçek koleksiyonculukta aynı iki nesnenin fiyatını
+  ayıran şey bu ikincisidir; ayrı tutmak onu istatistik değil provenance yapar.
+
+**Tasarım kuralı: TÜRET, KOPYALAMA.** Form değişimi anı hariç her şey okuma
+anında yarış kaydından hesaplanıyor. Kendi toplamlarını önbellekleyen bir
+pasaport, bir gün yarış kaydıyla çelişir — provenance'ın tamamı kontrol
+edilebilir olmasına dayanıyor.
+
+Türetilemeyen tek şey **form değişimi anı**: kademe, güncel statların saf
+fonksiyonu, yani 90'ı geçmiş bir yarışçı ne zaman geçtiğini taşımıyor, bilgi hiç
+yazılmamıştı. `racer_milestones` sadece onun için var.
+
+> **Ve bu, canlı bir veri hatası ortaya çıkardı.** Toybox 127 yarış / 23
+> galibiyet gösteriyordu, rafın türettiği sayı 60 / 14 idi. Sebep tarihî ve
+> düzeltilmişti: `/simulate` eskiden her çağrıda seri sayacını artırıyordu, yani
+> bir yarış dört kez sayılabiliyordu. Guard eklendi ama **şişen sayılar hiç
+> düzeltilmemişti** — ve bunu sadece kart değil **Career sıralaması** da
+> okuyordu, yani liderlik tablosu insanları bir yarış sayfasını kaç kez
+> yenilediklerine göre sıralıyordu. `repairStreaks()` her açılışta sayacı yarış
+> kaydından yeniden hesaplıyor (267 yarışçı onarıldı; en uzun seri de 4→2 idi).
+> Yamalamak yerine yeniden hesaplamak bilinçli: sayaç bir daha kayarsa yeniden
+> başlatmak iyileştiriyor.
+
+**Ayrıca:** tanıtım penceresinin 4. adımı antrenman ve mini oyunlar vaat
+ediyordu — ikisi de V1'den çıkarılmıştı, yani yeni oyuncunun okuduğu ilk şey
+olmayan bir oyunu anlatıyordu. Artık formun statlardan geldiğini anlatıyor.
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile

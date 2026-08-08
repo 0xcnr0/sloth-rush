@@ -9,6 +9,7 @@ import Leaderboard from './pages/Leaderboard'
 import RaceReplay from './pages/RaceReplay'
 import Profile from './pages/Profile'
 import Guide from './pages/Guide'
+import Shelf from './pages/Shelf'
 import DevPreview from './pages/DevPreview'
 import NotFound from './pages/NotFound'
 import { FEATURES } from './config/features'
@@ -28,6 +29,9 @@ export default function App() {
         <Route path="/replay/:id" element={FEATURES.replay ? <RaceReplay /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={FEATURES.profile ? <Profile /> : <Navigate to="/" replace />} />
         <Route path="/guide" element={<Guide />} />
+        {/* Public. No wallet, no guard — the point of a shelf is that other
+            people can look at it. */}
+        <Route path="/shelf/:wallet" element={<Shelf />} />
         {/* Component gallery, dev builds only — see pages/DevPreview.tsx. */}
         {import.meta.env.DEV && <Route path="/dev" element={<DevPreview />} />}
         {/* Redirects for old routes */}

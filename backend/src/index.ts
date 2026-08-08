@@ -7,6 +7,7 @@ import raceRoutes from "./routes/race";
 import leaderboardRoutes from "./routes/leaderboard";
 import seasonRoutes from "./routes/season";
 import socialRoutes from "./routes/social";
+import shelfRoutes from "./routes/shelf";
 import rateLimit from 'express-rate-limit';
 
 dotenv.config();
@@ -76,6 +77,8 @@ async function main() {
   app.use("/api/leaderboard", leaderboardRoutes);
   app.use("/api/season", seasonRoutes);
   app.use("/api/social", socialRoutes);
+  // Public: no wallet, no auth. A shelf nobody can look at is a drawer.
+  app.use("/api/shelf", shelfRoutes);
 
   // Debug endpoints (non-production only)
   if (!isProduction) {
