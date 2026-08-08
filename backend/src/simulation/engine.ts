@@ -251,12 +251,86 @@ function maxTicksFor(trackLength: number): number {
 }
 
 // Random events from GDD
+/**
+ * AGI, REF and LCK, and why they used to do nothing.
+ *
+ * Measured over 4000 races per row, one racer raised from 12 to 18 while the
+ * other three stayed at 12 (expected baseline 25%):
+ *
+ *     SPD  99.0% / 100.0%      REF  25.0% / 26.1%
+ *     ACC  82.5% /  72.3%      AGI  25.2% / 25.0%   (25.6% even at the cap of 35)
+ *     STA  68.0% /  99.9%      LCK  26.8% / 28.1%
+ *
+ * Three of the six stats were decoration. The cause is the same one that had
+ * already been found in the distances and in the mint floor: THE FORMULAS WERE
+ * WRITTEN FOR A STAT RANGE THE GAME DOES NOT PRODUCE.
+ *
+ *   REF was `Math.max(5, 15 - reflex)`. Every racer mints at 12 and no racer
+ *     has ever been below 10, so `15 - ref` is at most 3 and the floor clamps
+ *     the result to exactly 5 — for every racer, at every value of REF, always.
+ *     Not weak. Arithmetically inert.
+ *
+ *   AGI was `resist = agi * 0.1; if (rng() > resist / 10)`, i.e. a dodge chance
+ *     of agi/100 — written for a stat that could reach 100. At the real 12 it
+ *     dodged 12% of the time, and at the highest ceiling in the game, 35%.
+ *
+ *   LCK weighted the orb draw linearly, so 18 against three 12s won it 33% of
+ *     the time instead of 25%, once, in the rare race where an orb appeared.
+ *
+ * The numbers below are scaled to the range the game actually mints and caps:
+ * 12 at mint, 18 for a free racer, 22-35 by rarity. They are deliberately
+ * secondary — SPD is the base currency of a race and must stay that way — but
+ * they are no longer zero. Re-run `statLever.check.ts` after touching any of
+ * them; that is the file these were tuned against.
+ */
+export const EVENT_TUNING = {
+  /** Chance per racer of shrugging off the leader's wind-down. */
+  agiDodge: (agi: number) => Math.max(0.05, Math.min(0.90, (agi - 6) / 24)),
+  /**
+   * How long a stumble lasts, as a multiple of its base. REF is recovery now,
+   * and it applies to EVERY slowdown rather than only to collisions — the
+   * collision was the rarest event in the game, so a stat that only spoke there
+   * could not have mattered however well it was scaled. 12 reproduces today's
+   * duration exactly, so this is a gradient added above the old behaviour
+   * rather than a nerf underneath it.
+   */
+  refRecovery: (ref: number) => Math.max(0.25, 1.5 - ref * 0.042),
+  /** Ticks a collision costs before REF is applied. */
+  collisionTicks: 12,
+  /** Ticks the leader's wind-down costs before REF is applied. */
+  massSlowTicks: 18,
+  /**
+   * Orb draw weight. Superlinear so the difference between 12 and 18 is worth
+   * noticing, and the orb pays the lucky more once they have it — a lucky racer
+   * both finds more orbs and gets more out of each.
+   */
+  lckWeight: (lck: number) => Math.pow(Math.max(1, lck), 1.5),
+  lckOrbDuration: (lck: number) => 0.7 + lck * 0.025,
+} as const;
+
+/**
+ * How often something happens, and then what.
+ *
+ * These were four independent chances tried in order, with a `break` on the
+ * first hit — so the list behaved as a priority queue rather than as four
+ * independent chances. mass_slow
+ * got first refusal every single check and every event below it only fired in
+ * the leftovers. Raising one starved the rest: doubling mass_slow to give AGI
+ * more occasions to speak cut LCK's measured effect from +8.6 to +5.3 without
+ * anyone touching LCK.
+ *
+ * One roll decides WHETHER, a weighted draw decides WHICH. Now the two knobs
+ * are independent and tuning one event cannot silently retune another.
+ */
+const EVENT_RATE = 0.18;
+
 const RANDOM_EVENTS = [
-  { type: "mass_slow", chance: 0.003, description: "The leader's wind-down is spreading!", stat: "agi" as const },
-  { type: "rain", chance: 0.002, description: "Sudden Rain! All speeds dropping!", stat: "sta" as const },
-  { type: "luck_orb", chance: 0.0025, description: "Luck Orb appeared!", stat: "lck" as const },
-  { type: "collision", chance: 0.0015, description: "Collision! Two racers tangled up!", stat: "ref" as const },
+  { type: "mass_slow", weight: 3, description: "Springs are unwinding across the track!", stat: "agi" as const },
+  { type: "rain", weight: 2, description: "Sudden Rain! All speeds dropping!", stat: "sta" as const },
+  { type: "luck_orb", weight: 3, description: "Luck Orb appeared!", stat: "lck" as const },
+  { type: "collision", weight: 2, description: "Collision! Two racers tangled up!", stat: "ref" as const },
 ];
+const EVENT_WEIGHT_TOTAL = RANDOM_EVENTS.reduce((a, e) => a + e.weight, 0);
 
 export function simulateRace(
   participants: RacerStats[],
@@ -324,21 +398,33 @@ export function simulateRace(
     const leaderDist = Math.max(...state.filter(s => !s.finished).map(s => s.distance));
     const chaosMultiplier = chaosMode && leaderDist > trackLength * 0.7 ? 3 : chaosMode ? 2 : 1;
     if (tick > 30 && tick % eventInterval === 0) {
-      for (const event of RANDOM_EVENTS) {
-        if (rng() < event.chance * 10 * chaosMultiplier * weatherMods.eventFreqMul) {
+      if (rng() < EVENT_RATE * chaosMultiplier * weatherMods.eventFreqMul) {
+        let pickEvent = rng() * EVENT_WEIGHT_TOTAL;
+        const event =
+          RANDOM_EVENTS.find((e) => (pickEvent -= e.weight) <= 0) ?? RANDOM_EVENTS[0];
+        {
           const activeRacers = state.filter((s) => !s.finished);
-          if (activeRacers.length < 2) continue;
+          if (activeRacers.length >= 2) {
 
           const affectedIds: number[] = [];
 
           if (event.type === "mass_slow") {
-            // Leader's wind-down slows everyone behind
-            const leader = activeRacers.reduce((a, b) => (a.distance > b.distance ? a : b));
-            const others = activeRacers.filter((s) => s.id !== leader.id);
+            /**
+             * Every spring on the shelf slackens, the leader's included.
+             *
+             * It used to spare whoever was in front, and that is why AGI could
+             * not be made to matter however hard it was scaled: dodging only
+             * ever helped you beat the other chasers, never the racer you had
+             * to pass to win. A stat whose whole job cannot touch first place
+             * cannot show up in a win rate.
+             */
+            const others = activeRacers;
             for (const other of others) {
-              const resist = other.agility * 0.1;
-              if (rng() > resist / 10) {
-                other.slowdown = 15;
+              if (rng() > EVENT_TUNING.agiDodge(other.agility)) {
+                other.slowdown = Math.max(
+                  3,
+                  Math.round(EVENT_TUNING.massSlowTicks * EVENT_TUNING.refRecovery(other.reflex))
+                );
                 affectedIds.push(other.id);
               }
             }
@@ -356,7 +442,7 @@ export function simulateRace(
               const distBehind = maxDist - s.distance;
               const rubberBand = 1 + distBehind * 0.02; // +2% weight per unit behind
               const dreamCatcherMul = 1;
-              return s.luck * rubberBand * dreamCatcherMul;
+              return EVENT_TUNING.lckWeight(s.luck) * rubberBand * dreamCatcherMul;
             });
             const totalWeight = weights.reduce((a, b) => a + b, 0);
             let pick = rng() * totalWeight;
@@ -364,7 +450,9 @@ export function simulateRace(
               const s = activeRacers[wi];
               pick -= weights[wi];
               if (pick <= 0) {
-                s.boost = Math.round(20 * weatherMods.boostDurMul);
+                s.boost = Math.round(
+                  20 * weatherMods.boostDurMul * EVENT_TUNING.lckOrbDuration(s.luck)
+                );
                 affectedIds.push(s.id);
                 break;
               }
@@ -376,8 +464,14 @@ export function simulateRace(
               if (Math.abs(sorted[i].distance - sorted[i + 1].distance) < 15) {
                 const s1 = sorted[i];
                 const s2 = sorted[i + 1];
-                s1.slowdown = Math.max(5, 15 - s1.reflex);
-                s2.slowdown = Math.max(5, 15 - s2.reflex);
+                s1.slowdown = Math.max(
+                  3,
+                  Math.round(EVENT_TUNING.collisionTicks * EVENT_TUNING.refRecovery(s1.reflex))
+                );
+                s2.slowdown = Math.max(
+                  3,
+                  Math.round(EVENT_TUNING.collisionTicks * EVENT_TUNING.refRecovery(s2.reflex))
+                );
                 affectedIds.push(s1.id, s2.id);
                 break;
               }
@@ -393,7 +487,7 @@ export function simulateRace(
               affectedIds,
             });
           }
-          break; // max 1 event per check
+          }
         }
       }
     }

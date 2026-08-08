@@ -691,6 +691,58 @@ ekranında, ne lobide, ne rehberde. Fiyatını kimsenin bilmediği bir item'i
 harcamak için kimsenin sebebi olmaz. Artık canlı sıralamada her sıranın ne
 ödediği yazıyor (bot satırlarında soluk: bot hiçbir şey kazanmıyor).
 
+### Altı stattan üçü hiçbir şey yapmıyordu — 2026-08-08
+
+Ölçüldü (`backend/src/simulation/statLever.check.ts`, 4000 yarış/satır, bir
+yarışçı 12→18, diğer üçü 12, grid sırası döndürülerek; taban %25):
+
+| stat | önce | sonra |
+|---|---|---|
+| SPD | +73.4 | +73.4 |
+| STA | +50.5 | +51.0 |
+| ACC | +45.5 | +24.6 |
+| **AGI** | **+0.1** | **+12.4** |
+| **REF** | **+0.5** | **+12.1** |
+| **LCK** | **+2.5** | **+8.5** |
+
+**Sebep, mesafelerde ve mint tabanında bulunanla aynıydı: formüller oyunun
+üretmediği bir stat aralığı için yazılmıştı.**
+
+- **REF** `Math.max(5, 15 - reflex)` idi. Her yarışçı 12'de mint oluyor, hiçbiri
+  10'un altına inmedi; yani `15 - ref` en fazla 3 ve taban sonucu **her zaman
+  tam olarak 5**'e kırpıyordu. Zayıf değil — **aritmetik olarak atıl.**
+- **AGI** kaçınma şansı `agi/100` idi, yani 100'e çıkabilen bir stat için
+  yazılmış. Gerçekte 12'de %12, oyundaki en yüksek tavanda %35.
+- **LCK** orb çekilişini doğrusal ağırlıklandırıyordu: 18, üç tane 12'ye karşı
+  %25 yerine %33 — o da orb'un çıktığı nadir yarışta, bir kez.
+
+Ve iki **yapısal** sebep daha vardı, ki asıl tıkanma onlardı:
+
+1. **Dört olay sırayla deneniyor, ilk tutan `break` ediyordu** — yani liste bir
+   olasılık kümesi değil, bir öncelik kuyruğuydu. mass_slow her kontrolde ilk
+   reddi alıyor, altındakiler sadece artıklarda çıkıyordu. AGI'ye konuşma
+   fırsatı vermek için mass_slow'u ikiye katlamak, **kimse LCK'ye dokunmadan
+   LCK'nin ölçülen etkisini +8.6'dan +5.3'e düşürdü.** Artık tek atış *olacak
+   mı*, ağırlıklı çekiliş *hangisi* diye karar veriyor; iki düğme bağımsız.
+2. **mass_slow lideri hiç vurmuyordu.** Kaçınmak seni ancak diğer takipçilerin
+   önüne geçiriyordu, kazanmak için geçmen gereken yarışçının değil. **İşi
+   birinciliğe hiç dokunamayan bir stat, kazanma oranında görünemez** — AGI ne
+   kadar iyi ölçeklenirse ölçeklensin +2'de takılı kalmasının sebebi buydu.
+   Artık bütün yaylar gevşiyor, liderinki dahil.
+
+**Yan etki, fark edilip geri alındı:** daha çok olay → daha çok tökezleme ve
+yeniden hızlanma → STA daha değerli → sprinter/dengeli geçiş noktası öne kaydı.
+`ENDURANCE_LENGTH` o geçiş noktasının **ölçümü** olarak tanımlı (kendi dosyası
+öyle yazıyor), 1400'de bölünme 29/71 olmuştu — uzun pist sorusunu sormayı
+bırakıp cevaplamaya başlamıştı. Yeniden ölçüldü: **1350** (46.6/53.4). Taze
+yarışçı için süre 44.8s → ~43.5s, yani lobideki "about 45 seconds" hâlâ doğru.
+
+> Bu değişiklik motoru değiştirdiği için **eski yarışlar aynı seed'den artık
+> aynı sonucu vermez.** Bitmiş yarışlar `race_replays`'te kare kare saklandığı
+> ve `track_length` satırda tutulduğu için arşiv bozulmuyor; ama "aynı seed aynı
+> yarışı üretir" iddiası bir motor sürümü içinde geçerlidir. Doğrulayıcı kopyası
+> senkron (`npm run check:verifier`).
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
@@ -723,16 +775,16 @@ Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
    Hattın kendisi kanıtlı (aşağıdaki "Sanat hattı"), eksik olan şablon.
 
 2. **Passive'ler** — yukarıdaki açık kalem.
-3. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
+4. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
    Career'da 0 yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri
    bildirim vermiyor. Playtest raporunda 9, 10, 11 numaralı maddeler.
    *(Profil "Inventory" sekmesi ve Shop bağlantıları kodda kalmamış — 2026-08-08
    sayfa geçişinde arandı, bulunamadı.)*
-4. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
+5. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
    backend süreci bulundu ve 3001'i en eskisi tutuyordu — yani ölçülen kod
    çalışan kod değildi. Bu, o gün alınan her ölçümü şüpheli yapardı.
-5. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
-6. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
+6. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
+7. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
    ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
    onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
 

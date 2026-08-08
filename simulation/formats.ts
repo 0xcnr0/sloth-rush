@@ -46,7 +46,14 @@ export interface RaceFormat {
 export const SPRINT_LENGTH = 800;
 /**
  * Long race — the measured crossover, where a pure sprinter and a balanced
- * racer win equally often (50.2 / 49.8 at 3000 runs).
+ * racer win equally often (46.6 / 53.4 at 2500 runs).
+ *
+ * This number is a MEASUREMENT, not a preference, so it has to be re-taken
+ * whenever the engine changes. It was 1400 until AGI, REF and LCK were given
+ * real work: more events mean more stumbles and more re-accelerations, which
+ * makes stamina worth more, which pulls the crossover earlier. At 1400 the
+ * split had become 29 / 71 — the long track had quietly stopped asking its
+ * question and started answering it.
  *
  * OPEN: duration depends heavily on how developed the racer is, and the spread
  * is wide. A fresh racer (~11 per stat, which is what mint produces) runs this
@@ -57,7 +64,7 @@ export const SPRINT_LENGTH = 800;
  * range every other number was tuned for. Raising the mint floor is the fix,
  * and it is a balance decision that has not been taken.
  */
-export const ENDURANCE_LENGTH = 1400;
+export const ENDURANCE_LENGTH = 1350;
 
 /**
  * Two formats, and they really are two.

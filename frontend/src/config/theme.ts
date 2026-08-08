@@ -113,7 +113,7 @@ export const THEME = {
    */
   raceFormats: {
     sprint: { name: 'Sprint', blurb: '800m, about 20 seconds. Top speed wins.' },
-    endurance: { name: 'Endurance', blurb: '1400m, about 45 seconds. The spring has to last.' },
+    endurance: { name: 'Endurance', blurb: '1350m, about 45 seconds. The spring has to last.' },
   } as Record<string, { name: string; blurb: string }>,
 
   /**
