@@ -1,6 +1,7 @@
 import { useWallet } from '../hooks/useWallet'
 import { Link } from 'react-router-dom'
 import WalletConnect from '../components/WalletConnect'
+import RacerPortrait from '../components/RacerPortrait'
 import { THEME } from '../config/theme'
 import { motion } from 'framer-motion'
 
@@ -10,88 +11,129 @@ const BRAND_WORDS = THEME.brand.nameUpper.split(' ')
 const BRAND_TAIL = BRAND_WORDS[BRAND_WORDS.length - 1]
 const BRAND_HEAD = BRAND_WORDS.slice(0, -1).join(' ')
 
+// The four archetypes, by code — the rig maps them to art folders, so this
+// stays theme-neutral (CLAUDE.md §0) and a fifth toy is one entry.
+const CAST = ['speedster', 'tank', 'trickster', 'burst'] as const
+
 export default function Landing() {
   const { isConnected } = useWallet()
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] px-4">
+    <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="text-center max-w-2xl"
+        className="text-center"
       >
-        {/* Logo / Hero */}
-        <div className="text-8xl mb-6">
-          <span role="img" aria-label="pro">{THEME.brand.mark}</span>
+        {/*
+         * The cast, drawn by the same rig the race uses.
+         *
+         * The front door used to be an 8xl key emoji. This is a game about four
+         * hand-painted wind-up toys and the page that has to sell it showed a
+         * glyph from the font — while the art it was standing in for was already
+         * loaded two screens away. Four keys turning is also the clearest thing
+         * the page can say about what a wind-up toy is.
+         */}
+        <div className="flex items-end justify-center gap-1 sm:gap-3">
+          {CAST.map((archetype, i) => (
+            <motion.div
+              key={archetype}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.1, type: 'spring', stiffness: 180, damping: 14 }}
+              className="w-1/4 max-w-[130px]"
+            >
+              <RacerPortrait archetype={archetype} height={128} />
+            </motion.div>
+          ))}
         </div>
+        {/* A shelf to stand them on. Without it four toys hang in mid-air over
+            the wall, which is the one thing a display piece must never look
+            like — and the north star is a shelf. */}
+        <div className="h-2.5 max-w-md mx-auto -mt-2 mb-7 rounded-full bg-brand-shelf border-[3px] border-brand-ink" />
 
         {/* Brand name and tagline come from theme.ts. Hardcoding them here is
             how the first theme's "RACER RUSH / Wake up. Race hard. Nap later."
             survived two rebrands on the game's own front door: `racer` is the
             allowed functional word, so the vocabulary lint had no reason to
             flag it, and nobody loaded the page. */}
-        <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-4">
+        <h1 className="toy-title text-4xl sm:text-6xl font-extrabold tracking-tight mb-3">
           <span className="text-brand-primary">{BRAND_HEAD}</span>{' '}
-          <span className="text-brand-ink">{BRAND_TAIL}</span>
+          <span className="text-brand-gold">{BRAND_TAIL}</span>
         </h1>
 
-        <p className="text-xl text-brand-dust mb-2 font-medium">
+        <p className="text-lg sm:text-xl text-brand-ink/80 mb-2 font-semibold">
           {THEME.brand.tagline}
         </p>
 
-        <p className="text-brand-dust mb-10 max-w-md mx-auto">
+        <p className="text-brand-dust mb-8 max-w-md mx-auto">
           Mint a wind-up toy, race it, and it gets better at racing.
           Every race is a deterministic simulation you can verify yourself.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="max-w-xs mx-auto">
           {isConnected ? (
             <>
               <Link
                 to="/mint"
-                className="px-8 py-3 bg-brand-primary text-brand-surface font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors"
+                className="toy-btn block w-full py-4 bg-brand-gold text-brand-ink text-xl font-black"
               >
-                Mint {THEME.tiers.free}
+                MINT &mdash; FREE
               </Link>
               <Link
                 to="/collection"
-                className="px-8 py-3 border border-brand-border text-brand-ink/80 rounded-xl text-lg hover:bg-brand-ink/5 transition-colors"
+                className="block w-full py-3 text-brand-dust text-sm font-semibold hover:text-brand-ink transition-colors"
               >
-                View {THEME.locations.home}
+                Open the {THEME.locations.home}
               </Link>
             </>
           ) : (
             <div className="flex flex-col items-center gap-3">
-              <p className="text-brand-dust text-sm">Connect your wallet to get started</p>
               <WalletConnect />
+              <p className="text-brand-dust text-sm">
+                Free to play. Minting costs no gas, and an email address is enough.
+              </p>
             </div>
           )}
         </div>
       </motion.div>
 
-      {/* Features */}
+      {/* Three claims, and each one is a thing the game actually does. */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-        className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-20 max-w-4xl w-full"
+        transition={{ delay: 0.5, duration: 0.6 }}
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12"
       >
         {[
-          { title: 'Free Mint', desc: `Gasless ${THEME.tiers.free} mint — one per wallet`, icon: '&#x2728;' },
-          { title: 'Upgrade', desc: 'Upgrade your racer for $3 USDC and get random rarity', icon: '&#x1f525;' },
-          { title: 'Race to Improve', desc: 'Every finish grows your racer. No timers, nothing to buy.', icon: '&#x1f3c6;' },
+          {
+            title: 'Free to start',
+            desc: `A gasless ${THEME.tiers.free} mint, one per wallet. No entry fees, no in-game currency.`,
+          },
+          {
+            title: 'Racing is the ladder',
+            desc: 'Every finish grows your racer, and crossing a threshold changes its form. Nothing to buy, no timer to wait out.',
+          },
+          {
+            title: 'Provably fair',
+            desc: 'One seed, open-source simulation, result hash written to Base. Re-run any race yourself.',
+          },
         ].map((f) => (
-          <div
-            key={f.title}
-            className="bg-brand-surface border border-brand-border rounded-xl p-6 text-center"
-          >
-            <div className="text-3xl mb-3" dangerouslySetInnerHTML={{ __html: f.icon }} />
-            <h3 className="text-brand-ink font-semibold mb-1">{f.title}</h3>
-            <p className="text-brand-dust text-sm">{f.desc}</p>
+          <div key={f.title} className="toy-panel p-5 text-center">
+            <h3 className="text-brand-ink font-bold mb-1">{f.title}</h3>
+            <p className="text-brand-dust text-sm leading-relaxed">{f.desc}</p>
           </div>
         ))}
       </motion.div>
+
+      {/* The one place money appears, stated plainly rather than buried. A page
+          that hides its only payment is the page players stop trusting. */}
+      <p className="text-center text-brand-dust text-xs mt-6 max-w-md mx-auto">
+        The only thing $3 buys is the {THEME.tiers.pro} upgrade: a boxed, painted
+        toy with a rarity rolled on-chain. It changes how your racer looks, never
+        how fast it is.
+      </p>
     </div>
   )
 }

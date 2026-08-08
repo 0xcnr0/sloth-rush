@@ -52,10 +52,15 @@ export default function Layout() {
             </Link>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {address && xp > 0 && (
+            {address && (
               // The XP chip is the way to the profile now. Removing the footer
               // took the only link to it with it, and a page nothing points at
               // is a page nobody will find.
+              //
+              // It used to also require xp > 0, which meant the one route to
+              // the record and to the only settings screen in the game did not
+              // exist until you had finished a race — hidden from exactly the
+              // player most likely to go looking for a settings screen.
               <Link
                 to="/profile"
                 className="flex shrink-0 items-center gap-1 bg-brand-accent/10 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg whitespace-nowrap hover:bg-brand-accent/20 transition-colors"

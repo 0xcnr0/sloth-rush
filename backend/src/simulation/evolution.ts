@@ -2,8 +2,8 @@
  * Evolution tiers — derived, never granted.
  *
  * A racer's tier is a pure function of its total stats, so it can only be
- * arrived at by racing (each finish adds +0.05 to a position-based stat, capped
- * at +0.3/day in routes/race.ts). There is no evolve button and nothing to pay.
+ * arrived at by racing (each finish adds +0.4 to a position-based stat, capped
+ * at +4.0/day in routes/race.ts). There is no evolve button and nothing to pay.
  *
  * There used to be both: a modal, and an endpoint that demanded XP, race count,
  * win count, a stat floor AND 800 of the game currency before it would grant

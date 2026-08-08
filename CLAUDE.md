@@ -540,10 +540,10 @@ arasındaki her yarış **dünün** bütçesine yazılıyordu. Artık sunucunun 
 tarihi. Ama **tavanın oyuncuya gösterilmesi hâlâ yapılmadı** — rehberde yazıyor,
 ekranda yazmıyor.
 
-### Sayfa sadeleştirmesi — 2026-08-08 gecesi, yarım
+### Sayfa sadeleştirmesi — 2026-08-08, tamam
 
 Karar: **ana sayfa ziyaretçiye kalır** (jüri oraya bakacak), **alt oyun çubuğu**
-gelir. Yapılanlar:
+gelir. İlk gece yapılanlar:
 
 - Alt çubuk: Toybox · Race · Ranks · Guide. Üstte beş sekmeli site menüsü,
   altta beş linkli footer vardı — bir yarışa sokmaktan başka işi olmayan bir
@@ -553,11 +553,45 @@ gelir. Yapılanlar:
 - Spectate, Ranks'e katlandı. Rota yönlendiriyor, sayfa silindi.
 - Lobi: ikinci canlı liste ve sayfa başlığı kalktı; geriye üç karar kaldı.
 
-**Yapılmadı** (bağlam bitti, aceleye getirilmedi):
-- **Mint** — 900 pikselde tek buton, mint sonrası oyuncağı görme anı yok.
-- **Guide** — 24 soruluk SSS; oyun içi rehberden çok doküman.
-- **Profile** — Settings dışında Toybox'la örtüşüyor, belki tamamen kalkmalı.
-- **Landing** — ziyaretçi sayfası olarak kalacak ama gözden geçirilmedi.
+Kalan dört sayfa ikinci geçişte kapandı:
+
+- **Mint** — sayfa oyuncağı bir kere bile çizmiyordu: mint öncesi anahtar emojisi,
+  sonrası konfeti emojisi, ve yeni yarışçının yerinde ikinci bir anahtar emojisi.
+  Bütün akışın var oluş sebebi olan tek an — oyuncağını görmek — font glifine
+  harcanmıştı, üstelik onu çizen rig iki ekran ötede zaten duruyordu. Artık üç
+  hâlde de `RacerPortrait` var (boyasız Wind-Up → anahtarı dönen aynı oyuncak →
+  isimlendirilmiş mint edilmiş oyuncak) ve altındaki buton **Race**. Sayfa
+  ayrıca cüzdanı **basmadan önce** soruyor: elinde yarışçı olan biri eskiden
+  sadece 409 alabiliyordu.
+- **Guide** — dört akordeondan biri açık, on dokuz soru; yani kendisinin dörtte
+  üçü bir tıkın arkasında duran bir doküman. Guide alt çubuktaki dört düğmeden
+  biri, yani oyuncunun **oyunun ortasında belirli bir soruyla** geldiği yer
+  ("kazandım, niye hiçbir şey olmadı?"). Artık akordeon yok: önce döngü, sonra
+  sunucunun gerçekten uyguladığı sayılar (+0.4, +4.0/gün, 90/130/170, tavanlar),
+  sonra kısa cevaplar — hepsi görünür.
+- **Profile** — silinmeye aday olarak işaretlenmişti, **silinmedi.** Toybox'ı
+  tekrarlayan kısımları (yarışçı sayacı) gitti; ama yarış kaydı ve ses ayarı
+  başka hiçbir yerde yok, ve **toplamlar Toybox'ın toplamları değil**: Toybox
+  yarışçı başına sayıyor, upgrade yarışçıyı yakıp yenisini basıyor, yani $3
+  ödeyen oyuncunun sayacı sıfırlanıyor. Buradakiler cüzdan başına. Sayfanın
+  varlık sebebi bu ve artık sayfanın üstünde yazıyor.
+- **Landing** — 8xl bir anahtar emojisi ile açılıyordu. Dört elle boyanmış
+  kurmalı oyuncağı satması gereken sayfa, fonttan bir glif gösteriyordu. Artık
+  dört arketip de bir rafın üstünde, yarışın kullandığı rig ile çiziliyor.
+- **Layout** — XP çipi `xp > 0` isteyordu, yani kayda ve oyunun tek ayar
+  ekranına giden tek yol **ilk yarış bitene kadar yoktu** — hem de bir ayar
+  ekranını aramaya en yatkın oyuncudan gizlenmişti.
+
+> **⚠ Kurma anahtarı gövdeden kopuk çiziliyor.** Rig'de anahtar çapası torso
+> genişliğinin 1.18–1.3 katında (`racerRig.ts` GEOMETRY), anahtar sprite'ı ise
+> 59px. Sonuç: her arketipte anahtar gövdenin **16–37 piksel dışında**, boşlukta
+> duruyor. Anahtar torso'dan **önce** çiziliyor, yani niyet mili gövdenin içine
+> sokmak; o boşlukla mil hiç görünmüyor. Bu rig hatası yeni değil ama bu
+> sayfalar oyuncağı 128–220px'te öne çıkardığı için artık bariz. **Düzeltilmedi:**
+> `key[0]` değerleri elle, canlı slider'la ayarlanmış (dosyanın kendi notu) ve
+> değişiklik yarış görünümünü de etkiler — sahibinin `scripts/rig-preview.py`
+> ile göz kararı vermesi gereken bir sayı. Kabaca `key[0] ≈ 1.0` gövdeye
+> yaslıyor.
 
 ### Sıradaki iş kalemleri
 
@@ -573,14 +607,16 @@ Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
    22-35 (rarity). Taze yarışçı bütün sayıların ayarlandığı aralığın altında
    başlıyor; Endurance'ı 53 saniyede koşmasının sebebi bu. Denge kararı.
 4. **Passive'ler** — yukarıdaki açık kalem.
-5. **Ücretsiz yarışçılara arketip atanmıyor**, hepsi Tinbot çiziliyor.
+5. **Kurma anahtarı gövdeden kopuk** — yukarıdaki kutu. Tek sayı, ama göz
+   kararı ve yarış görünümünü de etkiliyor.
 6. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
    sahiplik hissi yok. Gigling'de önceden ediniliyor ve tek seferlik. V1'de para
    olmadığı için kaynak ancak **yarışmak** olabilir. Karar alınmadı.
-7. **Ölü ekranlar ve kalıntılar.** Profil "Inventory" sekmesi kaldırılmış Shop'a
-   bağlı (iki 404), referans sistemi ödülsüz ayakta, leaderboard Career'da 0
-   yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri bildirim
-   vermiyor. Playtest raporunda 5, 9, 10, 11, 14 numaralı maddeler.
+7. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
+   Career'da 0 yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri
+   bildirim vermiyor. Playtest raporunda 9, 10, 11 numaralı maddeler.
+   *(Profil "Inventory" sekmesi ve Shop bağlantıları kodda kalmamış — 2026-08-08
+   sayfa geçişinde arandı, bulunamadı.)*
 8. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
    backend süreci bulundu ve 3001'i en eskisi tutuyordu — yani ölçülen kod
    çalışan kod değildi. Bu, o gün alınan her ölçümü şüpheli yapardı.
@@ -599,7 +635,7 @@ Dört arketip de üretildi (`frontend/public/art/{tinbot,jetster,waddler,chomper
 
 Rig geometrisi arketip başına, eklem noktaları gövdenin oranı olarak: `frontend/src/lib/racerRig.ts`. Parça boyutları arketipler arasında çok değiştiği için (gövde 138–214 geniş) tek bir sabit set çalışmıyor.
 
-**Bilinen boşluk:** ücretsiz (`free`) yarışçılara arketip atanmıyor — sadece upgrade'de atanıyor. O yüzden her ücretsiz yarışçı Tinbot çiziliyor. Tema açısından savunulabilir (Wind-Up = kutusu açılmamış temel oyuncak, arketip upgrade'de belli oluyor) ama **bilinçli bir karar değil, veri sonucu.** Ayrı bir "sade ücretsiz oyuncak" asset'i mi üretilsin, karar verilmedi.
+**Kapandı:** ücretsiz yarışçılar bir zamanlar Tinbot art'ına düşüyordu, yani her yeni oyuncunun oyuncağı Tinbot'tu — ve içinde zaten bir Tinbot olan yarışta dört oyuncağın ikisi aynıydı. Artık beşinci bir set var (`frontend/public/art/windup/`): boyasız, arketipsiz temel oyuncak. Arketip ilk evrim kademesinde, **en çok büyütülen stattan** türetiliyor (`archetypeForStats`, `routes/race.ts:880`), yani oyuncunun seçtiği yarışlar oyuncağın şeklinde görünüyor. Bu tema kararıyla da örtüşüyor: Wind-Up kutusu açılmamış temel oyuncaktır.
 
 ### İlgili dokümanlar
 

@@ -3,20 +3,56 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
+import RacerPortrait from '../components/RacerPortrait'
+import Spinner from '../components/Spinner'
 import { api } from '../lib/api'
 import { THEME } from '../config/theme'
 import { useMintFreeRacer } from '../hooks/useContracts'
 import { CONTRACTS_DEPLOYED } from '../config/contracts'
 
-type MintState = 'idle' | 'minting' | 'success' | 'error' | 'already_minted'
+/**
+ * The page where the game hands you the thing it is about.
+ *
+ * It used to do that without ever drawing it: a key emoji before the mint, a
+ * party popper after it, and a small card holding a second key emoji where the
+ * new racer should have been. The one moment the whole flow exists to produce —
+ * seeing your toy — was spent on stock glyphs, and the rig that draws it was
+ * already sitting in the collection screen.
+ *
+ * So the toy is on screen the whole way through: the plain unpainted Wind-Up
+ * before you mint (that is honestly what you get), the same toy with its key
+ * winding while the transaction lands, and then the minted one, named, popping
+ * in. And the button underneath it is Race, because that is the next thing the
+ * game wants from you and the Toybox was the only exit before.
+ */
+type MintState = 'checking' | 'idle' | 'minting' | 'success' | 'already_minted' | 'error'
 
 export default function Mint() {
   const { address, isConnected } = useWallet()
   const navigate = useNavigate()
-  const [state, setState] = useState<MintState>('idle')
+  const [state, setState] = useState<MintState>('checking')
   const [racer, setRacer] = useState<any>(null)
   const [error, setError] = useState('')
   const onchainMint = useMintFreeRacer()
+
+  // Ask before offering. The backend refuses a second mint for any wallet that
+  // still holds a racer, so a returning player pressing the button only ever
+  // got a 409 — the page can know that before they touch it, and point them at
+  // the racer they already own instead.
+  useEffect(() => {
+    if (!address) return
+    let cancelled = false
+    setState('checking')
+    api.getCollection(address)
+      .then(data => {
+        if (cancelled) return
+        const owned = data.racers?.[0]
+        if (owned) { setRacer(owned); setState('already_minted') }
+        else setState('idle')
+      })
+      .catch(() => { if (!cancelled) setState('idle') })
+    return () => { cancelled = true }
+  }, [address])
 
   // If on-chain mint succeeds, also register in backend
   useEffect(() => {
@@ -74,98 +110,124 @@ export default function Mint() {
     )
   }
 
+  if (state === 'checking') return <Spinner fullPage text="Checking your wallet..." />
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+    <div className="max-w-md mx-auto px-4 py-8">
       <AnimatePresence mode="wait">
         {state === 'idle' && (
           <motion.div
             key="idle"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            exit={{ opacity: 0, y: -12 }}
             className="text-center"
           >
-            <div className="text-7xl mb-6">{THEME.brand.mark}</div>
-            <h1 className="text-3xl font-bold mb-2">Mint Your {THEME.tiers.free}</h1>
-            <p className="text-brand-dust mb-8 max-w-md">
-              Every wallet gets one {THEME.tiers.free}. Mint yours and race it — upgrading to a {THEME.tiers.pro} is about how it looks, not how fast it is.
+            {/* The unpainted starter toy, drawn from the same rig the race uses.
+                What you see here is exactly what comes out of the mint. */}
+            <div className="toy-panel px-4 pt-4 pb-2 mb-5">
+              <RacerPortrait height={200} />
+              <p className="text-brand-dust text-xs mt-1">Straight out of the box &mdash; unpainted, no archetype yet</p>
+            </div>
+
+            <h1 className="text-3xl font-bold mb-2">Mint your {THEME.tiers.free}</h1>
+            <p className="text-brand-dust mb-5">
+              Race it and it gets better. The $3 {THEME.tiers.pro} upgrade
+              changes how it looks, never how fast it is.
             </p>
+
             <button
               onClick={handleMint}
-              className="px-8 py-3 bg-brand-primary text-brand-surface font-bold rounded-xl text-lg hover:bg-brand-primary/90 transition-colors cursor-pointer"
+              className="toy-btn w-full py-4 bg-brand-gold text-brand-ink text-xl font-black"
             >
-              Mint {THEME.tiers.free}
+              MINT &mdash; FREE
             </button>
+
+            <div className="flex items-center justify-center gap-2 mt-4 text-[11px] text-brand-dust">
+              <span className="toy-chip px-2.5 py-1">No gas</span>
+              <span className="toy-chip px-2.5 py-1">One per wallet</span>
+              <span className="toy-chip px-2.5 py-1">Yours on Base</span>
+            </div>
           </motion.div>
         )}
 
         {state === 'minting' && (
           <motion.div
             key="minting"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="text-center"
           >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-              className="text-7xl mb-6 inline-block"
-            >
-              {THEME.brand.mark}
-            </motion.div>
-            <p className="text-xl text-brand-ink/80">Minting your racer...</p>
+            {/* Not a spinner: the toy is already there and its key is turning,
+                which is the same thing a spinner says and also the thing the
+                game is about. */}
+            <div className="toy-panel px-4 pt-4 pb-2 mb-5">
+              <motion.div
+                animate={{ rotate: [-1.5, 1.5, -1.5] }}
+                transition={{ repeat: Infinity, duration: 0.5, ease: 'easeInOut' }}
+              >
+                <RacerPortrait height={200} />
+              </motion.div>
+            </div>
+            <p className="text-xl font-bold">Winding the spring&hellip;</p>
+            <p className="text-brand-dust text-sm mt-1">Minting on Base. This takes a few seconds.</p>
           </motion.div>
         )}
 
-        {state === 'success' && racer && (
+        {state === 'success' && (
           <motion.div
             key="success"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'spring', duration: 0.6 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             className="text-center"
           >
             <motion.div
-              initial={{ y: -50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, type: 'spring' }}
-              className="text-8xl mb-4"
+              initial={{ scale: 0.7, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 14 }}
+              className="toy-panel px-4 pt-4 pb-3 mb-5"
             >
-              &#x1f389;
+              <RacerPortrait archetype={racer?.race} rarity={racer?.rarity} height={220} />
+              <p className="text-brand-ink font-bold text-xl leading-tight">
+                {racer?.name ?? `Your ${THEME.tiers.free}`}
+              </p>
+              <p className="text-brand-dust text-xs">
+                {THEME.tiers.free}{racer?.id ? ` #${racer.id}` : ''}
+              </p>
             </motion.div>
-            <h2 className="text-3xl font-bold text-brand-primary mb-2">
-              {racer.name}
-            </h2>
-            <p className="text-brand-dust mb-6">Your {THEME.tiers.free} has been minted!</p>
 
-            <div className="bg-brand-surface border border-brand-border rounded-xl p-6 mb-6 inline-block">
-              <div className="text-6xl mb-3">{THEME.brand.mark}</div>
-              <p className="text-brand-ink font-semibold">{racer.name}</p>
-              <p className="text-brand-dust text-sm">{THEME.tiers.free} #{racer.id}</p>
-            </div>
-
-            {onchainMint.hash && (
-              <div className="mb-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <p className="text-brand-dust text-sm mb-4">
+                It is yours. Racing is the only thing that improves it &mdash; so go and race it.
+              </p>
+              <button
+                onClick={() => navigate('/race')}
+                className="toy-btn w-full py-4 bg-brand-gold text-brand-ink text-xl font-black"
+              >
+                RACE IT
+              </button>
+              <button
+                onClick={() => navigate('/collection')}
+                className="w-full py-3 text-brand-dust text-sm font-semibold hover:text-brand-ink transition-colors cursor-pointer"
+              >
+                Put it in the {THEME.locations.home} first
+              </button>
+              {onchainMint.hash && (
                 <a
                   href={`https://sepolia.basescan.org/tx/${onchainMint.hash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-brand-primary/70 text-xs hover:text-brand-primary transition-colors underline"
+                  className="text-brand-dust text-xs hover:text-brand-ink transition-colors underline"
                 >
                   View on BaseScan
                 </a>
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={() => navigate('/collection')}
-                className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
-              >
-                Go to {THEME.locations.home}
-              </button>
-            </div>
+              )}
+            </motion.div>
           </motion.div>
         )}
 
@@ -176,14 +238,37 @@ export default function Mint() {
             animate={{ opacity: 1 }}
             className="text-center"
           >
-            <div className="text-6xl mb-4">&#x2714;&#xfe0f;</div>
-            <h2 className="text-2xl font-bold mb-2">Already Minted</h2>
-            <p className="text-brand-dust mb-6">This wallet already has a {THEME.tiers.free}.</p>
+            <div className="toy-panel px-4 pt-4 pb-3 mb-5">
+              <RacerPortrait archetype={racer?.race} rarity={racer?.rarity} height={200} still />
+              {racer?.name && (
+                <>
+                  <p className="text-brand-ink font-bold text-xl leading-tight">{racer.name}</p>
+                  <p className="text-brand-dust text-xs">
+                    {racer.type === 'free' ? THEME.tiers.free : THEME.tiers.pro} #{racer.id}
+                  </p>
+                </>
+              )}
+            </div>
+            <h2 className="text-2xl font-bold mb-1">You already have one</h2>
+            {/* Two different reasons the mint is closed, and telling a player
+                who paid $3 that they are limited to one free racer reads as the
+                upgrade having taken something from them. */}
+            <p className="text-brand-dust mb-5">
+              {racer?.type === 'pro'
+                ? `Upgrading burned your ${THEME.tiers.free} and minted this in its place. The free mint does not come back.`
+                : `One ${THEME.tiers.free} per wallet — this is yours.`}
+            </p>
+            <button
+              onClick={() => navigate('/race')}
+              className="toy-btn w-full py-4 bg-brand-gold text-brand-ink text-xl font-black"
+            >
+              RACE IT
+            </button>
             <button
               onClick={() => navigate('/collection')}
-              className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors cursor-pointer"
+              className="w-full py-3 text-brand-dust text-sm font-semibold hover:text-brand-ink transition-colors cursor-pointer"
             >
-              View Your {THEME.locations.home}
+              Open the {THEME.locations.home}
             </button>
           </motion.div>
         )}
@@ -197,10 +282,10 @@ export default function Mint() {
           >
             <div className="text-6xl mb-4">&#x274c;</div>
             <h2 className="text-2xl font-bold text-brand-danger mb-2">Mint Failed</h2>
-            <p className="text-brand-dust mb-6">{error}</p>
+            <p className="text-brand-dust mb-6 break-words">{error}</p>
             <button
               onClick={() => setState('idle')}
-              className="px-6 py-2.5 border border-brand-border text-brand-ink/80 rounded-xl hover:bg-brand-ink/5 transition-colors cursor-pointer"
+              className="toy-btn w-full py-3 bg-brand-surface text-brand-ink"
             >
               Try Again
             </button>

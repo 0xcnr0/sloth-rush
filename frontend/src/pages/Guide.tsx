@@ -1,142 +1,275 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { THEME } from '../config/theme'
 
-// All copy is derived from THEME so a rebrand never reaches this file.
-//
-// This page is the only place the game explains itself, which makes it the
-// place most likely to describe a version that no longer exists. It previously
-// documented an in-game currency, a shop, training, quests, mini games, four
-// evolution tiers gated on coins, and three race formats — none of which are in
-// the game. Keep it honest or delete it; a wrong guide is worse than none.
-const SECTIONS = [
+/**
+ * The in-game reference, not the FAQ.
+ *
+ * All copy is derived from THEME so a rebrand never reaches this file, and the
+ * numbers below are the ones the server actually uses — PER_RACE_STAT_GAIN and
+ * DAILY_STAT_CAP in `routes/race.ts`, TIER_THRESHOLDS in
+ * `simulation/evolution.ts`, ITEM_TUNING in `simulation/items.ts`. This page is
+ * the only place the game explains itself, which makes it the place most likely
+ * to describe a version that no longer exists; it has already documented a
+ * currency, a shop, training, quests and three race formats, none of which are
+ * in the game. Keep it honest or delete it. A wrong guide is worse than none.
+ *
+ * It was nineteen questions in four accordions, one open at a time — a document
+ * with three quarters of itself behind a click. Guide is one of four buttons on
+ * the bottom bar, so it is somewhere a player arrives mid-game with a specific
+ * question ("why did nothing happen when I won?"), and the answer to that has
+ * to be visible by scrolling, not by guessing which heading hides it. Hence:
+ * the loop first, then the numbers, then the short honest answers.
+ */
+
+/** The three beats of the whole game. Nothing else is a source of progress. */
+const LOOP = [
   {
-    id: 'getting-started',
-    title: 'Getting Started',
-    icon: '\u{1F680}',
-    content: [
-      { q: `What is ${THEME.brand.name}?`, a: `A racing game on Base. Mint a wind-up toy, race it, and it gets better at racing. Nothing to buy, nothing to grind.` },
-      { q: 'How do I start?', a: `Connect a wallet and mint a ${THEME.tiers.free}. It is free and gasless, one per wallet. Then pick a distance and race.` },
-      { q: 'Is it free to play?', a: 'Yes, entirely. Races cost nothing and there is no in-game currency. The only thing money buys is the $3 upgrade, and that changes how your racer looks, not how fast it is.' },
-      { q: 'Do I need to know anything about crypto?', a: 'No. You can sign up with an email address, and minting costs no gas.' },
-    ]
+    n: '1',
+    title: 'Mint',
+    body: `One free ${THEME.tiers.free} per wallet. No gas, and an email address is enough to start.`,
   },
   {
-    id: 'racing',
-    title: 'Racing',
-    icon: '\u{1F3C1}',
-    content: [
-      { q: 'What are the race formats?', a: `${THEME.raceFormats.sprint.name} and ${THEME.raceFormats.endurance.name}. They differ in one thing only: distance — and distance is what decides whether raw speed or a balanced racer wins.` },
-      { q: 'Which one should I enter?', a: `${THEME.raceFormats.sprint.name} is short, so raw top speed decides it. ${THEME.raceFormats.endurance.name} is twice as long, and a racer that is only fast fades before the line — the long track is won by balance. Pick the one your racer is built for.` },
-      { q: 'What do the two items do?', a: `${THEME.items.boost.name} speeds you up for five seconds. ${THEME.items.hinder.name} slows one racer you name for the same five seconds — you choose who, not the game. You pack two before the race and spend them during it.` },
-      { q: 'When should I use them?', a: 'The server decides the exact tick, always a few seconds ahead of what you have already watched — that is what stops an item from rewriting a moment you have seen. So play it early rather than at the line: an item pressed on the last stretch may land after it.' },
-      { q: 'Does the grid position matter?', a: 'A little. Starting nearer the front gives a small acceleration bonus for the first few seconds, and it runs out. Nobody gets a head start — the grid is drawn from the race seed.' },
-      { q: 'Who am I racing?', a: 'Bots fill any empty slot so a race always starts. They are labelled BOT and they are not competing for anything.' },
-      { q: 'Can a race be rigged?', a: 'No. Every race is a deterministic simulation of one seed, the code is open, and the result hash is written to Base. The same seed always produces the same race.' },
-    ]
+    n: '2',
+    title: 'Race',
+    body: 'Pick a distance, pack two items, and watch it run. Races are free and always will be.',
   },
   {
-    id: 'progression',
-    title: 'Getting Better',
-    icon: '\u{1F4C8}',
-    content: [
-      { q: 'How does my racer improve?', a: 'By racing, and only by racing. Every finish adds +0.4 to one stat — which stat depends on where you placed — up to +4.0 a day, so about ten races fills a day. There is nothing to buy and no timer to wait out.' },
-      { q: 'Why did my stats not go up?', a: 'You have most likely used up the day. The cap is +4.0 per racer per day and it resets at midnight. Stats also stop at a ceiling set by your tier and rarity, so a racer already at its ceiling in that stat will not move.' },
-      { q: 'What are the six stats?', a: 'SPD (top speed), ACC (acceleration), STA (stamina), AGI (agility), REF (reflex) and LCK (luck). SPD is the base currency of a race; STA is what protects it over distance.' },
-      { q: 'What is evolution?', a: 'As total stats cross a threshold your racer changes form — bigger, more finished, more detail. It happens on its own the moment you cross it. Evolution is how big you got.' },
-      { q: 'What is rarity?', a: `Surface, not power. Fair through Mint changes how well kept your racer looks and never changes how it races. Rarity is how well kept you are — a separate axis from evolution.` },
-    ]
+    n: '3',
+    title: 'It grows',
+    body: 'Every finish makes your racer measurably better, and enough of them change its shape.',
+  },
+]
+
+const FAQ = [
+  {
+    q: 'Can a race be rigged?',
+    a: 'No. Every race is a deterministic simulation of one seed, the simulation is open source, and the result hash is written to Base. Feed the same seed to the same code and you get the same race, frame for frame.',
   },
   {
-    id: 'upgrade',
-    title: 'Upgrading',
-    icon: '\u{2728}',
-    content: [
-      { q: `What does the ${THEME.tiers.pro} upgrade do?`, a: `Your ${THEME.tiers.free} is burned and a ${THEME.tiers.pro} is minted in its place: boxed, painted, with an archetype and a rarity rolled on-chain. It costs $3 in USDC.` },
-      { q: 'Does upgrading make me faster?', a: 'It raises your stat ceilings, so a Showcase can keep improving past where a Wind-Up stops. The rarity you roll has no effect on racing at all.' },
-      { q: 'Can I choose my rarity?', a: 'No. It is drawn by Chainlink VRF at the moment of upgrade, on-chain, and nobody can see or influence it beforehand.' },
-    ]
+    q: 'Who am I racing?',
+    a: 'Bots fill any empty slot so a race always starts. They are labelled BOT, and they are not competing for anything.',
+  },
+  {
+    q: `What does the ${THEME.tiers.pro} upgrade do?`,
+    a: `Your ${THEME.tiers.free} is burned and a ${THEME.tiers.pro} is minted in its place: boxed, painted, and carrying a rarity rolled on-chain. It costs $3 in USDC and it is the only payment in the game.`,
+  },
+  {
+    q: 'Does upgrading make me faster?',
+    a: 'Not directly. It lifts your stat ceilings, so a Showcase can keep improving past the point where a Wind-Up stops. The rarity it rolls has no effect on racing at all.',
+  },
+  {
+    q: 'Can I choose my rarity?',
+    a: 'No. Chainlink VRF draws it on-chain at the moment of upgrade. Nobody — including us — can see or influence it beforehand.',
+  },
+  {
+    q: 'Do I need to know anything about crypto?',
+    a: 'No. Sign up with an email address, and minting costs no gas.',
   },
 ]
 
 export default function Guide() {
-  const [openSection, setOpenSection] = useState<string>('getting-started')
-
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">How to Play</h1>
-        <p className="text-brand-dust mt-1">Everything you need to know about {THEME.brand.name}</p>
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+      <div>
+        <h1 className="toy-title text-3xl font-bold">How to play</h1>
+        <p className="text-brand-dust mt-1">
+          {THEME.brand.name} in three steps, and every number the game runs on.
+        </p>
       </div>
 
-      {/* Quick Links */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        {SECTIONS.map(s => (
-          <button
-            key={s.id}
-            onClick={() => setOpenSection(s.id)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-              openSection === s.id
-                ? 'bg-brand-primary/20 text-brand-primary'
-                : 'text-brand-dust hover:text-brand-ink bg-brand-surface border border-brand-border hover:bg-brand-ink/5'
-            }`}
-          >
-            {s.icon} {s.title}
-          </button>
-        ))}
-      </div>
-
-      {/* Sections */}
-      <div className="space-y-4">
-        {SECTIONS.map(section => (
+      {/* The loop. Three rows in one panel rather than three stacked cards: on a
+          phone the cards filled the screen, so a player who opened Guide to
+          find out why their stats did not move had to scroll past the entire
+          tutorial to reach the answer. */}
+      <div className="toy-panel divide-y-[3px] divide-brand-ink/10">
+        {LOOP.map((step, i) => (
           <motion.div
-            key={section.id}
-            initial={false}
-            animate={{ height: openSection === section.id ? 'auto' : 'auto' }}
-            className={`bg-brand-surface border border-brand-border rounded-xl overflow-hidden ${
-              openSection !== section.id ? 'hidden' : ''
-            }`}
+            key={step.n}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08 }}
+            className="p-4 flex gap-3"
           >
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-brand-ink mb-4">{section.icon} {section.title}</h2>
-              <div className="space-y-4">
-                {section.content.map((item, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <h3 className="text-brand-ink font-semibold mb-1">{item.q}</h3>
-                    <p className="text-brand-dust text-sm leading-relaxed">{item.a}</p>
-                  </motion.div>
-                ))}
-              </div>
+            <span className="inline-flex shrink-0 items-center justify-center w-7 h-7 rounded-full bg-brand-gold text-brand-ink font-black text-sm border-[3px] border-brand-ink">
+              {step.n}
+            </span>
+            <div>
+              <h2 className="text-brand-ink font-bold leading-tight">{step.title}</h2>
+              <p className="text-brand-dust text-sm leading-relaxed">{step.body}</p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* CTA */}
-      <div className="mt-8 bg-brand-surface border border-brand-primary/30 rounded-xl p-6 text-center">
-        <h3 className="text-brand-ink font-bold text-lg mb-2">Ready to race?</h3>
-        <p className="text-brand-dust text-sm mb-4">Mint your free racer and start racing today!</p>
-        <div className="flex justify-center gap-3">
-          <Link
-            to="/mint"
-            className="px-6 py-2.5 bg-brand-primary text-brand-surface font-bold rounded-xl hover:bg-brand-primary/90 transition-colors"
-          >
-            Mint {THEME.tiers.free}
-          </Link>
-          <Link
-            to="/race"
-            className="px-6 py-2.5 border border-brand-border text-brand-ink/80 rounded-xl hover:bg-brand-ink/5 transition-colors"
-          >
-            Enter Race
-          </Link>
+      {/* Inside a race */}
+      <section>
+        <h2 className="text-lg font-bold mb-3">Inside a race</h2>
+        <div className="toy-panel divide-y-[3px] divide-brand-ink/10">
+          <Row
+            label="Two distances"
+            body={
+              <>
+                <strong className="text-brand-ink">{THEME.raceFormats.sprint.name}</strong> &mdash;{' '}
+                {THEME.raceFormats.sprint.blurb}
+                <br />
+                <strong className="text-brand-ink">{THEME.raceFormats.endurance.name}</strong> &mdash;{' '}
+                {THEME.raceFormats.endurance.blurb}
+                <br />
+                That is their only difference, and it is the whole decision: the short track
+                is won by raw top speed, the long one by a racer that does not fade.
+              </>
+            }
+          />
+          <Row
+            label="Two items"
+            body={
+              <>
+                <strong className="text-brand-ink">{THEME.items.boost.name}</strong> speeds you up
+                for five seconds. <strong className="text-brand-ink">{THEME.items.hinder.name}</strong>{' '}
+                slows one racer you name, for the same five seconds &mdash; you choose who, not the
+                game. You pack two before the start and spend them during the race.
+              </>
+            }
+          />
+          <Row
+            label="When to spend them"
+            body={
+              <>
+                Early rather than at the line. The server sets the exact tick, always a
+                little ahead of what you have already watched &mdash; that is what stops an item
+                from rewriting a moment you have seen &mdash; so one pressed on the last stretch
+                may land after it.
+              </>
+            }
+          />
+          <Row
+            label="The grid"
+            body={
+              <>
+                Drawn from the race seed. Starting nearer the front is worth a small
+                acceleration bonus for the first few seconds and then it is gone. Nobody
+                gets a head start.
+              </>
+            }
+          />
         </div>
+      </section>
+
+      {/* Getting better */}
+      <section>
+        <h2 className="text-lg font-bold mb-3">Getting better</h2>
+        <div className="toy-panel divide-y-[3px] divide-brand-ink/10">
+          <Row
+            label="Racing, and only racing"
+            body={
+              <>
+                Every finish adds <Num>+0.4</Num> to one stat &mdash; which stat depends on where
+                you placed. There is nothing to buy, no training timer, and no other source.
+              </>
+            }
+          />
+          <Row
+            label="A day holds four"
+            body={
+              <>
+                A racer can gain at most <Num>+4.0</Num> per day, so about ten races fill it,
+                and the count resets at midnight. <strong className="text-brand-ink">If you
+                race, win, and nothing moves, this is almost always why.</strong>
+              </>
+            }
+          />
+          <Row
+            label="Ceilings"
+            body={
+              <>
+                Stats also stop at a ceiling: <Num>15</Num> per stat as a {THEME.tiers.free},{' '}
+                <Num>22&ndash;35</Num> as a {THEME.tiers.pro} depending on rarity. A stat already
+                at its ceiling will not move however well you race.
+              </>
+            }
+          />
+          <Row
+            label="Changing form"
+            body={
+              <>
+                Add the six stats up. Crossing <Num>90</Num>, <Num>130</Num> or <Num>170</Num>{' '}
+                changes your racer&rsquo;s shape &mdash; {THEME.evolutionTiers[0]} &rarr;{' '}
+                {THEME.evolutionTiers[1]} &rarr; {THEME.evolutionTiers[2]} &rarr;{' '}
+                {THEME.evolutionTiers[3]}. It happens on its own the moment you cross;
+                there is no button and no fee. The first one also decides which of the four
+                toys you become, from whichever stat you pushed hardest.
+              </>
+            }
+          />
+          <Row
+            label="The six stats"
+            body={
+              <>
+                SPD (top speed), ACC (acceleration), STA (stamina), AGI (agility),
+                REF (reflex), LCK (luck). SPD is the base currency of a race; STA is what
+                protects it over distance.
+              </>
+            }
+          />
+        </div>
+      </section>
+
+      {/* The two axes — the single most confusable thing in the game. */}
+      <section className="toy-panel p-5 bg-brand-gold/10">
+        <h2 className="text-brand-ink font-bold mb-2">Form and finish are different things</h2>
+        <p className="text-brand-dust text-sm leading-relaxed">
+          <strong className="text-brand-ink">Form</strong> is how big you grew, and you grow it
+          by racing. <strong className="text-brand-ink">Rarity</strong> &mdash;{' '}
+          {THEME.rarity.common} through {THEME.rarity.legendary} &mdash; is how well kept you
+          are, and it comes from the upgrade roll. Rarity changes the surface of your toy and{' '}
+          <strong className="text-brand-ink">never changes how it races.</strong>
+        </p>
+      </section>
+
+      {/* The short answers */}
+      <section>
+        <h2 className="text-lg font-bold mb-3">Anything else</h2>
+        <div className="space-y-4">
+          {FAQ.map(item => (
+            <div key={item.q}>
+              <h3 className="text-brand-ink font-semibold">{item.q}</h3>
+              <p className="text-brand-dust text-sm leading-relaxed">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="toy-panel p-5 text-center">
+        <p className="text-brand-ink font-bold mb-3">That is the whole game.</p>
+        <Link
+          to="/race"
+          className="toy-btn block w-full py-3.5 bg-brand-gold text-brand-ink text-lg font-black"
+        >
+          RACE
+        </Link>
+        <Link
+          to="/mint"
+          className="block w-full py-2.5 text-brand-dust text-sm font-semibold hover:text-brand-ink transition-colors"
+        >
+          I do not have a racer yet
+        </Link>
       </div>
     </div>
   )
+}
+
+/** One labelled fact. The label is the thing you scan for; the body answers it. */
+function Row({ label, body }: { label: string; body: React.ReactNode }) {
+  return (
+    <div className="p-4 sm:flex sm:gap-4">
+      <p className="text-brand-ink font-bold text-sm shrink-0 sm:w-40 mb-1 sm:mb-0">{label}</p>
+      <p className="text-brand-dust text-sm leading-relaxed">{body}</p>
+    </div>
+  )
+}
+
+/** A number the server actually enforces, set apart so it can be found again. */
+function Num({ children }: { children: React.ReactNode }) {
+  return <span className="text-brand-ink font-bold tabular-nums">{children}</span>
 }
