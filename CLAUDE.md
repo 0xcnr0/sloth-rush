@@ -801,31 +801,35 @@ kadronun dörtte üçü için yalan olurdu.
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
 üretildi. Kapanan maddeler düşürüldü; kalanlar aşağıda.
 
-1. **Üç oyuncağı yeniden çiz.** Sahip kararı (2026-08-08 playtest): *"aslında
-   hepsi hatalı, asıl ilk yaptığımız robot dışında."* Tinbot doğru görünüyor,
-   diğer üçü değil — ve sebep rig ayarı değil, **sayfaların ortak bir parça
-   mimarisine çizilmemiş olması.** Ölçüldü (kısa kenar × uzun kenar, gövdeye
-   oran):
+1. **Üç oyuncağı yeniden çiz — şablon yazıldı, üretim yarım.**
 
-   | sayfa | gövde | kafa | kol | bacak | kafa/gövde | kol/gövde |
-   |---|---|---|---|---|---|---|
-   | tinbot | 162×172 | 137×106 | 52×200 | 100×251 | 0.62 | 1.16 |
-   | jetster | 138×284 | **202**×103 | 34×256 | 100×233 | 0.36 | 0.90 |
-   | waddler | 198×176 | 153×132 | 76×150 | 100×**98** | 0.75 | 0.85 |
-   | chomper | 214×172 | 156×129 | 92×173 | 99×110 | 0.75 | 1.01 |
+   Eksik olan şey hattın kendisi değil, **parça şablonuydu**; artık var:
+   [docs/PART_TEMPLATE.md](docs/PART_TEMPLATE.md). Gövde birim, her parça ona
+   oran (Tinbot'un ölçülen oranları taban), tolerans ±%15. Ölçüm de orada:
+   Jetster'ın kafası gövdesinden genişti, bacak/gövde oranı dört oyuncak
+   arasında 0.56 ile 1.46 arasında geziyordu.
 
-   Jetster'ın kafası gövdesinden **geniş** (202 > 138), bacak/gövde oranı
-   0.98'den 0.56'ya kadar sapıyor. `racerRig.ts` bunu arketip başına ayrı
-   geometriyle telafi ediyor — yani rig, sanatın tutmadığı yeri elle
-   yamalıyor. Tinbot'un doğru görünmesinin sebebi tesadüf değil: rig'in ilk
-   sürümü **Tinbot'un sayılarıyla** yazıldı, diğer üçü sonradan ona uyduruldu.
-   ART_DIRECTION §12 zaten "tek rig, dört deri" varsayıyor; bu ancak dördü de
-   aynı parça şablonuna çizilirse doğru olur.
+   Üretilenler (`scripts/generated/3d/`, prompt'lar `scripts/prompts/*-v3.txt`):
 
-   Doğru iş: önce parça şablonunu **gövde oranı cinsinden** yaz (kafa yüksekliği
-   gövdenin %X'i, kol %Y'si, vb. — Tinbot'un oranları taban alınabilir), sonra
-   `scripts/meshy.ts image --ref` ile üç sayfayı o şablona yeniden ürettir.
-   Hattın kendisi kanıtlı (aşağıdaki "Sanat hattı"), eksik olan şablon.
+   | sayfa | durum |
+   |---|---|
+   | `waddler-parts-v3` | **hazır** — yuvarlak kafa + geniş gaga, uzun bacaklar, karakter korunmuş |
+   | `chomper-parts-v3` | **hazır** — uzun burun, sırt dikenleri, kalın ayaklar |
+   | `jetster-parts-v3` | oranlar doğru ama **karakter kayıp** — referansın kutu gövdesini kopyalamış, kırmızıya boyanmış Tinbot |
+   | `jetster-parts-v4` | karakter doğru (kapsül gövde, koni kafa, kanatçık kol) ama **tek bacak üretmiş** |
+
+   **Öğrenilen:** referansı kilitlemek oranı taşıyor ama **silueti de taşıyor.**
+   Ördek ve dinozor bundan zarar görmedi çünkü gövdeleri zaten yuvarlak; roket
+   gördü, çünkü onun gövdesi kapsül olmak zorunda. Jetster için doğru prompt,
+   oranı referanstan alıp gövde şeklini metinle **açıkça reddeden** biçim
+   (v4'teki "not a box, not a panel with gauges") — ama v4'te parça sayısı
+   kaydı, yani ikisi tek prompt'ta birleştirilmeli.
+
+   **Kalan iş:** Jetster'ı bir tur daha (v4 metni + v3'ün parça sayısı vurgusu),
+   sonra üçünü `scripts/extract-parts.py` ile ayıkla, şablona karşı ölç,
+   `racerRig.ts` geometrisini oranlardan **yeniden türet** (arketip başına elle
+   sabit eklemek bu sorunu yaratan şeydi), silüet testi ve ekran görüntüsü.
+   **Sanat henüz oyuna kurulmadı** — oyunda hâlâ eski sayfalar görünüyor.
 
 2. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı. Ayrıca
    `CONTRACTS_DEPLOYED` şu an **kapalı** (yukarıdaki kutu); başvurudan önce
