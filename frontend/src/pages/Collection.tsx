@@ -191,12 +191,9 @@ export default function Collection() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-3xl font-bold">Your {THEME.locations.home}</h1>
-          <p className="text-brand-dust mt-1">
-            {racers.length === 0 ? 'No racers yet' : `${racers.length} racer${racers.length > 1 ? 's' : ''}`}
-          </p>
+          <h1 className="text-2xl font-bold">{THEME.locations.home}</h1>
         </div>
       </div>
 
@@ -329,7 +326,6 @@ export default function Collection() {
       {/* Racer Cards */}
       {racerList.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">Racers</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {racerList.map((racer) => (
               <div
@@ -474,18 +470,19 @@ export default function Collection() {
                 
                 {/* Enter Race — prominent */}
                 <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
+                  <TierProgress racer={racer} />
                   <button
                     onClick={() => handleQuickDemoRace(racer.id)}
                     disabled={demoLoading === racer.id}
-                    className="toy-btn w-full py-4 bg-brand-primary text-brand-surface text-xl font-black"
+                    className="toy-btn w-full py-4 bg-brand-gold text-brand-ink text-xl font-black"
                   >
-                    {demoLoading === racer.id ? 'Starting Race...' : '\u26A1 Quick Race'}
+                    {demoLoading === racer.id ? 'Starting Race\u2026' : 'RACE'}
                   </button>
                   <button
                     onClick={() => navigate('/race')}
-                    className="w-full py-2.5 bg-brand-primary/20 text-brand-primary font-bold rounded-lg hover:bg-brand-primary/30 transition-colors cursor-pointer border border-brand-primary/30"
+                    className="w-full py-2 text-brand-dust text-sm font-semibold hover:text-brand-ink transition-colors cursor-pointer"
                   >
-                    Browse Races
+                    Choose a distance instead
                   </button>
                 </div>
 
@@ -601,6 +598,40 @@ export default function Collection() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+/**
+ * How far this racer is from its next form.
+ *
+ * "When do I get better?" had no answer anywhere in the game. A playtest had to
+ * add up six stats by hand to work out it was 17.5 away from the first tier —
+ * and the tiers are the one thing racing visibly produces, since crossing the
+ * first is what decides which toy you become.
+ */
+function TierProgress({ racer }: { racer: any }) {
+  const total =
+    (racer.spd || 0) + (racer.acc || 0) + (racer.sta || 0) +
+    (racer.agi || 0) + (racer.ref || 0) + (racer.lck || 0)
+  const thresholds = [90, 130, 170]
+  const next = thresholds.find(t => total < t)
+  const prev = next ? (thresholds[thresholds.indexOf(next) - 1] ?? 0) : 0
+  const pct = next ? Math.max(0, Math.min(100, ((total - prev) / (next - prev)) * 100)) : 100
+
+  return (
+    <div className="mb-1">
+      <div className="flex items-baseline justify-between mb-1">
+        <span className="text-brand-dust text-[11px] font-semibold">
+          {next ? `Next form at ${next}` : 'Final form reached'}
+        </span>
+        <span className="text-brand-dust text-[11px] tabular-nums">
+          {total.toFixed(1)}{next ? ` / ${next}` : ''}
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-brand-ink/10 border-2 border-brand-ink overflow-hidden">
+        <div className="h-full bg-brand-gold" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   )
 }

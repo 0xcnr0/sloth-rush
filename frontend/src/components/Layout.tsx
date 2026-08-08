@@ -5,33 +5,34 @@ import MiniAppAutoConnect from './MiniAppAutoConnect'
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import OnboardingTutorial from './OnboardingTutorial'
-import { FEATURES } from '../config/features'
 import { getSafeAreaInsets } from '../lib/farcaster'
 import { THEME } from '../config/theme'
 
+/**
+ * Four destinations, and they live at the bottom.
+ *
+ * There were five tabs across the top and five more links in a footer — ten
+ * ways out of a screen whose only job is to get you into a race. That is a
+ * website's furniture. A phone game puts a short bar where the thumb already
+ * is, and Spectate folds into Ranks because both pages were mostly empty and
+ * both answer "who else is playing".
+ */
 const NAV_ITEMS = [
-  { path: '/', label: 'Home' },
-  { path: '/collection', label: THEME.locations.home },
-  { path: '/race', label: 'Race' },
-  { path: '/spectate', label: 'Spectate' },
-  { path: '/leaderboard', label: 'Leaderboard' },
+  { path: '/collection', label: THEME.locations.home, icon: '\u{1F9F0}' },
+  { path: '/race', label: 'Race', icon: '\u{1F3C1}' },
+  { path: '/leaderboard', label: 'Ranks', icon: '\u{1F3C6}' },
+  { path: '/guide', label: 'Guide', icon: '\u{2753}' },
 ]
 
 export default function Layout() {
   const location = useLocation()
   const { address } = useWallet()
   const [xp, setXp] = useState(0)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!address) { setXp(0); return }
     api.getXP(address).then(d => setXp(d.xp)).catch((err) => { console.error('Failed to load XP:', err) })
   }, [address, location.pathname])
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
 
   const safeArea = getSafeAreaInsets()
 
@@ -46,31 +47,9 @@ export default function Layout() {
       <nav className="border-b border-brand-border bg-brand-surface/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            {/* Hamburger button - mobile only */}
-            <button
-              className="sm:hidden p-3 text-brand-dust hover:text-brand-ink"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? '\u2715' : '\u2630'}
-            </button>
             <Link to="/" className="text-xl font-bold text-brand-primary tracking-tight whitespace-nowrap">
               {THEME.brand.nameUpper}
             </Link>
-            <div className="hidden sm:flex items-center gap-1">
-              {NAV_ITEMS.map(item => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    location.pathname === item.path
-                      ? 'bg-brand-primary/20 text-brand-primary'
-                      : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {address && xp > 0 && (
@@ -89,67 +68,39 @@ export default function Layout() {
       </nav>
 
       {/* Mobile Menu Drawer */}
-      {mobileMenuOpen && (
-        <div className="sm:hidden fixed inset-0 z-50 bg-black/80" onClick={() => setMobileMenuOpen(false)}>
-          <div className="bg-brand-surface w-64 h-full p-4 border-r-[3px] border-brand-ink" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-xl font-bold text-brand-primary">{THEME.brand.nameUpper}</span>
-              <button onClick={() => setMobileMenuOpen(false)} className="text-brand-dust text-xl">{'\u2715'}</button>
-            </div>
-            <nav className="flex flex-col gap-2">
-              {NAV_ITEMS.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors min-h-[44px] flex items-center ${
-                    location.pathname === item.path
-                      ? 'bg-green-600/20 text-brand-primary'
-                      : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-            <div className="mt-4 pt-4 border-t border-brand-ink/20 flex flex-col gap-2">
-              <Link to="/mint" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5 transition-colors min-h-[44px] flex items-center">Mint</Link>
-              {FEATURES.profile && <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5 transition-colors min-h-[44px] flex items-center">Profile</Link>}
-              <Link to="/guide" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 rounded-lg text-sm font-medium text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5 transition-colors min-h-[44px] flex items-center">How to Play</Link>
-            </div>
-            {address && (
-              <div className="mt-4 pt-4 border-t border-brand-ink/20 space-y-2">
-                {xp > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1.5">
-                    <span className="text-brand-accent font-bold text-sm">{xp}</span>
-                    <span className="text-brand-accent/70 text-xs">XP</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <main className="flex-1">
         <Outlet />
       </main>
 
-      {/* The room illustration is painted on the body and bleeds to the bottom of
-          the viewport, so a transparent footer sat directly on top of the shelf
-          and became unreadable. It gets its own opaque band. */}
-      <footer className="border-t-[3px] border-brand-ink bg-brand-surface py-4 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-brand-dust text-xs">
-          <span>{THEME.brand.name} — {THEME.brand.description}</span>
-          <div className="flex items-center gap-4">
-            <Link to="/mint" className="hover:text-brand-ink transition-colors">Mint</Link>
-            <Link to="/guide" className="hover:text-brand-ink transition-colors">How to Play</Link>
-            {FEATURES.profile && <Link to="/profile" className="hover:text-brand-ink transition-colors">Profile</Link>}
-            <a href="https://twitter.com/WindUpRush" target="_blank" rel="noopener noreferrer" className="hover:text-brand-ink transition-colors">Twitter</a>
-            <a href="https://discord.gg/winduprush" target="_blank" rel="noopener noreferrer" className="hover:text-brand-ink transition-colors">Discord</a>
-          </div>
+      {/* The bar. It sits above the drawn room rather than on top of it, and it
+          is the only navigation on a phone — the top strip keeps the brand and
+          the XP and nothing else. */}
+      <nav className="sticky bottom-0 z-40 border-t-[3px] border-brand-ink bg-brand-surface">
+        <div className="max-w-2xl mx-auto grid grid-cols-4">
+          {NAV_ITEMS.map(item => {
+            const active = location.pathname === item.path
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex flex-col items-center gap-0.5 py-2 transition-colors ${
+                  active ? 'text-brand-ink' : 'text-brand-dust hover:text-brand-ink'
+                }`}
+              >
+                <span className={`text-xl leading-none ${active ? '' : 'opacity-60'}`} aria-hidden>
+                  {item.icon}
+                </span>
+                <span className="text-[11px] font-semibold">{item.label}</span>
+                <span
+                  className={`h-[3px] w-6 rounded-full ${active ? 'bg-brand-gold' : 'bg-transparent'}`}
+                  aria-hidden
+                />
+              </Link>
+            )
+          })}
         </div>
-      </footer>
+      </nav>
 
       <MiniAppAutoConnect />
       <OnboardingTutorial />
