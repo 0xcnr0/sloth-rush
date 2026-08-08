@@ -540,6 +540,25 @@ arasındaki her yarış **dünün** bütçesine yazılıyordu. Artık sunucunun 
 tarihi. Ama **tavanın oyuncuya gösterilmesi hâlâ yapılmadı** — rehberde yazıyor,
 ekranda yazmıyor.
 
+### Sayfa sadeleştirmesi — 2026-08-08 gecesi, yarım
+
+Karar: **ana sayfa ziyaretçiye kalır** (jüri oraya bakacak), **alt oyun çubuğu**
+gelir. Yapılanlar:
+
+- Alt çubuk: Toybox · Race · Ranks · Guide. Üstte beş sekmeli site menüsü,
+  altta beş linkli footer vardı — bir yarışa sokmaktan başka işi olmayan bir
+  ekrandan **on çıkış yolu**. Hamburger, çekmecesi ve footer kalktı.
+- Toybox oyun ana ekranı: üç başlık bire indi, **"Next form at 90 — 72.9 / 90"**
+  çubuğu geldi. "Ne zaman gelişeceğim?" sorusunun oyunda hiçbir cevabı yoktu.
+- Spectate, Ranks'e katlandı. Rota yönlendiriyor, sayfa silindi.
+- Lobi: ikinci canlı liste ve sayfa başlığı kalktı; geriye üç karar kaldı.
+
+**Yapılmadı** (bağlam bitti, aceleye getirilmedi):
+- **Mint** — 900 pikselde tek buton, mint sonrası oyuncağı görme anı yok.
+- **Guide** — 24 soruluk SSS; oyun içi rehberden çok doküman.
+- **Profile** — Settings dışında Toybox'la örtüşüyor, belki tamamen kalkmalı.
+- **Landing** — ziyaretçi sayfası olarak kalacak ama gözden geçirilmedi.
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
