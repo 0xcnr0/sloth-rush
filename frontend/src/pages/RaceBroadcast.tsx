@@ -665,61 +665,133 @@ export default function RaceBroadcast() {
           }
           ctx.stroke()
         }
+      }
 
-        // Rank and speed, on one plate above the toy. The four name plates that
-        // used to live here belonged to four private lanes; in a shared field
-        // they cover the race. Names are in the standings, where they can be
-        // read without anything moving underneath them.
-        const speedText = String(Math.round(pos.speed * TICKS_PER_SECOND))
-        ctx.font = 'bold 13px ui-monospace, monospace'
-        const sw = ctx.measureText(speedText).width + 34
-        const sh = 21
-        const sx0 = Math.min(SIDE_MARGIN + TRACK_WIDTH - sw, Math.max(SIDE_MARGIN, cx - sw / 2))
-        const sy0 = ground - r.h - sh - 6
-        ctx.fillStyle = PALETTE.paper
+      /**
+       * Pass two: the plates, and why they are a second pass.
+       *
+       * A playtest read the running order off the list under the track and not
+       * off the track — "the list is currently doing a better job than the race
+       * itself". The corridor had already made the toys twice as tall, so the
+       * problem was never size. It was four separate things, all here:
+       *
+       *   1. The plate led with SPEED. `44` at 13px was the largest glyph on the
+       *      track, and speed is the one number a viewer never asks for — it is
+       *      in the standings anyway. Rank, the thing being asked, was an 11px
+       *      chip beside it.
+       *   2. Only the player's toy carried a name, so identifying any of the
+       *      other three meant going to the list. That is exactly the reported
+       *      behaviour, and it was by design: the old note says four name plates
+       *      "cover the race", which was true of four private lanes stacked in a
+       *      quarter of the height each. It is not true of one open corridor.
+       *   3. The rank chip is drawn in the archetype accent, and that colour is
+       *      the only thread tying a toy to its row in the standings — but
+       *      `rank === 1` overrode it to gold, so the thread broke on precisely
+       *      the racer a viewer is most likely to be following.
+       *   4. Plates were drawn inside the back-to-front toy loop, so a toy
+       *      nearer the camera painted over the plate of the toy behind it, and
+       *      nothing tied a floating rectangle to a body when three toys clumped.
+       *
+       * So: one plate per racer, carrying rank and NAME, in the racer's own
+       * colour, drawn after every toy, tethered to its head by a line, and
+       * nudged upward off any plate it would collide with.
+       */
+      type Plate = { x: number; y: number; w: number; h: number; r: (typeof placed)[number]; label: string }
+      const PLATE_H = 20
+      const plates: Plate[] = []
+
+      for (const r of placed) {
+        if (r.cx < SIDE_MARGIN - r.h * 0.6) continue
+        // A bot's plate says BOT and not "Tinbot-02", and the difference is
+        // worth 90 pixels. At the start the whole field occupies one body-width
+        // of track, and four full-width plates there buried the toys they were
+        // labelling — the product, hidden behind its own captions. The name of a
+        // bot is the one label a viewer will never need: it cannot be caught,
+        // beaten or lost to. Its rank and its colour are the whole story, and
+        // both stay. Names are for racers somebody owns.
+        const label = r.isBot ? 'BOT' : names.get(r.pos.id) || `#${r.pos.id}`
+        ctx.font = `bold ${r.isBot ? 9 : 11}px sans-serif`
+        const w = ctx.measureText(label).width + 30
+        const x = Math.min(SIDE_MARGIN + TRACK_WIDTH - w, Math.max(SIDE_MARGIN, r.cx - w / 2))
+        plates.push({ x, y: r.ground - r.h - PLATE_H - 10, w, h: PLATE_H, r, label })
+      }
+
+      // Lift a plate off anything already placed. Leader first, so the racer in
+      // front keeps the position closest to its own head and the field stacks
+      // around it rather than the other way round.
+      //
+      // The ceiling is the track box, NOT the running surface: this pass is
+      // outside the scenery clip, so a plate may hover over the top wall, and it
+      // needs to. A back-row toy's head sits within a few pixels of RUN_TOP by
+      // construction, so clamping plates to the running surface left them
+      // nowhere to go — and clamping AFTER the search put them straight back
+      // into the collision they had just been moved out of, which is how the
+      // player's own plate ended up underneath a bot's.
+      const CEILING = TOP_MARGIN + 2
+      plates.sort((a, b) => a.r.rank - b.r.rank)
+      const settled: Plate[] = []
+      const clashes = (a: Plate, y: number, b: Plate) =>
+        a.x < b.x + b.w + 3 && b.x < a.x + a.w + 3 && y < b.y + b.h + 3 && b.y < y + a.h + 3
+      for (const p of plates) {
+        const natural = p.y
+        // Up first — a plate over the toy's head is the natural reading — then
+        // down, for the back row that has no sky left above it.
+        const slots = [0, -1, -2, -3, 1, 2, 3].map(s => natural + s * (PLATE_H + 4))
+        p.y = slots.find(y => y >= CEILING && !settled.some(q => clashes(p, y, q))) ?? Math.max(CEILING, natural)
+        settled.push(p)
+      }
+
+      // Your own racer's plate is drawn last, so that if the field ever does run
+      // out of room the one plate that must stay legible is the one on top.
+      settled.sort((a, b) => Number(a.r.pos.id === playerRacerId) - Number(b.r.pos.id === playerRacerId))
+
+      for (const p of settled) {
+        const { r } = p
+        const isMine = playerRacerId != null && r.pos.id === playerRacerId
+
+        // Tether. A plate pushed up off a collision is no longer over its own
+        // toy, and a label that could belong to either of two overlapping
+        // bodies is worse than no label.
+        ctx.strokeStyle = r.color
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(p.x + p.w / 2, p.y + p.h)
+        ctx.lineTo(r.cx, r.ground - r.h + 2)
+        ctx.stroke()
+
+        // Your own toy is gold, a bot is muted, everyone else is paper. Who is
+        // leading is told by the bracket around the toy and by the rank in the
+        // chip — never by the plate's colour, which has to stay the racer's.
+        ctx.fillStyle = isMine ? PALETTE.gold : r.isBot ? '#E7E3DA' : PALETTE.paper
         ctx.strokeStyle = PALETTE.ink
         ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.roundRect(sx0, sy0, sw, sh, 6)
+        ctx.roundRect(p.x, p.y, p.w, p.h, 6)
         ctx.fill()
         ctx.stroke()
 
-        ctx.fillStyle = rank === 1 ? PALETTE.gold : r.color
+        // Rank chip, always in the racer's accent so it matches the coloured bar
+        // on that racer's standings row.
+        ctx.fillStyle = r.color
         ctx.beginPath()
-        ctx.roundRect(sx0 + 3, sy0 + 3, 17, sh - 6, 4)
+        ctx.roundRect(p.x + 3, p.y + 3, 17, p.h - 6, 4)
         ctx.fill()
         ctx.strokeStyle = PALETTE.ink
         ctx.lineWidth = 1.5
         ctx.stroke()
-        ctx.fillStyle = PALETTE.ink
+        ctx.fillStyle = PALETTE.paper
         ctx.font = 'bold 11px ui-monospace, monospace'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(String(rank), sx0 + 11.5, sy0 + sh / 2 + 0.5)
+        ctx.fillText(String(r.rank), p.x + 11.5, p.y + p.h / 2 + 0.5)
 
-        ctx.font = 'bold 13px ui-monospace, monospace'
-        ctx.fillText(speedText, sx0 + 22 + (sw - 26) / 2, sy0 + sh / 2 + 0.5)
-
-        // Only the player's own racer keeps a name on the track — the one toy
-        // you have to be able to find without reading anything.
-        if (playerRacerId && pos.id === playerRacerId) {
-          const label = names.get(pos.id) || 'You'
-          ctx.font = 'bold 10px sans-serif'
-          const nw = ctx.measureText(label).width + 14
-          const nx = Math.min(SIDE_MARGIN + TRACK_WIDTH - nw, Math.max(SIDE_MARGIN, cx - nw / 2))
-          const ny = sy0 - 17
-          ctx.fillStyle = PALETTE.gold
-          ctx.strokeStyle = PALETTE.ink
-          ctx.lineWidth = 2
-          ctx.beginPath()
-          ctx.roundRect(nx, ny, nw, 15, 5)
-          ctx.fill()
-          ctx.stroke()
-          ctx.fillStyle = PALETTE.ink
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.fillText(label, nx + nw / 2, ny + 8)
-        }
+        // Bots are labelled on the track and not only in the standings. Three of
+        // the four toys in a solo race are bots, and which ones is the first
+        // thing that tells a viewer how much of what they are watching counts.
+        ctx.fillStyle = r.isBot ? PALETTE.dust : PALETTE.ink
+        ctx.font = `bold ${r.isBot ? 9 : 11}px sans-serif`
+        ctx.textAlign = 'left'
+        ctx.fillText(p.label, p.x + 25, p.y + p.h / 2 + 0.5)
       }
     }
 
