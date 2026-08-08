@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { query, getOne, getAll, runTransaction } from "../db";
 import { awardXP, getXP, XP_AMOUNTS } from "../xp";
+import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey } from "../progression";
 import { isValidWallet } from "../middleware/validateWallet";
 
 const router = Router();
@@ -185,7 +186,35 @@ router.get("/collection/:wallet", async (req: Request, res: Response) => {
       [wallet]
     );
 
-    res.json({ racers });
+    /**
+     * How much of today's growth each racer has already spent.
+     *
+     * The cap was only ever visible on the results screen, which is one race too
+     * late: a racer that has used its day looks exactly like one that has not,
+     * right up until the moment it finishes and the game says "no gain". The
+     * player deciding whether to race is the one who needs the number, so it
+     * rides along with the collection rather than costing a second request.
+     *
+     * A racer with no row yet has spent nothing — LEFT JOIN, not INNER.
+     */
+    const today = localDateKey();
+    const spent = await getAll(
+      `SELECT r.id, COALESCE(d.total_gain, 0) AS day_gain
+         FROM racers r
+         LEFT JOIN daily_stat_gains d ON d.racer_id = r.id AND d.gain_date = $2
+        WHERE r.wallet = $1 AND r.is_burned = 0`,
+      [wallet, today]
+    );
+    const gainById = new Map(spent.map((s: any) => [s.id, Number(s.day_gain) || 0]));
+
+    res.json({
+      racers: racers.map((r: any) => ({
+        ...r,
+        dayGain: gainById.get(r.id) ?? 0,
+        dayCap: DAILY_STAT_CAP,
+        perRaceGain: PER_RACE_STAT_GAIN,
+      })),
+    });
   } catch (err) {
     console.error("GET /collection/:wallet error:", err);
     res.status(500).json({ error: "Internal server error" });

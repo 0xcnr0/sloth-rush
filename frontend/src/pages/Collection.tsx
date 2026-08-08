@@ -258,6 +258,13 @@ export default function Collection() {
             
             {/* Enter Race — Exhibition only */}
             <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
+              {/* The Wind-Up had neither bar. It is the racer every new player
+                  owns and the only one most of them will ever own, so "when do I
+                  get better?" was unanswered for exactly the person asking it —
+                  the bars went onto the Showcase cards, which you only see after
+                  paying $3. */}
+              <TierProgress racer={freeRacer} />
+              <DailyBudget racer={freeRacer} />
               <button
                 onClick={() => handleQuickDemoRace(freeRacer.id)}
                 disabled={demoLoading === freeRacer.id}
@@ -471,6 +478,7 @@ export default function Collection() {
                 {/* Enter Race — prominent */}
                 <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
                   <TierProgress racer={racer} />
+                  <DailyBudget racer={racer} />
                   <button
                     onClick={() => handleQuickDemoRace(racer.id)}
                     disabled={demoLoading === racer.id}
@@ -598,6 +606,51 @@ export default function Collection() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+/**
+ * What today's racing can still do for this racer.
+ *
+ * A racer may gain +4.0 a day, about ten races' worth, and until now the only
+ * place that number appeared was the results screen — one race too late. A
+ * racer that has spent its day looks exactly like one that has not, right up to
+ * the moment it finishes and the game says "no gain". A playtest with database
+ * access read that silence as stat growth being broken; a player has less to go
+ * on than that playtest did.
+ *
+ * So it sits next to the button that starts the race, which is where the person
+ * deciding whether to race is looking.
+ */
+function DailyBudget({ racer }: { racer: any }) {
+  const cap = Number(racer.dayCap ?? 0)
+  if (!cap) return null
+  const used = Math.min(cap, Number(racer.dayGain ?? 0))
+  const left = Math.max(0, cap - used)
+  const spent = left <= 0.001
+
+  return (
+    <div className="mb-1">
+      <div className="flex items-baseline justify-between mb-1">
+        <span className={`text-[11px] font-semibold ${spent ? 'text-brand-ink' : 'text-brand-dust'}`}>
+          {spent ? 'Done growing today' : 'Today’s growth'}
+        </span>
+        <span className="text-brand-dust text-[11px] tabular-nums">
+          {used.toFixed(1)} / {cap.toFixed(1)}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-brand-ink/10 border-2 border-brand-ink overflow-hidden">
+        <div
+          className={`h-full ${spent ? 'bg-brand-dust' : 'bg-brand-accent'}`}
+          style={{ width: `${(used / cap) * 100}%` }}
+        />
+      </div>
+      {spent && (
+        <p className="text-brand-dust text-[10px] mt-1">
+          Racing still counts for wins and rank &mdash; stats resume at midnight.
+        </p>
+      )}
     </div>
   )
 }

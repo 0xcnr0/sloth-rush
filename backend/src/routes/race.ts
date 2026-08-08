@@ -6,6 +6,7 @@ import { raceFormat, isPlayableFormat, DEFAULT_FORMAT } from "../simulation/form
 import { isSchedulable, earliestSchedulableTick, ITEM_TUNING, type ScheduledItem, type ItemCode } from "../simulation/items";
 import { tierForStats, totalStats, archetypeForStats } from "../simulation/evolution";
 import { awardXP, XP_AMOUNTS } from "../xp";
+import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey } from "../progression";
 import { isValidWallet } from "../middleware/validateWallet";
 import { recordRaceResultOnchain } from "../lib/onchain";
 
@@ -39,14 +40,10 @@ function getResetDate(period: string): string {
   // daily
   return new Date().toISOString().split("T")[0];
 }
-/** Stat added to one stat per finish, and the most a racer can gain in a day. */
-const PER_RACE_STAT_GAIN = 0.4;
-
-/** YYYY-MM-DD in the server's own timezone, matching what Postgres reports. */
-function localDateKey(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-const DAILY_STAT_CAP = 4.0;
+// The progression curve lives in ../progression, because a screen now has to
+// show the player how much of the day is left and two copies of 4.0 in two
+// files is how the number the server enforces stops being the number the game
+// promises.
 
 // Stat caps by rarity (and type)
 const STAT_CAPS: Record<string, number> = {
