@@ -1778,14 +1778,22 @@ export default function RaceBroadcast() {
                         .map((fo: FinalOrder, i: number) => `${i + 1}. ${racerDisplayName(fo.name, (fo as any).race ?? archetypeRef.current[fo.id])}`)
                         .join('\n')
                       const frameUrl = `https://app.winduprush.xyz/api/social/frame/${id}`
-                      const text = `${THEME.brand.mark} ${THEME.brand.name} Race Result!\n\n\u{1F3C6} ${winner?.name} WINS!\n\n${standings}\n\n${frameUrl}`
+                      const text = `${THEME.brand.mark} ${THEME.brand.name} Race Result!\n\n\u{1F3C6} ${racerDisplayName(winner?.name, (winner as any)?.race ?? archetypeRef.current[winner?.id])} WINS!\n\n${standings}\n\n${frameUrl}`
+                      // Every branch has to say something. The clipboard write
+                      // throws whenever permission has not been granted, and
+                      // the throw took the toast with it — so the button did
+                      // nothing at all, visibly.
                       if (navigator.share) {
                         try {
                           await navigator.share({ title: `${THEME.brand.name} Race Result`, text })
-                        } catch { /* user cancelled */ }
-                      } else {
+                          return
+                        } catch { /* fall through to the clipboard */ }
+                      }
+                      try {
                         await navigator.clipboard.writeText(text)
                         toast.success('Result copied to clipboard!')
+                      } catch {
+                        toast.error('Could not copy — your browser blocked it.')
                       }
                     }}
                     className="px-6 py-2.5 border border-brand-gold text-brand-gold rounded-xl hover:bg-brand-gold/10 transition-colors cursor-pointer"

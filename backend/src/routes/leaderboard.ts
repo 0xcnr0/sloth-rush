@@ -54,7 +54,12 @@ router.get("/career", async (_req: Request, res: Response) => {
        FROM racers s
        LEFT JOIN streaks st ON s.id = st.racer_id
        LEFT JOIN race_points rp ON s.id = rp.racer_id
+       -- Bots are stored as pro racers owned by wallets named bot_N, so
+       -- without this the career board was mostly bots with 0 races and
+       -- repeating names. A racer that has never finished a race has no career.
        WHERE s.is_burned = 0 AND s.type = 'pro'
+         AND s.wallet NOT LIKE 'bot!_%' ESCAPE '!'
+         AND COALESCE(st.total_races, 0) > 0
        GROUP BY s.id, s.wallet, s.name, s.rarity, s.tier, st.total_wins, st.total_races
        ORDER BY total_wins DESC, total_races DESC
        LIMIT 50`

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { rarityLabel, formatLabel } from '../config/theme'
+import { formatLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 interface ProfileData {
@@ -22,7 +22,6 @@ export default function Profile() {
   const { address, isConnected } = useWallet()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'overview' | 'inventory'>('overview')
 
   useEffect(() => {
     if (!address) { setLoading(false); return }
@@ -84,101 +83,11 @@ export default function Profile() {
         ))}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        {([
-          { id: 'overview' as const, label: 'Race History' },
-          { id: 'inventory' as const, label: 'Inventory' },
-        ]).map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-              tab === t.id ? 'bg-brand-primary/20 text-brand-primary' : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'overview' && <RaceHistorySection wallet={address!} />}
-      {tab === 'inventory' && <InventorySection wallet={address!} />}
-
-      {/* Referral */}
-      <ReferralSection wallet={address!} />
+      <h2 className="text-brand-ink font-bold text-lg mb-3">Race History</h2>
+      <RaceHistorySection wallet={address!} />
 
       {/* Settings */}
       <SettingsSection />
-    </div>
-  )
-}
-
-function ReferralSection({ wallet }: { wallet: string }) {
-  const [code, setCode] = useState<string | null>(null)
-  const [stats, setStats] = useState<{ totalReferrals: number; totalEarned: number } | null>(null)
-  const [generating, setGenerating] = useState(false)
-
-  useEffect(() => {
-    api.getReferralStats(wallet)
-      .then(d => {
-        setCode(d.code)
-        setStats({ totalReferrals: d.totalReferrals, totalEarned: d.totalEarned })
-      })
-      .catch(() => {})
-  }, [wallet])
-
-  async function handleGenerate() {
-    setGenerating(true)
-    try {
-      const res = await api.generateReferralCode(wallet)
-      setCode(res.code)
-      toast.success('Referral code generated!')
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to generate code')
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  const link = code ? `${window.location.origin}/invite/${code}` : null
-
-  return (
-    <div className="mt-8 bg-brand-surface border border-brand-border rounded-xl p-6">
-      <h3 className="text-brand-ink font-bold text-lg mb-4">Referrals</h3>
-      {code ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 bg-brand-ink/5 rounded-lg px-3 py-2 font-mono text-sm text-brand-ink">{link}</div>
-            <button
-              onClick={async () => {
-                await navigator.clipboard.writeText(link!)
-                toast.success('Link copied!')
-              }}
-              className="px-4 py-2 bg-brand-primary/20 text-brand-primary rounded-lg text-sm font-medium hover:bg-brand-primary/30 transition-colors cursor-pointer"
-            >
-              Copy
-            </button>
-          </div>
-          {stats && (
-            <div className="flex gap-4 text-sm">
-              <span className="text-brand-dust">Referrals: <span className="text-brand-ink font-bold">{stats.totalReferrals}</span></span>
-            </div>
-          )}
-          <p className="text-brand-dust text-xs">Share your link and bring a friend to the track.</p>
-        </div>
-      ) : (
-        <div className="text-center">
-          <p className="text-brand-dust text-sm mb-3">Generate your referral link to invite friends</p>
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="px-6 py-2 bg-brand-primary text-brand-surface font-bold rounded-lg hover:bg-brand-primary/90 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {generating ? 'Generating...' : 'Generate Referral Link'}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
@@ -236,75 +145,6 @@ function RaceHistorySection({ wallet }: { wallet: string }) {
           </tbody>
         </table>
       </div>
-    </div>
-  )
-}
-
-function InventorySection({ wallet }: { wallet: string }) {
-  const [cosmetics, setCosmetics] = useState<any[]>([])
-  const [accessories, setAccessories] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    Promise.all([
-      api.getShopCosmetics(wallet).then(d => setCosmetics((d.cosmetics || []).filter((c: any) => c.owned))),
-      api.getShopAccessories(wallet).then(d => setAccessories((d.accessories || []).filter((a: any) => a.owned))),
-    ])
-      .catch((err) => { console.error('Failed to load inventory:', err); toast.error('Failed to load data. Please refresh.') })
-      .finally(() => setLoading(false))
-  }, [wallet])
-
-  if (loading) return <Spinner text="Loading inventory..." />
-
-  const allItems = [
-    ...cosmetics.map((c: any) => ({ ...c, itemType: 'cosmetic' })),
-    ...accessories.map((a: any) => ({ ...a, itemType: 'accessory' })),
-  ]
-
-  if (allItems.length === 0) return (
-    <div className="bg-brand-surface border border-brand-border rounded-xl p-12 text-center">
-      <p className="text-brand-dust text-lg mb-2">No items yet</p>
-      <p className="text-brand-dust text-sm">Buy cosmetics and accessories from the Shop</p>
-    </div>
-  )
-
-  const RARITY_BADGE: Record<string, string> = {
-    legendary: 'bg-brand-gold/20 text-brand-gold',
-    epic: 'bg-brand-accent/20 text-brand-accent',
-    rare: 'bg-brand-ink/10 text-brand-ink',
-    uncommon: 'bg-brand-primary/20 text-brand-primary',
-    common: 'bg-brand-shelf/20 text-brand-dust',
-  }
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {allItems.map((item: any) => (
-        <motion.div
-          key={`${item.itemType}-${item.id}`}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-brand-surface border border-brand-border rounded-xl p-4"
-        >
-          <div className="text-3xl text-center mb-2">{item.icon || (item.itemType === 'cosmetic' ? '\u{1F3A8}' : '\u{2699}\uFE0F')}</div>
-          <h3 className="text-brand-ink font-bold text-sm text-center">{item.name}</h3>
-          {item.rarity && (
-            <p className="text-center mt-1">
-              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${RARITY_BADGE[item.rarity] || RARITY_BADGE.common}`}>
-                {rarityLabel(item.rarity)}
-              </span>
-            </p>
-          )}
-          <p className="text-brand-dust text-xs text-center mt-2">
-            {item.equippedOn ? `Equipped on ${item.equippedOn}` : 'Not equipped'}
-          </p>
-          {item.purchasedAt && (
-            <p className="text-brand-dust/70 text-[10px] text-center mt-1">
-              Bought {new Date(item.purchasedAt).toLocaleDateString()}
-            </p>
-          )}
-        </motion.div>
-      ))}
     </div>
   )
 }
