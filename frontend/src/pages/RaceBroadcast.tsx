@@ -9,11 +9,11 @@ import { rigFor, drawRacer, cadence } from '../lib/racerRig'
 import { THEME, racerDisplayName, archetypeAccent } from '../config/theme'
 import RacerPortrait from '../components/RacerPortrait'
 import { getCommentary } from '../data/commentary'
-import { getDialogue, getEmote, getTrashTalk, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
+import { getDialogue, getEmote, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
 import {
   sfxRaceStart, sfxBoost, sfxProjectileHit, sfxRain, sfxLuckOrb,
   sfxMassSlow, sfxCollision, sfxOvertake, sfxHeartbeat, sfxFinish,
-  sfxTrashTalkEntry, toggleMute,
+  toggleMute,
 } from '../lib/audio'
 
 interface RaceFrame {
@@ -185,7 +185,16 @@ export default function RaceBroadcast() {
   const [speechBubble, setSpeechBubble] = useState<{ racerId: number; text: string; lane: number } | null>(null)
   const [emotes, setEmotes] = useState<{ id: number; emoji: string; lane: number; x: number }[]>([])
   const emoteIdRef = useRef(0)
-  const [racePhase, setRacePhase] = useState<'trash_talk' | 'racing' | 'finished'>('trash_talk')
+  /**
+   * There is no pre-race phase any more.
+   *
+   * "RACERS TO THE STAGE!" held the screen for five and a half seconds and
+   * produced no decision — it listed the grid, which the race itself shows, and
+   * then let you watch. A playtest measured 27.9 seconds from pressing Race to
+   * the animation stopping on an 800m race that runs in about twenty; most of
+   * the difference was this.
+   */
+  const [racePhase, setRacePhase] = useState<'racing' | 'finished'>('racing')
   const [canvasFlash, setCanvasFlash] = useState<string | null>(null)
   // Items the player still has. The server owns the tick an item lands on, so
   // the client only ever asks — it never proposes a moment.
@@ -972,30 +981,6 @@ export default function RaceBroadcast() {
       .catch(() => { /* a spectator has no loadout; the controls stay hidden */ })
   }, [id, playerRacerId, racePhase])
 
-  // Trash talk phase: show for 5 seconds before race starts + entry SFX
-  useEffect(() => {
-    if (racePhase !== 'trash_talk') return
-    // A race opened by direct link or after a refresh loads from the replay
-    // endpoint, which stores frames and events but no grid. The intro screen
-    // needs the grid, so it renders nothing — and because this effect used to
-    // bail on a missing grid, the phase never advanced either and the canvas
-    // stayed hidden behind `display: none`. The whole screen came up blank.
-    if (!raceData?.gridPositions) {
-      if (raceData?.frames?.length) setRacePhase('racing')
-      return
-    }
-    // Skip trash talk in demo mode
-    if (isDemo) {
-      setRacePhase('racing')
-      return
-    }
-    // Play entry sound for each racer with stagger
-    raceData.gridPositions.forEach((_: any, i: number) => {
-      setTimeout(() => sfxTrashTalkEntry(), i * 1000)
-    })
-    const timer = setTimeout(() => setRacePhase('racing'), 5500)
-    return () => clearTimeout(timer)
-  }, [raceData, racePhase, isDemo])
 
   if (loading) {
     return (
@@ -1124,72 +1109,7 @@ export default function RaceBroadcast() {
         )
       })()}
 
-      {/* Pre-Race Trash Talk Phase */}
-      <AnimatePresence>
-        {racePhase === 'trash_talk' && raceData?.gridPositions && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -30 }}
-            className="toy-panel p-6 mb-4"
-          >
-            <motion.h2
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-center text-2xl font-extrabold text-brand-gold mb-6"
-            >
-              RACERS TO THE STAGE!
-            </motion.h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {raceData.gridPositions.map((gp: any, i: number) => (
-                <motion.div
-                  key={gp.id}
-                  initial={{ x: -60, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: i * 1.0 }}
-                  className="text-center"
-                >
-                  {/* The racers themselves. This was four copies of the brand
-                      key emoji — the one screen whose entire job is introducing
-                      four different toys was showing the same icon four times. */}
-                  <div className="mb-1">
-                    <RacerPortrait
-                      archetype={gp.race ?? gp.racerRace}
-                      rarity={gp.rarity}
-                      height={92}
-                      still
-                    />
-                  </div>
-                  <p className="text-brand-ink font-bold text-sm mb-1">{gp.name}</p>
-                  <p className="text-brand-dust text-xs mb-2">P{gp.position}</p>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 1.0 + 0.5 }}
-                    className="toy-chip bg-brand-surface text-brand-ink text-xs px-3 py-1.5 inline-block max-w-[160px]"
-                  >
-                    {(() => {
-                      const talk = getTrashTalk(gp.racerRace)
-                      return i === 0 ? talk.confident : i === 1 ? talk.taunt : talk.intro
-                    })()}
-                  </motion.div>
-                </motion.div>
-              ))}
-            </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 4.5 }}
-              className="text-center mt-4"
-            >
-              <span className="text-brand-dust text-sm animate-pulse">Race starting...</span>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Race Canvas + Kill Feed layout */}
-      <div className="flex gap-3 mb-4" style={{ display: racePhase === 'trash_talk' ? 'none' : 'flex' }}>
+      <div className="flex gap-3 mb-4">
       <div
         className="toy-panel relative flex-1 overflow-hidden p-0"
         // The lanes are drawn art now, so the container only needs a ground
