@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import WalletConnect from '../components/WalletConnect'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import { THEME, rarityLabel, archetypeLabel, formatLabel } from '../config/theme'
-import Spinner from '../components/Spinner'
+import { THEME, rarityLabel, archetypeLabel } from '../config/theme'
 import RacerPortrait from '../components/RacerPortrait'
 
 type Phase = 'select' | 'starting'
@@ -30,9 +29,6 @@ export default function RaceLobby() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [mainTab, setMainTab] = useState<'create' | 'live'>('create')
-  const [liveRaces, setLiveRaces] = useState<any[]>([])
-  const [liveLoading, setLiveLoading] = useState(false)
 
   const [phase] = useState<Phase>('select')
   const [racers, setRacers] = useState<any[]>([])
@@ -74,20 +70,6 @@ export default function RaceLobby() {
     )
   }, [allCreatures])
 
-  // Poll live races when on the Live Races tab
-  useEffect(() => {
-    if (mainTab !== 'live') return
-    setLiveLoading(true)
-    function loadLive() {
-      api.getActiveRaces()
-        .then(d => setLiveRaces(d.races))
-        .catch(() => setLiveRaces([]))
-        .finally(() => setLiveLoading(false))
-    }
-    loadLive()
-    const interval = setInterval(loadLive, 5000)
-    return () => clearInterval(interval)
-  }, [mainTab])
 
   async function handleCreateAndJoin() {
     if (!address || !selectedRacer) return
@@ -123,93 +105,6 @@ export default function RaceLobby() {
 
   return (
     <div>
-      {/* Tab selector - only show when in select phase */}
-      {phase === 'select' && (
-        <div className="max-w-5xl mx-auto px-4 pt-6">
-          <div className="flex gap-2 mb-6">
-            <button
-              onClick={() => setMainTab('create')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mainTab === 'create' ? 'bg-brand-primary/20 text-brand-primary' : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
-              }`}
-            >
-              Create Race
-            </button>
-            <button
-              onClick={() => setMainTab('live')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                mainTab === 'live' ? 'bg-brand-primary/20 text-brand-primary' : 'text-brand-dust hover:text-brand-ink hover:bg-brand-ink/5'
-              }`}
-            >
-              Live Races
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Live Races view */}
-      {mainTab === 'live' && phase === 'select' && (
-        <div className="max-w-3xl mx-auto px-4 pb-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold">Live Races</h2>
-            <p className="text-brand-dust text-sm mt-1">Watch races in progress</p>
-          </div>
-
-          {liveLoading && <Spinner text="Loading active races..." />}
-
-          {!liveLoading && liveRaces.length === 0 && (
-            <div className="text-center py-16">
-              <div className="text-5xl mb-4">{'\u{1F3C1}'}</div>
-              <p className="text-brand-dust mb-2">No active races right now</p>
-              <p className="text-brand-dust text-sm">Races appear here when in progress. Check back soon!</p>
-            </div>
-          )}
-
-          {!liveLoading && liveRaces.length > 0 && (
-            <div className="space-y-3">
-              {liveRaces.map((race: any, i: number) => (
-                <motion.div
-                  key={race.raceId || race.id || i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="toy-panel p-4 flex items-center justify-between hover:border-brand-primary/30 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
-                      <span className="text-xl">{THEME.brand.mark}</span>
-                    </div>
-                    <div>
-                      <p className="text-brand-ink font-semibold">
-                        {formatLabel(race.format) || 'Race'}
-                      </p>
-                      <p className="text-brand-dust text-xs">
-                        {race.participantCount || race.participants?.length || '?'} participants
-                        {race.status && <span> &middot; {race.status}</span>}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 bg-brand-primary rounded-full animate-pulse" />
-                      <span className="text-brand-primary text-xs font-semibold">LIVE</span>
-                    </div>
-                    <button
-                      onClick={() => navigate(`/race/${race.raceId || race.id}`)}
-                      className="px-4 py-2 bg-brand-primary/20 text-brand-primary font-semibold rounded-lg hover:bg-brand-primary/30 transition-colors cursor-pointer text-sm"
-                    >
-                      Watch
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Create Race flow (existing content) */}
-      {(mainTab === 'create' || phase !== 'select') && (
       <div className="max-w-3xl mx-auto px-4 py-8">
       <AnimatePresence mode="wait">
         {/* Phase 1: Racer & Format Selection */}
@@ -220,7 +115,6 @@ export default function RaceLobby() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            <h1 className="text-3xl font-bold mb-6">Race Lobby</h1>
 
             {racers.length === 0 ? (
               <div className="text-center py-16">
@@ -336,8 +230,7 @@ export default function RaceLobby() {
         )}
 
       </AnimatePresence>
-    </div>
-      )}
+      </div>
     </div>
   )
 }
