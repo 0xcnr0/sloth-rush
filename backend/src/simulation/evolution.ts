@@ -64,3 +64,37 @@ export function nextTierAt(total: number): number | null {
   const tier = tierForStats(total);
   return tier >= MAX_TIER ? null : TIER_THRESHOLDS[tier + 1];
 }
+
+/**
+ * The archetype a racer grows into, from the stats it actually built.
+ *
+ * A Wind-Up starts plain — bare tin, no paint, no archetype — and stays that
+ * way until it reaches the first tier. The form it takes then is not drawn at
+ * mint and not bought: it is whichever stat the player pushed hardest, so the
+ * races they chose are visible in the shape of the toy.
+ *
+ * Six stats, four archetypes, so they pair up. Ties resolve in a fixed order so
+ * the same racer always resolves to the same form — this runs server-side after
+ * a settle and must not depend on row order or on when it is asked.
+ */
+const ARCHETYPE_BY_STAT: [keyof StatBlock, string][] = [
+  ["spd", "speedster"],
+  ["sta", "tank"],
+  ["acc", "burst"],
+  ["ref", "burst"],
+  ["lck", "trickster"],
+  ["agi", "trickster"],
+];
+
+export function archetypeForStats(s: StatBlock): string {
+  let best = ARCHETYPE_BY_STAT[0];
+  let bestVal = -Infinity;
+  for (const pair of ARCHETYPE_BY_STAT) {
+    const v = s[pair[0]] ?? 0;
+    if (v > bestVal) {
+      bestVal = v;
+      best = pair;
+    }
+  }
+  return best[1];
+}

@@ -55,6 +55,16 @@ interface Geometry {
 }
 
 const GEOMETRY: Record<string, Geometry> = {
+  // The plain starter toy: bare tin, no paint, no archetype yet. Redrawn from
+  // the Tinbot sheet so it shares its proportions — a different finish, not a
+  // different build.
+  windup: {
+    torso: [162, 172],
+    scale: { head: 0.95, arm: 0.42, leg: 0.46, key: 0.75 },
+    neck: [0.46, 0.0], shoulderY: 0.2, hipY: 0.95,
+    armSpread: 0.2, legSpread: 0.14,
+    key: [1.3, 0.35], keyScale: 0.75, height: 330,
+  },
   // Boxy robot: wide flat torso, square head sitting straight on top.
   tinbot: {
     torso: [162, 172],
@@ -104,10 +114,16 @@ const ART_FOLDER: Record<string, string> = {
   tank: 'tinbot',
   trickster: 'waddler',
   burst: 'chomper',
+  // A racer with no archetype yet. Every Wind-Up starts here and stays until
+  // racing pushes it over the first tier, where the stat it built decides what
+  // it becomes. It used to fall through to the Tinbot art, so every new
+  // player's toy was a Tinbot — and in a race that already contained one, two
+  // of the four toys on screen were identical.
+  windup: 'windup',
 }
 
-export function loadRacerRig(archetype = 'tank'): RacerRig {
-  const folder = ART_FOLDER[archetype] ?? ART_FOLDER.tank
+export function loadRacerRig(archetype = 'windup'): RacerRig {
+  const folder = ART_FOLDER[archetype] ?? ART_FOLDER.windup
   const rig: RacerRig = { ready: false, images: {}, geo: GEOMETRY[folder] ?? GEOMETRY.tinbot }
   let pending = PART_NAMES.length
   for (const name of PART_NAMES) {

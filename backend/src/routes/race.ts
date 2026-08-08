@@ -4,7 +4,7 @@ import { query, getOne, getAll, runTransaction } from "../db";
 import { simulateRace, RacerStats, TacticAction, mulberry32, seedFromString, TICKS_PER_SECOND } from "../simulation/engine";
 import { raceFormat, isPlayableFormat, DEFAULT_FORMAT } from "../simulation/formats";
 import { isSchedulable, earliestSchedulableTick, ITEM_TUNING, type ScheduledItem, type ItemCode } from "../simulation/items";
-import { tierForStats, totalStats } from "../simulation/evolution";
+import { tierForStats, totalStats, archetypeForStats } from "../simulation/evolution";
 import { awardXP, XP_AMOUNTS } from "../xp";
 import { isValidWallet } from "../middleware/validateWallet";
 import { recordRaceResultOnchain } from "../lib/onchain";
@@ -831,7 +831,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
 
       // Check stat cap (with evolution support)
       assertValidStat(statToGrow);
-      const racer = await getOne("SELECT type, rarity, tier, evolution_path, " + statToGrow + " as current_val FROM racers WHERE id = $1", [entry.id]);
+      const racer = await getOne("SELECT type, rarity, tier, evolution_path, race, " + statToGrow + " as current_val FROM racers WHERE id = $1", [entry.id]);
+      const racerRow = racer;
       if (!racer) continue;
       let cap = racer.type === 'free' ? STAT_CAPS.free : (STAT_CAPS[racer.rarity] || STAT_CAPS.common);
       if ((racer.tier || 0) >= 3 && racer.evolution_path) {
@@ -871,6 +872,14 @@ router.post("/simulate", async (req: Request, res: Response) => {
         const earned = tierForStats(totalStats(grown));
         if (earned !== (grown.tier ?? 0)) {
           await query("UPDATE racers SET tier = $1 WHERE id = $2", [earned, entry.id]);
+        }
+        // A Wind-Up starts plain and takes its form here, the first time it
+        // reaches a tier — from whichever stat the player pushed hardest, so
+        // the races they chose are visible in the shape of the toy. It is
+        // never reassigned; the first form is the one it keeps.
+        if (earned >= 1 && !racerRow?.race) {
+          const shape = archetypeForStats(grown);
+          await query("UPDATE racers SET race = $1 WHERE id = $2 AND race IS NULL", [shape, entry.id]);
         }
       }
     }

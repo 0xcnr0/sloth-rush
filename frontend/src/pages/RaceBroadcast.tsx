@@ -207,28 +207,20 @@ export default function RaceBroadcast() {
   const pausedRef = useRef(false)
   const resumeCallbackRef = useRef<(() => void) | null>(null)
 
-  // H10: Fetch race data from API if state is missing (e.g. page refresh)
-  useEffect(() => {
-    if (!raceData && id) {
-      api.getRaceReplay(id).then((data: any) => {
-        if (data) {
-          const meta = typeof data.metadata === 'string' ? JSON.parse(data.metadata) : (data.metadata || {})
-          const frames = typeof data.frames === 'string' ? JSON.parse(data.frames) : (data.frames || [])
-          const events = typeof data.events === 'string' ? JSON.parse(data.events) : (data.events || [])
-          setRaceData({
-            frames,
-            events,
-            finalOrder: meta.finalOrder || [],
-            trackLength: meta.trackLength || 1000,
-            weather: meta.weather,
-          })
-        }
-      }).catch(err => {
-        console.error("Failed to fetch race replay:", err)
-        toast.error("Race data could not be loaded")
-      }).finally(() => setLoading(false))
-    }
-  }, [id, raceData])
+  /**
+   * One loader, and it has to be /simulate.
+   *
+   * There were two, both guarded on the same missing raceData, both firing at
+   * once: this one built the race from the replay record and the one below from
+   * the simulation. Whichever resolved first won — and the replay record
+   * carries no gridPositions, so when it won there were no archetypes and no
+   * rarities at all. Every racer then fell back to the default art and four
+   * different toys were drawn as four identical ones. That is what made the
+   * field unreadable, not the corridor.
+   *
+   * /simulate answers for a live race and a finished one alike, deterministically
+   * from the seed, and it is the only response that carries the grid.
+   */
 
   // Poll GDA prices during tactic mode
 
@@ -621,7 +613,7 @@ export default function RaceBroadcast() {
         const phase = phaseRef.current[pos.id] ?? 0
         const stamina = Math.max(0, Math.min(1, pos.speed / 12))
         keyRef.current[pos.id] = (keyRef.current[pos.id] ?? 0) + stamina * 14
-        drawRacer(ctx, rigFor(archetypeRef.current[pos.id] ?? 'tank'), {
+        drawRacer(ctx, rigFor(archetypeRef.current[pos.id] ?? 'windup'), {
           x: cx,
           y: ground + 2,
           height: r.h,

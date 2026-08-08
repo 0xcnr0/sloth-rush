@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert'
-import { tierForStats, nextTierAt, MAX_TIER, TIER_THRESHOLDS } from './evolution'
+import { tierForStats, nextTierAt, MAX_TIER, TIER_THRESHOLDS, archetypeForStats } from './evolution'
 
 // The caps live in routes/racer.ts; duplicated here deliberately so this test
 // fails if either side moves without the other.
@@ -33,3 +33,21 @@ test('the ladder stays inside what the stat caps can produce', () => {
     'the top tier must be reachable by some racer that can exist'
   )
 })
+
+test('a racer takes the form of the stat it built', () => {
+  const base = { spd: 10, acc: 10, sta: 10, agi: 10, ref: 10, lck: 10 };
+  assert.equal(archetypeForStats({ ...base, spd: 20 }), 'speedster');
+  assert.equal(archetypeForStats({ ...base, sta: 20 }), 'tank');
+  assert.equal(archetypeForStats({ ...base, acc: 20 }), 'burst');
+  assert.equal(archetypeForStats({ ...base, ref: 20 }), 'burst');
+  assert.equal(archetypeForStats({ ...base, lck: 20 }), 'trickster');
+  assert.equal(archetypeForStats({ ...base, agi: 20 }), 'trickster');
+});
+
+test('a tie always resolves the same way', () => {
+  // Runs server-side after a settle; it must not depend on row order or on
+  // when it is asked, or the same racer could take two different forms.
+  const flat = { spd: 12, acc: 12, sta: 12, agi: 12, ref: 12, lck: 12 };
+  assert.equal(archetypeForStats(flat), archetypeForStats({ ...flat }));
+  assert.equal(archetypeForStats(flat), 'speedster');
+});

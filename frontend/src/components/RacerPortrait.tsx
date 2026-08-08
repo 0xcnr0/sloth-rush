@@ -51,7 +51,7 @@ export default function RacerPortrait({
 
       key += 5
       breathe += 0.03
-      drawRacer(ctx, rigFor(archetype ?? 'tank'), {
+      drawRacer(ctx, rigFor(archetype ?? 'windup'), {
         x: w / 2,
         y: h * 0.94,
         height: Math.min(height, h * 0.88),
@@ -68,7 +68,7 @@ export default function RacerPortrait({
       // frame to correct itself on — so retry until the rig reports ready.
       const draw = () => {
         tick()
-        if (!rigFor(archetype ?? 'tank').ready) frame = requestAnimationFrame(draw)
+        if (!rigFor(archetype ?? 'windup').ready) frame = requestAnimationFrame(draw)
       }
       frame = requestAnimationFrame(draw)
     } else {
