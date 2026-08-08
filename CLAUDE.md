@@ -643,6 +643,24 @@ Sayılar `backend/src/progression.ts`'te. Kart da artık tavanı sunucudan okuyo
 bir sayıyı uyguluyor olacaktı. Mevcut yarışçılara **dokunulmadı** — statları
 kazandıkları büyümeyi içeriyor ve tabanı üstündeki büyümeden ayırmanın yolu yok.
 
+> **⚠ `CONTRACTS_DEPLOYED` geçici olarak KAPALI (2026-08-08).** Sahip kararı:
+> oyun mekaniği ve ekonomisi oturana kadar zincir işleri erteleniyor, çünkü
+> bayrak açıkken mint ve upgrade gerçek bağlı cüzdan istiyor — yani ikisi de
+> oynanamıyor ve döngü uçtan uca test edilemiyor.
+>
+> **Kapattığı şey küçük değil:** Wind-Up mint zincire hiç dokunmuyor (token yok,
+> gasless işlem yok, BaseScan linki yok) ve Showcase upgrade zincirde burn/mint
+> yapmıyor, **rarity'yi Chainlink VRF yerine sunucu atıyor.** İkisi de Demo Day
+> listesinde ŞART maddesi, ve VRF atışı jüriye anlatılan güven modelinin
+> taşıyıcı kolonu ("rarity manipüle edilemez"). Bu bayrak kapalıyken çıkan bir
+> build, Base üstünde bir oyun değil bir veritabanı gösterir.
+>
+> Yarış seed'i, sonuç hash'i ve kazanan kaydı **etkilenmedi** — onlar backend
+> üzerinden gidiyor (`lib/onchain.ts`), değişmedi.
+>
+> **Geri açmak: `frontend/src/config/contracts.ts` içinde `true`. Başka hiçbir
+> şey kımıldamıyor. Başvurudan ve demodan önce açılacak.**
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile

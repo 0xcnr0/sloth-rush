@@ -8,8 +8,32 @@ export const CONTRACTS = {
   raceCore: '0xda1553aDffDEf8b5fc8C9E344dFf35CC26d60141' as `0x${string}`,
 } as const
 
-// Deployed to Base Sepolia on March 10, 2026
-export const CONTRACTS_DEPLOYED = true
+/**
+ * ⚠ TEMPORARILY OFF. TURN THIS BACK ON BEFORE THE DEMO OR THE SUBMISSION.
+ *
+ * The contracts are deployed to Base Sepolia (March 10, 2026) and this flag was
+ * true. It is false on purpose, for one reason: chain work is deferred while
+ * the game mechanics and the economy are being settled, and with it true the
+ * mint and the upgrade both require a real connected wallet — so neither can be
+ * played or looked at, and the loop cannot be tested end to end.
+ *
+ * WHAT THIS SWITCHES OFF, and it is not small:
+ *   - Wind-Up mint stops touching the chain. No token is minted, no gasless
+ *     transaction, no BaseScan link.
+ *   - Showcase upgrade stops burning and minting on-chain, and the rarity is
+ *     rolled by the server instead of by Chainlink VRF.
+ *
+ * Both of those are ŞART items on the Demo Day list in CLAUDE.md, and the VRF
+ * roll is load-bearing for the trust model told to the jury ("rarity cannot be
+ * manipulated"). A build shipped with this false demonstrates a database, not a
+ * game on Base.
+ *
+ * Race seeds, result hashes and the winner record are NOT affected — those go
+ * through the backend (lib/onchain.ts) and are unchanged.
+ *
+ * To restore: set this to true. Nothing else needs to move.
+ */
+export const CONTRACTS_DEPLOYED = false
 
 // Minimal ABIs — only functions we call from frontend
 
