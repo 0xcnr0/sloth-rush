@@ -506,17 +506,18 @@ iki tarafta da → **57/57**. Kontrat testleri ayrı: `cd contracts && npx hardh
 > iki marka önceki oyunu anlatıyordu. Sunucudan farklı sonuç veren bir açık
 > doğrulayıcı, adalet iddiasını kanıtsız bırakmaz — **yanlış yapar.**
 
-### ⚠ Passive'ler yazılmış ama hiç çalışmamış
+### Passive'ler kaldırıldı — kayıt düzeltmesi
 
-Motorda altı passive dalı var (`late_surge`, `impact_resist`, `luck_magnet`,
-`fatigue_resist`, `misfortune_flip`, `overtake_boost`) ve `theme.ts` etiketlerini
-taşıyor. Ama **hiçbir şey passive atamıyor** — atayan tek yer kaldırdığımız manuel
-evrim ucuydu. Veritabanındaki 114 yarışçının hiçbirinde passive yok, yani bu
-dallar bir kez bile tetiklenmemiş.
+Bu bölüm "motorda altı passive dalı var ama hiçbir şey passive atamıyor" diyordu.
+**Dallar da yok artık** — `d48510a` commit'inde motordan çıkarıldılar, `theme.ts`
+etiketleri de gitti. Geriye sadece hiç kullanılmamış bir `racers.passive` kolonu
+kalmıştı (veritabanındaki 353 yarışçının hiçbirinde dolu değildi) ve o da
+düşürüldü. `legacyNames.ts`'teki eski passive isim haritası duruyor, çünkü eski
+bir markadan gelen veritabanı o değerleri taşıyor olabilir ve o dosya emekli
+tanımlayıcıların yazılmasına izin verilen yer.
 
-Dallar zararsız ve bir passive atanırsa doğru çalışırlar; o yüzden silmedim.
-Ama **doküman çalışıyormuş gibi yazıyordu, yazmıyor artık.** Karar: passive'ler
-nereden gelecek (mint? rarity? upgrade?) — alınmadı.
+**Doküman kodun iki adım gerisindeydi.** Passive'lerin nereden geleceği artık
+bir soru değil; ortada gelecek bir şey yok.
 
 ### Kontrat redeploy'u — bilinçli olarak bekletiliyor
 
@@ -775,6 +776,26 @@ görüntüsü eski build'in oluyor.
 yarışçıları dışlıyor; "Share Result" her dalda toast veriyor (pano izni
 reddedilince bile). Playtest raporundaki 9 ve 11 numaralı maddeler.
 
+### Son sıra artık en zayıf ikincili besliyor — 2026-08-08
+
+Dört bitiriş sırası, altı stat. İlk üçü SPD/STA/ACC ödüyordu, dördüncüsü sabit
+olarak REF; **AGI ve LCK'nin oyunda hiçbir büyüme yolu yoktu** ve yarışmak tek
+kaynak olduğu için ikisi mint değerinde temelli donuyordu — veritabanındaki 353
+yarışçının hiçbirinde bir kez bile kımıldamamışlardı.
+
+İkisi de ölçülebilir hiçbir şey yapmadığı sürece bu yaşanabilirdi. Artık +12.4
+ve +8.5 ediyorlar, yani yaşanamaz.
+
+**Son sıra sabit bir stat yerine yarışçının en az sahip olduğu ikincili
+besliyor** (REF/AGI/LCK arasından, eşitlik sabit sırayla çözülüyor). Merdiven
+monoton kalıyor — dördüncülük hâlâ en ucuz kademeden ödüyor — her stata
+ulaşılabiliyor, rastgelelik gerekmiyor, ve okunuşu tam da olması gereken şey:
+kazanamadın ama en kötü olduğun şey artık daha az kötü.
+
+Yarış ekranında dördüncü sıra bir stat adı yerine **WEAKEST** yazıyor, çünkü
+gerçekten öyle: cevap yarışçıya göre değişiyor ve tek bir stat adı yazmak
+kadronun dörtte üçü için yalan olurdu.
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
@@ -806,25 +827,11 @@ Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
    `scripts/meshy.ts image --ref` ile üç sayfayı o şablona yeniden ürettir.
    Hattın kendisi kanıtlı (aşağıdaki "Sanat hattı"), eksik olan şablon.
 
-2. **AGI ve LCK'nin büyüme yolu yok.** Dört bitiriş sırası var, altı stat.
-   `POSITION_STAT` 1.→SPD, 2.→STA, 3.→ACC, 4.→REF veriyor; AGI ve LCK hiçbir
-   sıradan gelmiyor, yarışmak da tek kaynak. Yani ikisi mint değerinde donuk
-   kalıyor. Bu önceden önemsizdi çünkü ikisi de ölçülebilir hiçbir şey
-   yapmıyordu; **artık yapıyorlar** (AGI +12.4, LCK +8.5), dolayısıyla açık bir
-   boşluk. Seçenekler: 4. sıra yarışçının en düşük ikincil statını beslesin
-   (deterministik, "zayıfını onar" okuması var), ya da yarış öncesi oyuncu
-   seçsin, ya da sıra→stat eşleşmesi seed'e göre dönsün. **Karar alınmadı.**
-
-3. **Passive'ler.** Motorda altı passive dalı var ve hiçbir şey passive
-   atamıyor — atayan tek yer kaldırılan manuel evrim ucuydu. Dallar zararsız ve
-   bir passive atanırsa doğru çalışırlar. Nereden gelecekleri (mint? rarity?
-   upgrade?) karar bekliyor.
-
-4. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı. Ayrıca
+2. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı. Ayrıca
    `CONTRACTS_DEPLOYED` şu an **kapalı** (yukarıdaki kutu); başvurudan önce
    açılacak.
 
-5. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
+3. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
    ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
    onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
 

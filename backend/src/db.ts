@@ -372,7 +372,6 @@ export async function initDB() {
     await pool.query(`
       ALTER TABLE racers ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0;
       ALTER TABLE racers ADD COLUMN IF NOT EXISTS evolution_path TEXT;
-      ALTER TABLE racers ADD COLUMN IF NOT EXISTS passive TEXT;
       ALTER TABLE race_items ADD COLUMN IF NOT EXISTS target_id INTEGER;
     `);
     // Set defaults for existing rows

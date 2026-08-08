@@ -148,8 +148,9 @@ export default function Guide() {
             body={
               <>
                 Where you finish decides <em>which</em> stat grows: 1st feeds SPD, 2nd STA,
-                3rd ACC, 4th REF &mdash; in that order because that is the order they are
-                worth. So spending a boost to take a place is buying that stat &mdash;
+                3rd ACC &mdash; in that order, because that is the order they are worth.
+                Last place feeds whichever of REF, AGI and LCK your racer has least of,
+                so a race you lose still repairs your weakest point. So spending a boost to take a place is buying that stat &mdash;
                 the standings show what each place pays while the race is running.
               </>
             }

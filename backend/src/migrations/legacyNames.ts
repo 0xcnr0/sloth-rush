@@ -132,6 +132,16 @@ export const RETIRED_MECHANIC_MIGRATIONS: string[] = [
   `DROP TABLE IF EXISTS racer_equipment`,
   `DROP TABLE IF EXISTS user_accessories`,
 
+  // --- passives, retired ---
+  // The six branches were taken out of the engine and nothing ever assigned one
+  // anyway: the only code that set this column was the manual evolution
+  // endpoint, which was removed with it. Not one row in the database has ever
+  // held a value. The rename map above still lists the old passive names
+  // because a database from an older brand may hold them, and this file is
+  // where retired identifiers are allowed to be spelled out — but the column
+  // itself is dead weight.
+  `ALTER TABLE IF EXISTS racers DROP COLUMN IF EXISTS passive`,
+
   // --- the referral system, retired ---
   // It was unreachable and paid nothing. No screen in the game ever called the
   // endpoint that generates a code, so no player could obtain one and therefore

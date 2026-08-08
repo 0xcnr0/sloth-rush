@@ -515,7 +515,7 @@ export function simulateRace(
         const shooter = state.find((s) => s.id === action.racerId);
         if (leader && shooter && leader.id !== shooter.id && !leader.finished) {
           const projectileSlowdown = 10;
-          leader.slowdown = projectileSlowdown; // speed drops for ticks (reduced by impact_resist)
+          leader.slowdown = projectileSlowdown; // speed drops for this many ticks
           leader.speed = 1;
           events.push({
             tick,

@@ -56,8 +56,13 @@ interface FinalOrder {
  * (backend/src/routes/race.ts) and the gain from its PER_RACE_STAT_GAIN. If one
  * moves, move both — a screen that promises SPD for first place while the
  * server awards something else is worse than a screen that promises nothing.
+ *
+ * Last place says WEAKEST rather than a stat name because it genuinely is one:
+ * it feeds whichever of REF, AGI and LCK the racer has least of, so the answer
+ * differs per racer and naming any single stat here would be a lie for three
+ * quarters of the field.
  */
-const POSITION_STAT: Record<number, string> = { 1: 'SPD', 2: 'STA', 3: 'ACC', 4: 'REF' }
+const POSITION_STAT: Record<number, string> = { 1: 'SPD', 2: 'STA', 3: 'ACC', 4: 'WEAKEST' }
 const PER_RACE_STAT_GAIN = 0.4
 
 /** The engine ticks ten times a second; speeds are per tick. */

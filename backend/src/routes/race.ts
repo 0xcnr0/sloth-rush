@@ -63,8 +63,39 @@ const POSITION_STAT: Record<number, string> = {
   1: 'spd',
   2: 'sta',
   3: 'acc',
-  4: 'ref',
+  // Last place feeds whichever secondary the racer is shortest of. See
+  // SECONDARY_STATS — with four places and six stats, a fixed fourth entry left
+  // two stats with no way to grow at all.
+  4: 'lowest',
 };
+
+/**
+ * The stats last place can feed, in tie-break order.
+ *
+ * Four finishing places, six stats: SPD, STA and ACC are paid by the top three
+ * and REF was paid by the fourth, which left AGI and LCK with no growth path
+ * anywhere in the game. Racing is the only source of stats, so they were frozen
+ * at their mint value permanently — 353 racers in the database, not one of them
+ * had ever moved either.
+ *
+ * That was survivable while both were worth nothing measurable. They are worth
+ * +12.4 and +8.5 now (statLever.check.ts), so it stopped being survivable.
+ *
+ * Last place feeds the lowest of the three rather than a fixed one. It keeps
+ * the ladder monotonic — fourth still pays from the cheapest tier — it reaches
+ * every stat, it needs no randomness, and it reads as the consolation it is:
+ * you did not win, but the thing you were worst at is now less bad.
+ */
+const SECONDARY_STATS = ['ref', 'agi', 'lck'] as const;
+
+/** The secondary this racer has least of. Ties resolve in a fixed order. */
+function lowestSecondary(racer: Record<string, number>): string {
+  let best: string = SECONDARY_STATS[0];
+  for (const stat of SECONDARY_STATS) {
+    if (Number(racer[stat]) < Number(racer[best])) best = stat;
+  }
+  return best;
+}
 
 // Bot templates with diverse stat distributions (total ~60 each).
 // Names are archetype + slot number so nothing here is theme-bound; the
@@ -860,7 +891,15 @@ router.post("/simulate", async (req: Request, res: Response) => {
         [ITEM_STOCK_CAP, earned, entry.id]
       ).catch(() => null);
 
-      const statToGrow = POSITION_STAT[i + 1];
+      // The racer's stats have to be read before the stat is chosen now, because
+      // last place picks from them.
+      const statRow = await getOne(
+        "SELECT spd, acc, sta, agi, ref, lck FROM racers WHERE id = $1",
+        [entry.id]
+      );
+      if (!statRow) continue;
+      const placeStat = POSITION_STAT[i + 1];
+      const statToGrow = placeStat === 'lowest' ? lowestSecondary(statRow) : placeStat;
       if (!statToGrow) continue;
 
       // Check daily cap
