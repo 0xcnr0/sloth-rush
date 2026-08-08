@@ -1,8 +1,9 @@
+import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../hooks/useWallet'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
-import { THEME } from '../config/theme'
+import { THEME, formatLabel } from '../config/theme'
 import Spinner from '../components/Spinner'
 
 type LeaderboardEntry = {
@@ -89,6 +90,13 @@ export default function Leaderboard() {
           </div>
         </motion.div>
       )}
+
+      {/* Live races.
+          Spectate was its own page and its own tab for this list and nothing
+          else; both screens were nearly empty and both answer the same
+          question — who else is playing. It belongs above the standings, where
+          a live race is the one thing on this page you can act on. */}
+      <LiveRaces />
 
       {/* Main Tabs */}
       <div className="flex gap-2 mb-4">
@@ -275,4 +283,52 @@ export default function Leaderboard() {
       </div>
     )
   }
+}
+
+
+/**
+ * Races running right now. Silent when there are none — an empty state for
+ * something that is simply not happening is noise on a page that has other
+ * things to say.
+ */
+function LiveRaces() {
+  const navigate = useNavigate()
+  const [races, setRaces] = useState<any[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = () =>
+      api.getActiveRaces()
+        .then(d => { if (!cancelled) setRaces(d.races || []) })
+        .catch(() => {})
+    load()
+    const t = setInterval(load, 5000)
+    return () => { cancelled = true; clearInterval(t) }
+  }, [])
+
+  if (races.length === 0) return null
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="w-2 h-2 bg-brand-primary rounded-full animate-pulse" />
+        <span className="text-brand-ink text-sm font-bold">Racing now</span>
+      </div>
+      <div className="space-y-2">
+        {races.slice(0, 5).map(race => (
+          <button
+            key={race.id}
+            onClick={() => navigate(`/race/${race.id}`)}
+            className="toy-panel w-full px-4 py-3 flex items-center justify-between text-left"
+          >
+            <div>
+              <p className="text-brand-ink font-semibold text-sm">{formatLabel(race.format)}</p>
+              <p className="text-brand-dust text-xs">{race.participantCount ?? '?'} racers</p>
+            </div>
+            <span className="text-brand-gold font-bold text-sm">Watch</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }

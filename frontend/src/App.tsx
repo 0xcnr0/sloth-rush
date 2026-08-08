@@ -6,7 +6,6 @@ import Collection from './pages/Collection'
 import RaceLobby from './pages/RaceLobby'
 import RaceBroadcast from './pages/RaceBroadcast'
 import Leaderboard from './pages/Leaderboard'
-import Spectate from './pages/Spectate'
 import RaceReplay from './pages/RaceReplay'
 import Profile from './pages/Profile'
 import Guide from './pages/Guide'
@@ -25,7 +24,8 @@ export default function App() {
         <Route path="/race" element={<RaceLobby />} />
         <Route path="/race/:id" element={<RaceBroadcast />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/spectate" element={<Spectate />} />
+        {/* Spectate folded into Ranks — the live list is there now. */}
+        <Route path="/spectate" element={<Navigate to="/leaderboard" replace />} />
         <Route path="/replay/:id" element={FEATURES.replay ? <RaceReplay /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={FEATURES.profile ? <Profile /> : <Navigate to="/" replace />} />
         <Route path="/guide" element={<Guide />} />
