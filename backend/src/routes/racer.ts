@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { query, getOne, getAll, runTransaction } from "../db";
 import { awardXP, getXP, XP_AMOUNTS } from "../xp";
-import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey, MINT_BASE_STAT, statCapFor } from "../progression";
+import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey, MINT_BASE_STAT, statCapFor, ITEM_STOCK_CAP } from "../progression";
 import { isValidWallet } from "../middleware/validateWallet";
 
 const router = Router();
@@ -218,6 +218,8 @@ router.get("/collection/:wallet", async (req: Request, res: Response) => {
         // card. The Toybox printed "/15" as a literal, so the day a cap moved
         // the game showed one number and enforced another.
         statCap: statCapFor(r.type, r.rarity),
+        itemStock: Number(r.item_stock ?? 0),
+        itemStockCap: ITEM_STOCK_CAP,
       })),
     });
   } catch (err) {

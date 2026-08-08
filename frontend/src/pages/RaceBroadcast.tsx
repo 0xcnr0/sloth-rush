@@ -51,6 +51,15 @@ interface FinalOrder {
  * drawn in the Jetster's red. Colour is how a player finds their toy
  * (ART_DIRECTION §10); it has to follow the archetype.
  */
+/**
+ * What each finishing place grows, mirrored from the server's POSITION_STAT
+ * (backend/src/routes/race.ts) and the gain from its PER_RACE_STAT_GAIN. If one
+ * moves, move both — a screen that promises SPD for first place while the
+ * server awards something else is worse than a screen that promises nothing.
+ */
+const POSITION_STAT: Record<number, string> = { 1: 'SPD', 2: 'ACC', 3: 'STA', 4: 'REF' }
+const PER_RACE_STAT_GAIN = 0.4
+
 /** The engine ticks ten times a second; speeds are per tick. */
 const TICKS_PER_SECOND = 10
 /** Ticks between pressing an item and it taking effect (backend ITEM_TUNING). */
@@ -199,6 +208,8 @@ export default function RaceBroadcast() {
   // Items the player still has. The server owns the tick an item lands on, so
   // the client only ever asks — it never proposes a moment.
   const [itemsLeft, setItemsLeft] = useState<string[]>([])
+  /** The stock the racer carries between races, not what is left in this one. */
+  const [itemStock, setItemStock] = useState(0)
   const [deploying, setDeploying] = useState(false)
   const [aimingAt, setAimingAt] = useState<'hinder' | null>(null)
 
@@ -1049,7 +1060,7 @@ export default function RaceBroadcast() {
   useEffect(() => {
     if (!id || !playerRacerId || racePhase !== 'racing') return
     api.getRaceItems(id, playerRacerId)
-      .then(d => setItemsLeft(d.remaining))
+      .then(d => { setItemsLeft(d.remaining); setItemStock(d.itemStock ?? 0) })
       .catch(() => { /* a spectator has no loadout; the controls stay hidden */ })
   }, [id, playerRacerId, racePhase])
 
@@ -1342,6 +1353,7 @@ export default function RaceBroadcast() {
               next.splice(next.indexOf(code), 1)
               return next
             })
+            setItemStock(v => Math.max(0, v - 1))
             toast.success(`${THEME.items[code].name} away!`)
           } catch (err: any) {
             toast.error(err.message)
@@ -1377,8 +1389,13 @@ export default function RaceBroadcast() {
                     {arming ? 'Pick a target' : THEME.items[code].name}
                     {count > 1 && <span className="ml-2 text-sm">{'\u00D7'}{count}</span>}
                     {!arming && canDeploy && (
+                      // Items are a stock the racer carries between races now,
+                      // so the button has to say what pressing it costs. "Last
+                      // one" is the whole reason the decision exists.
                       <span className="block text-[10px] font-normal opacity-70">
-                        lands ~{(ITEM_DELAY_TICKS / TICKS_PER_SECOND).toFixed(0)}s later
+                        {itemStock === 1
+                          ? 'your last one \u00B7 lands ~' + (ITEM_DELAY_TICKS / TICKS_PER_SECOND).toFixed(0) + 's later'
+                          : `${itemStock} in stock \u00B7 lands ~${(ITEM_DELAY_TICKS / TICKS_PER_SECOND).toFixed(0)}s later`}
                       </span>
                     )}
                   </button>
@@ -1462,8 +1479,31 @@ export default function RaceBroadcast() {
                 {pos.toGo}m to go {i === 0 ? '\u00B7 leader' : `\u00B7 ${pos.gap}m back`}
               </p>
             </div>
-            <span className="text-brand-dust text-xs tabular-nums shrink-0">
-              {Math.round(pos.speed * TICKS_PER_SECOND)} m/s
+            {/* What this place is worth.
+                Finishing position already decides WHICH stat grows — 1st feeds
+                SPD, 2nd ACC, 3rd STA, 4th REF (routes/race.ts POSITION_STAT) —
+                so pressing a boost to move from second to first is buying SPD
+                rather than buying a place. That was true before any of this and
+                the game said it nowhere: not on this screen, not in the lobby,
+                not in the guide. An item nobody knows the price of is an item
+                nobody has a reason to spend. */}
+            <span className="shrink-0 text-right">
+              {POSITION_STAT[i + 1] && (
+                // Dimmed on a bot's row. The number is what the PLACE pays, and
+                // a player in second needs to see what first is worth — but a
+                // bot earns nothing (it is not competing for anything), so on
+                // its row the same figure must not read as being collected.
+                <span
+                  className={`block text-[11px] font-bold tabular-nums ${
+                    pos.isBot ? 'text-brand-dust/50' : 'text-brand-ink'
+                  }`}
+                >
+                  +{PER_RACE_STAT_GAIN.toFixed(1)} {POSITION_STAT[i + 1]}
+                </span>
+              )}
+              <span className="block text-brand-dust text-xs tabular-nums">
+                {Math.round(pos.speed * TICKS_PER_SECOND)} m/s
+              </span>
             </span>
           </motion.div>
         ))}

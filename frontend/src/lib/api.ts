@@ -83,6 +83,9 @@ export const api = {
       revealedTick: number
       earliestTick: number
       durationTicks: number
+      /** Carried between races, not just what is left in this one. */
+      itemStock: number
+      itemStockCap: number
     }>(`/race/${raceId}/items?racerId=${racerId}`),
 
   deployItem: (
@@ -102,7 +105,7 @@ export const api = {
       raceId: string
       seed: string
       resultHash: string
-      statAwards?: { racerId: number; stat: string; gain: number; dayTotal: number; dayCap: number }[]
+      statAwards?: { racerId: number; stat: string; gain: number; dayTotal: number; dayCap: number; itemsEarned?: number; itemStock?: number }[]
       gridPositions: {
         id: number
         name: string

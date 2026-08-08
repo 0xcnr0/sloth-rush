@@ -128,7 +128,28 @@ export default function Guide() {
                 <strong className="text-brand-ink">{THEME.items.boost.name}</strong> speeds you up
                 for five seconds. <strong className="text-brand-ink">{THEME.items.hinder.name}</strong>{' '}
                 slows one racer you name, for the same five seconds &mdash; you choose who, not the
-                game. You pack two before the start and spend them during the race.
+                game. You pack up to two before the start and spend them during the race.
+              </>
+            }
+          />
+          <Row
+            label="Where items come from"
+            body={
+              <>
+                Your racer carries a stock of them, up to <Num>6</Num>. Carrying them costs
+                nothing &mdash; one comes off only when you actually press it. Every finish earns
+                one back and a win earns <Num>2</Num>, so an empty racer is packing a full
+                loadout again after two races.
+              </>
+            }
+          />
+          <Row
+            label="What a place is worth"
+            body={
+              <>
+                Where you finish decides <em>which</em> stat grows: 1st feeds SPD, 2nd ACC,
+                3rd STA, 4th REF. So spending a boost to take a place is buying that stat &mdash;
+                the standings show what each place pays while the race is running.
               </>
             }
           />

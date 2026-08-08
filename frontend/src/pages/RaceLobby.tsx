@@ -43,6 +43,12 @@ export default function RaceLobby() {
   const [selectedFormat, setSelectedFormat] = useState(preselected ?? visibleFormats[0])
   const [loading, setLoading] = useState(false)
 
+  // How many items this racer holds, and therefore how many slots the loadout
+  // can offer. The server is the authority and clamps the same way on join;
+  // this is here so the screen never promises a slot the racer cannot fill.
+  const stock = Math.max(0, Number(selectedRacer?.itemStock ?? 0))
+  const slots = Math.min(2, stock)
+
   // Load creatures (racers + free racers)
   const [allCreatures, setAllCreatures] = useState<any[]>([])
   useEffect(() => {
@@ -81,7 +87,7 @@ export default function RaceLobby() {
       // The loadout goes with the join — it is the pre-race decision now, and
       // it is made on the same screen as the racer and the distance rather than
       // in a phase of its own.
-      await api.joinRaceWithLoadout(race.raceId, selectedRacer.id, address, loadout)
+      await api.joinRaceWithLoadout(race.raceId, selectedRacer.id, address, loadout.slice(0, Math.min(2, Math.max(0, Number(selectedRacer.itemStock ?? 0)))))
       await api.startRace(race.raceId)
 
       const result = await api.simulateRace(race.raceId)
@@ -189,10 +195,20 @@ export default function RaceLobby() {
                   ))}
                 </div>
 
-                {/* Loadout — the pre-race decision */}
-                <h2 className="text-lg font-semibold text-brand-ink/80 mb-3">Pack Two Items</h2>
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  {([0, 1] as const).map(slot => (
+                {/* Loadout — the pre-race decision.
+                    Items are a stock the racer carries now, so this panel can
+                    only offer what it actually holds: two slots for a full
+                    racer, one for a nearly empty one, none for an empty one. */}
+                <h2 className="text-lg font-semibold text-brand-ink/80 mb-1">
+                  {slots === 0 ? 'No items' : slots === 1 ? 'Pack One Item' : 'Pack Two Items'}
+                </h2>
+                <p className="text-brand-dust text-sm mb-3">
+                  {slots === 0
+                    ? 'Your racer is out of items. Finishing a race earns one back, winning earns two.'
+                    : `${stock} in stock · spent only when you press them, and every finish earns one back`}
+                </p>
+                <div className={`grid gap-3 mb-6 ${slots === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {([0, 1] as const).filter(i => i < slots).map(slot => (
                     <button
                       key={slot}
                       type="button"

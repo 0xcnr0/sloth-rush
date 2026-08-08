@@ -661,6 +661,36 @@ kazandıkları büyümeyi içeriyor ve tabanı üstündeki büyümeden ayırman�
 > **Geri açmak: `frontend/src/config/contracts.ts` içinde `true`. Başka hiçbir
 > şey kımıldamıyor. Başvurudan ve demodan önce açılacak.**
 
+### Item'ler: stok + bahsin görünür kılınması — 2026-08-08
+
+**Sorun "nereden geliyor" değildi, "harcamak bedavaydı."** Yarış başına 2 tane
+geliyordu, kullansan da kullanmasan da gidiyordu. Artık **yarışçının taşıdığı
+bir stok**: başlangıç 4, tavan 6, her bitiriş +1, galibiyet +2.
+
+Üç detay bilinçli:
+
+- **Kullanınca düşer, paketleyince değil.** Yarışa iki tane götürmek bedava;
+  bedel basmakta. Gerilim menüde değil, pistte olmalı.
+- **Bitirişe ödenir, galibiyete değil.** Kaybeden, dolu bir loadout'a en çok
+  ihtiyacı olan kişidir; sadece kazananı ödüllendirmek kötü bir seriyi daha
+  kötüsüne çevirirdi. Boş bir yarışçı **iki yarışta** tekrar dolu. Çukur sığ ve
+  kendi kendini dolduruyor, spiral değil.
+- **Tavan düşük.** 6'nın üstünde yarışmak bir şey eklemiyor; bu, büyük stokun
+  davet ettiği "harcamaya kıyamama" istifini engelliyor.
+
+> Bu, kaldırılan para birimi değil. Satın alınmıyor, satılmıyor, havuzlanmıyor,
+> ödenmiyor; botlarda hiç yok; ve tavanı 6 olan bir şeyde biriktirilecek bakiye
+> yok. SPRING'i öldüren şey, ödeme yapamayan botların yoktan bastığı bir ödül
+> havuzuydu — burada havuzlanan hiçbir şey yok.
+
+**Ve asıl yarısı: bahis zaten vardı, görünmüyordu.** Bitiriş sırası hangi statın
+büyüyeceğini belirliyor (`POSITION_STAT`: 1.→SPD, 2.→ACC, 3.→STA, 4.→REF), yani
+boost'a basıp 2.'likten 1.'liğe geçmek **SPD satın almak** demek. Bu, bu
+değişiklikten önce de doğruydu ve oyun hiçbir yerde söylemiyordu — ne yarış
+ekranında, ne lobide, ne rehberde. Fiyatını kimsenin bilmediği bir item'i
+harcamak için kimsenin sebebi olmaz. Artık canlı sıralamada her sıranın ne
+ödediği yazıyor (bot satırlarında soluk: bot hiçbir şey kazanmıyor).
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
@@ -693,19 +723,16 @@ Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
    Hattın kendisi kanıtlı (aşağıdaki "Sanat hattı"), eksik olan şablon.
 
 2. **Passive'ler** — yukarıdaki açık kalem.
-3. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
-   sahiplik hissi yok. Gigling'de önceden ediniliyor ve tek seferlik. V1'de para
-   olmadığı için kaynak ancak **yarışmak** olabilir. Karar alınmadı.
-4. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
+3. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
    Career'da 0 yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri
    bildirim vermiyor. Playtest raporunda 9, 10, 11 numaralı maddeler.
    *(Profil "Inventory" sekmesi ve Shop bağlantıları kodda kalmamış — 2026-08-08
    sayfa geçişinde arandı, bulunamadı.)*
-5. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
+4. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
    backend süreci bulundu ve 3001'i en eskisi tutuyordu — yani ölçülen kod
    çalışan kod değildi. Bu, o gün alınan her ölçümü şüpheli yapardı.
-6. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
-7. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
+5. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
+6. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
    ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
    onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
 

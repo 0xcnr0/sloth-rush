@@ -6,7 +6,7 @@ import { raceFormat, isPlayableFormat, DEFAULT_FORMAT } from "../simulation/form
 import { isSchedulable, earliestSchedulableTick, ITEM_TUNING, type ScheduledItem, type ItemCode } from "../simulation/items";
 import { tierForStats, totalStats, archetypeForStats } from "../simulation/evolution";
 import { awardXP, XP_AMOUNTS } from "../xp";
-import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey, STAT_CAPS } from "../progression";
+import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey, STAT_CAPS, ITEM_STOCK_CAP, itemsEarnedFor } from "../progression";
 import { isValidWallet } from "../middleware/validateWallet";
 import { recordRaceResultOnchain } from "../lib/onchain";
 
@@ -193,8 +193,13 @@ router.post("/join", async (req: Request, res: Response) => {
     // a choice. Two items out of two types is a small question with a real
     // answer — press for yourself, or press against whoever is winning.
     const requested: string[] = Array.isArray(req.body.loadout) ? req.body.loadout : [];
-    const valid = requested.filter((c) => c === "boost" || c === "hinder").slice(0, ITEM_TUNING.perRacer);
-    while (valid.length < ITEM_TUNING.perRacer) valid.push(valid.length === 0 ? "boost" : "hinder");
+    // You may carry two, but never more than you hold. Packing does not spend
+    // anything — the stock comes off when an item is actually deployed — so
+    // this is only a ceiling, and a racer with an empty stock races bare.
+    const stock = Math.max(0, Number(racer.item_stock ?? 0));
+    const capacity = Math.min(ITEM_TUNING.perRacer, stock);
+    const valid = requested.filter((c) => c === "boost" || c === "hinder").slice(0, capacity);
+    while (valid.length < capacity) valid.push(valid.length === 0 ? "boost" : "hinder");
 
     await query(
       "INSERT INTO race_participants (race_id, racer_id, wallet, is_bot, loadout) VALUES ($1, $2, $3, 0, $4)",
@@ -427,6 +432,9 @@ router.get("/:id/items", async (req: Request, res: Response) => {
     );
     const loadout: string[] = String(participant.loadout || "").split(",").filter(Boolean);
     const remaining = [...loadout];
+    // What the racer holds overall, not just in this race — the controls have
+    // to be able to say "that was your last one".
+    const held = await getOne("SELECT item_stock FROM racers WHERE id = $1", [racerId]);
     for (const u of used) {
       const i = remaining.indexOf(u.code);
       if (i >= 0) remaining.splice(i, 1);
@@ -434,6 +442,8 @@ router.get("/:id/items", async (req: Request, res: Response) => {
     const frontier = revealedTick(race);
     res.json({
       loadout,
+      itemStock: Number(held?.item_stock ?? 0),
+      itemStockCap: ITEM_STOCK_CAP,
       remaining,
       revealedTick: frontier,
       earliestTick: earliestSchedulableTick(frontier),
@@ -526,12 +536,32 @@ router.post("/item", async (req: Request, res: Response) => {
       return;
     }
 
+    /**
+     * The stock comes off HERE, not when the loadout was packed.
+     *
+     * Conditional UPDATE rather than read-then-write: two presses landing
+     * together must not both see the same stock and both spend it. The row
+     * count tells us whether this press actually got one.
+     */
+    const spend = await query(
+      "UPDATE racers SET item_stock = item_stock - 1 WHERE id = $1 AND item_stock > 0",
+      [parseInt(String(racerId), 10)]
+    );
+    if (!spend.rowCount) {
+      res.status(400).json({ error: "no items left" });
+      return;
+    }
+
     await query(
       "INSERT INTO race_items (race_id, racer_id, wallet, code, target_id, tick) VALUES ($1, $2, $3, $4, $5, $6)",
       [raceId, parseInt(String(racerId), 10), wallet, code, resolvedTarget, tick]
     );
 
-    res.json({ deployed: true, code, targetId: resolvedTarget, tick, revealedTick: frontier });
+    const after = await getOne("SELECT item_stock FROM racers WHERE id = $1", [parseInt(String(racerId), 10)]);
+    res.json({
+      deployed: true, code, targetId: resolvedTarget, tick, revealedTick: frontier,
+      itemStock: Number(after?.item_stock ?? 0),
+    });
   } catch (err) {
     console.error("POST /item error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -794,10 +824,30 @@ router.post("/simulate", async (req: Request, res: Response) => {
      * so the two agree by construction.
      */
     const today = justSettled ? localDateKey() : "";
-    const statAwards: { racerId: number; stat: string; gain: number; dayTotal: number; dayCap: number }[] = [];
+    const statAwards: {
+      racerId: number; stat: string; gain: number; dayTotal: number; dayCap: number;
+      itemsEarned?: number; itemStock?: number;
+    }[] = [];
     for (let i = 0; justSettled && i < result.finalOrder.length; i++) {
       const entry = result.finalOrder[i];
       if (entry.isBot) continue;
+
+      /**
+       * Items come back for finishing, and this is deliberately paid on FINISH
+       * rather than on winning: a player who loses is the one who most needs
+       * another go with a full loadout, and paying only the winner would let a
+       * bad run compound into a worse one. The winner gets one extra, which is
+       * enough to be worth having and not enough to run away with.
+       *
+       * The cap is applied in SQL with LEAST so two settles cannot push a racer
+       * over it between a read and a write.
+       */
+      const earned = itemsEarnedFor(i + 1);
+      const stockRow = await getOne(
+        "UPDATE racers SET item_stock = LEAST($1::int, COALESCE(item_stock, 0) + $2::int) WHERE id = $3 RETURNING item_stock",
+        [ITEM_STOCK_CAP, earned, entry.id]
+      ).catch(() => null);
+
       const statToGrow = POSITION_STAT[i + 1];
       if (!statToGrow) continue;
 
@@ -812,7 +862,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
       );
       const spentToday = dailyGain?.total_gain || 0;
       if (spentToday >= DAILY_STAT_CAP) {
-        statAwards.push({ racerId: entry.id, stat: statToGrow, gain: 0, dayTotal: spentToday, dayCap: DAILY_STAT_CAP });
+        statAwards.push({ racerId: entry.id, stat: statToGrow, gain: 0, dayTotal: spentToday, dayCap: DAILY_STAT_CAP, itemsEarned: earned, itemStock: Number(stockRow?.item_stock ?? 0) });
         continue;
       }
 
@@ -828,7 +878,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
         if ((racer.tier || 0) >= 4) cap += 3;
       }
       if (racer.current_val >= cap) {
-        statAwards.push({ racerId: entry.id, stat: statToGrow, gain: 0, dayTotal: spentToday, dayCap: DAILY_STAT_CAP });
+        statAwards.push({ racerId: entry.id, stat: statToGrow, gain: 0, dayTotal: spentToday, dayCap: DAILY_STAT_CAP, itemsEarned: earned, itemStock: Number(stockRow?.item_stock ?? 0) });
         continue;
       }
 
@@ -839,6 +889,8 @@ router.post("/simulate", async (req: Request, res: Response) => {
         gain: Math.round(gain * 100) / 100,
         dayTotal: Math.round((spentToday + gain) * 100) / 100,
         dayCap: DAILY_STAT_CAP,
+        itemsEarned: earned,
+        itemStock: Number(stockRow?.item_stock ?? 0),
       });
       await query(
         `UPDATE racers SET ${statToGrow} = ${statToGrow} + $1 WHERE id = $2`,

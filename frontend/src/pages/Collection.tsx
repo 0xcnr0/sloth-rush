@@ -270,6 +270,7 @@ export default function Collection() {
                   paying $3. */}
               <TierProgress racer={freeRacer} />
               <DailyBudget racer={freeRacer} />
+              <ItemStock racer={freeRacer} />
               <button
                 onClick={() => handleQuickDemoRace(freeRacer.id)}
                 disabled={demoLoading === freeRacer.id}
@@ -485,6 +486,7 @@ export default function Collection() {
                 <div className="mt-3 pt-3 border-t border-brand-border space-y-2">
                   <TierProgress racer={racer} />
                   <DailyBudget racer={racer} />
+                  <ItemStock racer={racer} />
                   <button
                     onClick={() => handleQuickDemoRace(racer.id)}
                     disabled={demoLoading === racer.id}
@@ -629,6 +631,28 @@ export default function Collection() {
  * So it sits next to the button that starts the race, which is where the person
  * deciding whether to race is looking.
  */
+function ItemStock({ racer }: { racer: any }) {
+  const cap = Number(racer.itemStockCap ?? 0)
+  if (!cap) return null
+  const held = Math.max(0, Math.min(cap, Number(racer.itemStock ?? 0)))
+
+  return (
+    <div className="flex items-center justify-between mb-1">
+      <span className="text-brand-dust text-[11px] font-semibold">Items</span>
+      <span className="flex items-center gap-1" title={`${held} of ${cap}`}>
+        {Array.from({ length: cap }, (_, i) => (
+          <span
+            key={i}
+            className={`h-2.5 w-2.5 rounded-full border-2 border-brand-ink ${
+              i < held ? 'bg-brand-gold' : 'bg-transparent'
+            }`}
+          />
+        ))}
+      </span>
+    </div>
+  )
+}
+
 function DailyBudget({ racer }: { racer: any }) {
   const cap = Number(racer.dayCap ?? 0)
   if (!cap) return null

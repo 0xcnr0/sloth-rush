@@ -67,6 +67,39 @@ export function statCapFor(type: string | undefined, rarity: string | undefined 
   return (rarity && STAT_CAPS[rarity]) || STAT_CAPS.common;
 }
 
+/**
+ * Items are a stock the racer carries between races, not an allowance handed
+ * out at the start of each one.
+ *
+ * Two were granted per race, free, and they evaporated whether or not you used
+ * them — so pressing cost nothing and not pressing cost nothing, and the one
+ * decision the game asks for during a race was wallpaper.
+ *
+ * What makes an item worth having is that spending it is a real loss, and what
+ * makes that loss bearable is that racing pays it back. So:
+ *
+ *   - They are DEDUCTED ON USE, never on packing. Carrying two into a race is
+ *     free; pressing is what costs. The tension belongs to the moment on the
+ *     track, not to a menu before it.
+ *   - Every finish returns one, a win returns two. Nobody is locked out by
+ *     losing: an empty racer is back to a full loadout after two races, so the
+ *     hole is shallow and self-filling rather than a spiral.
+ *   - The cap is low on purpose. Past it, racing stops adding, which is what
+ *     stops the "too valuable to ever use" hoard that a big stockpile invites.
+ *
+ * This is not the currency that was removed. It is not bought, sold, pooled or
+ * paid out; bots hold none; and with a ceiling of six there is no balance to
+ * accumulate. The failure that killed SPRING was a prize pool minted out of
+ * nothing by bots that could not pay in — nothing here pools.
+ */
+export const ITEM_STOCK_START = 4;
+export const ITEM_STOCK_CAP = 6;
+
+/** Items returned for finishing in this position. Winning is worth one more. */
+export function itemsEarnedFor(position: number): number {
+  return position === 1 ? 2 : 1;
+}
+
 /** Stat added to one stat per finish. Which stat depends on finishing position. */
 export const PER_RACE_STAT_GAIN = 0.4;
 

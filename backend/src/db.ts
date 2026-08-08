@@ -371,6 +371,20 @@ export async function initDB() {
     console.error("initDB: could not update mint floor defaults:", err);
   }
 
+  // Item stock. Items used to be two-per-race and free; they are a carried
+  // stock now, so the racer needs somewhere to keep them. New racers start with
+  // ITEM_STOCK_START; existing ones are seeded to the same, because a racer
+  // that has been racing for weeks arriving at zero would read as a punishment
+  // for having played before the change.
+  try {
+    await pool.query(`
+      ALTER TABLE racers ADD COLUMN IF NOT EXISTS item_stock INTEGER DEFAULT 4;
+      UPDATE racers SET item_stock = 4 WHERE item_stock IS NULL;
+    `);
+  } catch (err) {
+    console.error("initDB: could not add item_stock:", err);
+  }
+
   // Add evolution columns to racers table
   try {
     await pool.query(`
