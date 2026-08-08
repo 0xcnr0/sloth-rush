@@ -101,12 +101,15 @@ export async function initDB() {
       name TEXT,
       rarity TEXT CHECK(rarity IN ('common', 'uncommon', 'rare', 'epic', 'legendary')),
       race TEXT,
-      spd INTEGER DEFAULT 10,
-      acc INTEGER DEFAULT 10,
-      sta INTEGER DEFAULT 10,
-      agi INTEGER DEFAULT 10,
-      ref INTEGER DEFAULT 10,
-      lck INTEGER DEFAULT 10,
+      -- Mint floor. Kept in sync with MINT_BASE_STAT in ../progression.ts: a
+      -- free racer is inserted without stat columns and takes these defaults,
+      -- while both upgrade paths write the constant explicitly.
+      spd INTEGER DEFAULT 12,
+      acc INTEGER DEFAULT 12,
+      sta INTEGER DEFAULT 12,
+      agi INTEGER DEFAULT 12,
+      ref INTEGER DEFAULT 12,
+      lck INTEGER DEFAULT 12,
       is_burned INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
     );
@@ -347,6 +350,25 @@ export async function initDB() {
     `);
   } catch {
     // Already REAL — ignore
+  }
+
+  // The mint floor moved from 10 to 12, and CREATE TABLE IF NOT EXISTS does not
+  // revisit an existing table's defaults — so without this an already-created
+  // database keeps minting at the old floor forever while the constant says
+  // otherwise. Existing racers are deliberately left alone: their stats include
+  // whatever they have earned by racing, and there is no way to tell the floor
+  // apart from the growth on top of it.
+  try {
+    await pool.query(`
+      ALTER TABLE racers ALTER COLUMN spd SET DEFAULT 12;
+      ALTER TABLE racers ALTER COLUMN acc SET DEFAULT 12;
+      ALTER TABLE racers ALTER COLUMN sta SET DEFAULT 12;
+      ALTER TABLE racers ALTER COLUMN agi SET DEFAULT 12;
+      ALTER TABLE racers ALTER COLUMN ref SET DEFAULT 12;
+      ALTER TABLE racers ALTER COLUMN lck SET DEFAULT 12;
+    `);
+  } catch (err) {
+    console.error("initDB: could not update mint floor defaults:", err);
   }
 
   // Add evolution columns to racers table

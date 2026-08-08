@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { query, getOne, getAll, runTransaction } from "../db";
 import { awardXP, getXP, XP_AMOUNTS } from "../xp";
-import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey } from "../progression";
+import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey, MINT_BASE_STAT, statCapFor } from "../progression";
 import { isValidWallet } from "../middleware/validateWallet";
 
 const router = Router();
@@ -131,14 +131,15 @@ router.post("/upgrade", async (req: Request, res: Response) => {
     const race = RACES[Math.floor(Math.random() * RACES.length)];
     const bias = RACE_BIAS[race] || {};
 
-    // Base stats: 10 each, with small race bias
+    // The mint floor, plus a small archetype bias. Both upgrade paths use it,
+    // and so does the racers table's own column default — see ../progression.
     const stats = {
-      spd: 10 + (bias.spd || 0),
-      acc: 10 + (bias.acc || 0),
-      sta: 10 + (bias.sta || 0),
-      agi: 10 + (bias.agi || 0),
-      ref: 10 + (bias.ref || 0),
-      lck: 10 + (bias.lck || 0),
+      spd: MINT_BASE_STAT + (bias.spd || 0),
+      acc: MINT_BASE_STAT + (bias.acc || 0),
+      sta: MINT_BASE_STAT + (bias.sta || 0),
+      agi: MINT_BASE_STAT + (bias.agi || 0),
+      ref: MINT_BASE_STAT + (bias.ref || 0),
+      lck: MINT_BASE_STAT + (bias.lck || 0),
     };
 
     // Transaction: burn free racer + create racer + give 500 coins
@@ -213,6 +214,10 @@ router.get("/collection/:wallet", async (req: Request, res: Response) => {
         dayGain: gainById.get(r.id) ?? 0,
         dayCap: DAILY_STAT_CAP,
         perRaceGain: PER_RACE_STAT_GAIN,
+        // The ceiling comes from the server rather than being written into the
+        // card. The Toybox printed "/15" as a literal, so the day a cap moved
+        // the game showed one number and enforced another.
+        statCap: statCapFor(r.type, r.rarity),
       })),
     });
   } catch (err) {
@@ -452,12 +457,12 @@ router.post("/free-upgrade", async (req: Request, res: Response) => {
     const bias = RACE_BIAS[race] || {};
 
     const stats = {
-      spd: 10 + (bias.spd || 0),
-      acc: 10 + (bias.acc || 0),
-      sta: 10 + (bias.sta || 0),
-      agi: 10 + (bias.agi || 0),
-      ref: 10 + (bias.ref || 0),
-      lck: 10 + (bias.lck || 0),
+      spd: MINT_BASE_STAT + (bias.spd || 0),
+      acc: MINT_BASE_STAT + (bias.acc || 0),
+      sta: MINT_BASE_STAT + (bias.sta || 0),
+      agi: MINT_BASE_STAT + (bias.agi || 0),
+      ref: MINT_BASE_STAT + (bias.ref || 0),
+      lck: MINT_BASE_STAT + (bias.lck || 0),
     };
 
     const racer = await runTransaction(async (client) => {

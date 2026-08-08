@@ -183,9 +183,10 @@ export default function Guide() {
             label="Ceilings"
             body={
               <>
-                Stats also stop at a ceiling: <Num>15</Num> per stat as a {THEME.tiers.free},{' '}
+                Stats also stop at a ceiling: <Num>18</Num> per stat as a {THEME.tiers.free},{' '}
                 <Num>22&ndash;35</Num> as a {THEME.tiers.pro} depending on rarity. A stat already
-                at its ceiling will not move however well you race.
+                at its ceiling will not move however well you race. Your racer&rsquo;s own
+                ceiling is printed next to each stat in the {THEME.locations.home}.
               </>
             }
           />

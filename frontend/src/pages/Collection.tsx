@@ -232,7 +232,10 @@ export default function Collection() {
               </button>
             </div>
 
-            {/* Stat Grid (cap: 15) */}
+            {/* The ceiling is whatever the server says it is. It was written
+                here as the literal "/15", so the day the cap moved the card
+                showed one number while the server enforced another — and the
+                player would have believed the card. */}
             <div className="grid grid-cols-3 gap-1 text-center text-xs mb-3">
               {[
                 { label: 'SPD', val: freeRacer.spd },
@@ -245,7 +248,9 @@ export default function Collection() {
                 <div key={s.label} className="rounded px-1 py-1">
                   <span className="text-brand-dust">{s.label} </span>
                   <span className="text-brand-ink font-bold">{Number(s.val || 0) % 1 === 0 ? (s.val || 0) : Number(s.val || 0).toFixed(1)}</span>
-                  <span className="text-brand-dust/70 text-[10px]">/15</span>
+                  {freeRacer.statCap && (
+                    <span className="text-brand-dust/70 text-[10px]">/{freeRacer.statCap}</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -280,10 +285,11 @@ export default function Collection() {
               </button>
             </div>
 
-            {/* Upgrade Section */}
-            <div className="mt-4 pt-4 border-t border-brand-border">
-              <p className="text-brand-dust text-xs text-center mb-3">Upgrade to unlock all race formats</p>
-            </div>
+            {/* "Upgrade to unlock all race formats" used to sit here, and it was
+                not true: the gate that barred free racers from every paid format
+                was removed when racing stopped costing anything. It was selling
+                the $3 upgrade on a lock that no longer exists, which is the one
+                thing a payment prompt must never do. */}
           </div>
 
           {/* Free Upgrade Path */}

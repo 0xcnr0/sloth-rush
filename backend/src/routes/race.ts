@@ -6,7 +6,7 @@ import { raceFormat, isPlayableFormat, DEFAULT_FORMAT } from "../simulation/form
 import { isSchedulable, earliestSchedulableTick, ITEM_TUNING, type ScheduledItem, type ItemCode } from "../simulation/items";
 import { tierForStats, totalStats, archetypeForStats } from "../simulation/evolution";
 import { awardXP, XP_AMOUNTS } from "../xp";
-import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey } from "../progression";
+import { PER_RACE_STAT_GAIN, DAILY_STAT_CAP, localDateKey, STAT_CAPS } from "../progression";
 import { isValidWallet } from "../middleware/validateWallet";
 import { recordRaceResultOnchain } from "../lib/onchain";
 
@@ -45,15 +45,6 @@ function getResetDate(period: string): string {
 // files is how the number the server enforces stops being the number the game
 // promises.
 
-// Stat caps by rarity (and type)
-const STAT_CAPS: Record<string, number> = {
-  free: 15,
-  common: 22,
-  uncommon: 25,
-  rare: 28,
-  epic: 31,
-  legendary: 35,
-};
 
 // Position-based stat rewards for organic growth
 const POSITION_STAT: Record<number, string> = {

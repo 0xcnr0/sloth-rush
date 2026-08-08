@@ -610,28 +610,58 @@ gövdeye sokmak — ama o boşlukla mil hiç görünmüyordu. Beş rig'de de
 `key[0] = 1.0`: anahtar hepsinde aynı 59px dosya ve neredeyse aynı ölçek olduğu
 için sayı tekil çıktı. Ölçüldü, üç ölçekte göz kararı doğrulandı.
 
+### Mint stat tabanı — 2026-08-08, karar alındı
+
+Mint altı statı da **10** veriyordu (toplam 60) ve bu, bütün diğer sayıların
+ayarlandığı aralığın çok altındaydı. Ölçüldü: yeni oyuncunun Sprint'i 23.4s,
+Endurance'ı 51.0s — oysa lobi "about 20 seconds" ve "about 45 seconds" diye
+söz veriyordu. **Yani vaat edilen süreler, oyuncunun ilk yarıştığı gün sahip
+olmadığı bir yarışçınındı.**
+
+Karar iki değişkenliydi ve tek başına taban yükseltmek yanlış olurdu: free
+tavanı stat başına 15, yani toplam **tam olarak 90** — ve T1 de 90. Wind-Up
+tavanına vardığında T1'e tam ulaşıp duruyordu. Bu bilinçli bir çizgiydi ama
+sadece taban 10'ken ve tırmanış 7.5 gün sürerken işliyordu; taban 12 olsaydı
+aynı tavan 4.5 güne iner ve yeni oyuncunun tek yarışçısı orada temelli biterdi.
+
+Alınan paket: **taban 12, free tavanı 18.** Ölçümle doğrulandı:
+
+| | önce | sonra |
+|---|---|---|
+| Taze Sprint | 23.4s | **21.7s** |
+| Taze Endurance | 51.0s | **44.5s** |
+| Wind-Up büyüme ömrü | 7.5 gün, sonra bitik | **9 gün**, T1'i geçip devam |
+| Wind-Up T2'ye (130) | ulaşamaz | ulaşamaz — upgrade çizgisi duruyor |
+
+Ayrıca **Excellent (rare) tavanı 28 → 29.** 6×28=168, T3 eşiği 170: Excellent
+bir Showcase son forma **iki puanla** ulaşamıyordu. Fair, Good ve Excellent'in
+üçü de T2'de takılı kalıyor ve aralarında hiçbir fark olmuyordu — rarity
+merdiveninin ortası hiçbir şey yapmıyordu. 174 ile Excellent artık T3'e varıyor.
+
+Sayılar `backend/src/progression.ts`'te. Kart da artık tavanı sunucudan okuyor:
+`/15` sabit yazılmıştı, yani tavan kımıldadığı gün oyun bir sayı gösterip başka
+bir sayıyı uyguluyor olacaktı. Mevcut yarışçılara **dokunulmadı** — statları
+kazandıkları büyümeyi içeriyor ve tabanı üstündeki büyümeden ayırmanın yolu yok.
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
 üretildi. Kapanan maddeler oradan düşürüldü; kalanlar aşağıda.
 
-1. **Mint stat tabanı.** Mint stat başına ~10 veriyor, tavanlar 15 (free) ve
-   22-35 (rarity). Taze yarışçı bütün sayıların ayarlandığı aralığın altında
-   başlıyor; Endurance'ı 53 saniyede koşmasının sebebi bu. Denge kararı.
-2. **Passive'ler** — yukarıdaki açık kalem.
-3. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
+1. **Passive'ler** — yukarıdaki açık kalem.
+2. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
    sahiplik hissi yok. Gigling'de önceden ediniliyor ve tek seferlik. V1'de para
    olmadığı için kaynak ancak **yarışmak** olabilir. Karar alınmadı.
-4. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
+3. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
    Career'da 0 yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri
    bildirim vermiyor. Playtest raporunda 9, 10, 11 numaralı maddeler.
    *(Profil "Inventory" sekmesi ve Shop bağlantıları kodda kalmamış — 2026-08-08
    sayfa geçişinde arandı, bulunamadı.)*
-5. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
+4. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
    backend süreci bulundu ve 3001'i en eskisi tutuyordu — yani ölçülen kod
    çalışan kod değildi. Bu, o gün alınan her ölçümü şüpheli yapardı.
-6. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
-7. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
+5. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
+6. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
    ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
    onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
 
