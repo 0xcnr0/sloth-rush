@@ -35,6 +35,40 @@ export default function Mint() {
   const [error, setError] = useState('')
   const onchainMint = useMintFreeRacer()
 
+  /**
+   * The winding-up beat, in degrees per frame.
+   *
+   * The reveal was reported as "just a screen rather than a moment", and the
+   * reason was that nothing about the TOY changed across it. The minting state
+   * already had the key spinning at full speed, so arriving at success swapped
+   * some text underneath an animation that was already running — the same
+   * picture with a different caption.
+   *
+   * A wind-up toy is inert until somebody winds it, and that is the one beat
+   * this screen owns. So the toy is dead while the transaction is in flight,
+   * and the first thing that happens when it becomes yours is that its key
+   * starts to turn: one slow revolution, then faster, then alive. The name
+   * lands on the same beat as the toy does.
+   */
+  const [successWind, setSuccessWind] = useState(0)
+  const awake = successWind >= 5
+
+  useEffect(() => {
+    if (state !== 'success') { setSuccessWind(0); return }
+    const steps = [
+      setTimeout(() => setSuccessWind(1.2), 550),
+      setTimeout(() => setSuccessWind(3), 1050),
+      setTimeout(() => setSuccessWind(5), 1500),
+    ]
+    return () => steps.forEach(clearTimeout)
+  }, [state])
+
+  // Idle keeps the slowest tick that still reads as a working toy rather than a
+  // failed image — a wind-up standing perfectly still looks broken, which is
+  // why the portrait spins its key at all. Minting stops it, because the chain
+  // has the toy and not you. Then it winds up.
+  const wind = state === 'success' ? successWind : state === 'idle' ? 0.6 : 0
+
   // Ask before offering. The backend refuses a second mint for any wallet that
   // still holds a racer, so a returning player pressing the button only ever
   // got a 409 — the page can know that before they touch it, and point them at
@@ -112,8 +146,84 @@ export default function Mint() {
 
   if (state === 'checking') return <Spinner fullPage text="Checking your wallet..." />
 
+  /**
+   * Mint, wind, race — and the toy is on screen for all three.
+   *
+   * Every state used to be its own child of an AnimatePresence in "wait" mode,
+   * which meant the toy was unmounted and remounted between them: pressing MINT
+   * gave roughly a third of a second of empty page before a finished screen
+   * appeared. That gap is most of why the reveal was reported as "just a screen
+   * rather than a moment" — the object you are supposed to be receiving blinks
+   * out of existence at the exact instant you receive it.
+   *
+   * So the panel is rendered once, outside the transition, and only the copy
+   * beneath it swaps. The toy never leaves, which lets the winding be a change
+   * that happens TO IT rather than a different picture.
+   */
+  const onBench = state === 'idle' || state === 'minting' || state === 'success'
+
   return (
-    <div className="max-w-md mx-auto px-4 py-8">
+    <div className="max-w-md mx-auto px-4 py-8 text-center">
+      {onBench && (
+        <div className="toy-panel px-4 pt-4 pb-3 mb-5">
+          <motion.div
+            // Dim while the chain is working, and kick once the spring catches.
+            animate={
+              state === 'minting' ? { opacity: [0.55, 1, 0.55], scale: 1 }
+              : awake ? { opacity: 1, scale: [1, 1.06, 1] }
+              : { opacity: 1, scale: 1 }
+            }
+            transition={
+              state === 'minting'
+                ? { repeat: Infinity, duration: 1.4, ease: 'easeInOut' }
+                : { duration: 0.45, ease: 'easeOut' }
+            }
+          >
+            <RacerPortrait
+              archetype={racer?.race}
+              rarity={racer?.rarity}
+              height={210}
+              keySpeed={wind}
+            />
+          </motion.div>
+
+          {/* One line under the toy, and it is the only thing in the panel that
+              changes between states. */}
+          <AnimatePresence mode="wait">
+            {state === 'success' && awake ? (
+              <motion.div
+                key="named"
+                initial={{ opacity: 0, scale: 1.4 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 16 }}
+              >
+                <p className="text-brand-ink font-bold text-xl leading-tight">
+                  {racer?.name ?? `Your ${THEME.tiers.free}`}
+                </p>
+                <p className="text-brand-dust text-xs">
+                  {THEME.tiers.free}{racer?.id ? ` #${racer.id}` : ''}
+                </p>
+              </motion.div>
+            ) : (
+              <motion.p
+                key={state}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-brand-dust text-xs"
+              >
+                {state === 'idle'
+                  ? 'Straight out of the box — unpainted, no archetype yet'
+                  : state === 'minting'
+                    ? 'Minting on Base\u2026'
+                    : 'Winding the spring\u2026'}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
         {state === 'idle' && (
           <motion.div
@@ -121,15 +231,7 @@ export default function Mint() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            className="text-center"
           >
-            {/* The unpainted starter toy, drawn from the same rig the race uses.
-                What you see here is exactly what comes out of the mint. */}
-            <div className="toy-panel px-4 pt-4 pb-2 mb-5">
-              <RacerPortrait height={200} />
-              <p className="text-brand-dust text-xs mt-1">Straight out of the box &mdash; unpainted, no archetype yet</p>
-            </div>
-
             <h1 className="text-3xl font-bold mb-2">Mint your {THEME.tiers.free}</h1>
             <p className="text-brand-dust mb-5">
               Race it and it gets better. The $3 {THEME.tiers.pro} upgrade
@@ -152,82 +254,49 @@ export default function Mint() {
         )}
 
         {state === 'minting' && (
-          <motion.div
+          <motion.p
             key="minting"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="text-center"
+            className="text-brand-dust text-sm"
           >
-            {/* Not a spinner: the toy is already there and its key is turning,
-                which is the same thing a spinner says and also the thing the
-                game is about. */}
-            <div className="toy-panel px-4 pt-4 pb-2 mb-5">
-              <motion.div
-                animate={{ rotate: [-1.5, 1.5, -1.5] }}
-                transition={{ repeat: Infinity, duration: 0.5, ease: 'easeInOut' }}
-              >
-                <RacerPortrait height={200} />
-              </motion.div>
-            </div>
-            <p className="text-xl font-bold">Winding the spring&hellip;</p>
-            <p className="text-brand-dust text-sm mt-1">Minting on Base. This takes a few seconds.</p>
-          </motion.div>
+            This takes a few seconds.
+          </motion.p>
         )}
 
-        {state === 'success' && (
+        {state === 'success' && awake && (
           <motion.div
             key="success"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <motion.div
-              initial={{ scale: 0.7, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 220, damping: 14 }}
-              className="toy-panel px-4 pt-4 pb-3 mb-5"
+            <p className="text-brand-dust text-sm mb-4">
+              It is yours. Racing is the only thing that improves it &mdash; so go and race it.
+            </p>
+            <button
+              onClick={() => navigate('/race')}
+              className="toy-btn w-full py-4 bg-brand-gold text-brand-ink text-xl font-black"
             >
-              <RacerPortrait archetype={racer?.race} rarity={racer?.rarity} height={220} />
-              <p className="text-brand-ink font-bold text-xl leading-tight">
-                {racer?.name ?? `Your ${THEME.tiers.free}`}
-              </p>
-              <p className="text-brand-dust text-xs">
-                {THEME.tiers.free}{racer?.id ? ` #${racer.id}` : ''}
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
+              RACE IT
+            </button>
+            <button
+              onClick={() => navigate('/collection')}
+              className="w-full py-3 text-brand-dust text-sm font-semibold hover:text-brand-ink transition-colors cursor-pointer"
             >
-              <p className="text-brand-dust text-sm mb-4">
-                It is yours. Racing is the only thing that improves it &mdash; so go and race it.
-              </p>
-              <button
-                onClick={() => navigate('/race')}
-                className="toy-btn w-full py-4 bg-brand-gold text-brand-ink text-xl font-black"
+              Put it in the {THEME.locations.home} first
+            </button>
+            {onchainMint.hash && (
+              <a
+                href={`https://sepolia.basescan.org/tx/${onchainMint.hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-dust text-xs hover:text-brand-ink transition-colors underline"
               >
-                RACE IT
-              </button>
-              <button
-                onClick={() => navigate('/collection')}
-                className="w-full py-3 text-brand-dust text-sm font-semibold hover:text-brand-ink transition-colors cursor-pointer"
-              >
-                Put it in the {THEME.locations.home} first
-              </button>
-              {onchainMint.hash && (
-                <a
-                  href={`https://sepolia.basescan.org/tx/${onchainMint.hash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-brand-dust text-xs hover:text-brand-ink transition-colors underline"
-                >
-                  View on BaseScan
-                </a>
-              )}
-            </motion.div>
+                View on BaseScan
+              </a>
+            )}
           </motion.div>
         )}
 

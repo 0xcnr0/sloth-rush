@@ -648,20 +648,46 @@ kazandıkları büyümeyi içeriyor ve tabanı üstündeki büyümeden ayırman�
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
 üretildi. Kapanan maddeler oradan düşürüldü; kalanlar aşağıda.
 
-1. **Passive'ler** — yukarıdaki açık kalem.
-2. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
+1. **Üç oyuncağı yeniden çiz.** Sahip kararı (2026-08-08 playtest): *"aslında
+   hepsi hatalı, asıl ilk yaptığımız robot dışında."* Tinbot doğru görünüyor,
+   diğer üçü değil — ve sebep rig ayarı değil, **sayfaların ortak bir parça
+   mimarisine çizilmemiş olması.** Ölçüldü (kısa kenar × uzun kenar, gövdeye
+   oran):
+
+   | sayfa | gövde | kafa | kol | bacak | kafa/gövde | kol/gövde |
+   |---|---|---|---|---|---|---|
+   | tinbot | 162×172 | 137×106 | 52×200 | 100×251 | 0.62 | 1.16 |
+   | jetster | 138×284 | **202**×103 | 34×256 | 100×233 | 0.36 | 0.90 |
+   | waddler | 198×176 | 153×132 | 76×150 | 100×**98** | 0.75 | 0.85 |
+   | chomper | 214×172 | 156×129 | 92×173 | 99×110 | 0.75 | 1.01 |
+
+   Jetster'ın kafası gövdesinden **geniş** (202 > 138), bacak/gövde oranı
+   0.98'den 0.56'ya kadar sapıyor. `racerRig.ts` bunu arketip başına ayrı
+   geometriyle telafi ediyor — yani rig, sanatın tutmadığı yeri elle
+   yamalıyor. Tinbot'un doğru görünmesinin sebebi tesadüf değil: rig'in ilk
+   sürümü **Tinbot'un sayılarıyla** yazıldı, diğer üçü sonradan ona uyduruldu.
+   ART_DIRECTION §12 zaten "tek rig, dört deri" varsayıyor; bu ancak dördü de
+   aynı parça şablonuna çizilirse doğru olur.
+
+   Doğru iş: önce parça şablonunu **gövde oranı cinsinden** yaz (kafa yüksekliği
+   gövdenin %X'i, kol %Y'si, vb. — Tinbot'un oranları taban alınabilir), sonra
+   `scripts/meshy.ts image --ref` ile üç sayfayı o şablona yeniden ürettir.
+   Hattın kendisi kanıtlı (aşağıdaki "Sanat hattı"), eksik olan şablon.
+
+2. **Passive'ler** — yukarıdaki açık kalem.
+3. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
    sahiplik hissi yok. Gigling'de önceden ediniliyor ve tek seferlik. V1'de para
    olmadığı için kaynak ancak **yarışmak** olabilir. Karar alınmadı.
-3. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
+4. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
    Career'da 0 yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri
    bildirim vermiyor. Playtest raporunda 9, 10, 11 numaralı maddeler.
    *(Profil "Inventory" sekmesi ve Shop bağlantıları kodda kalmamış — 2026-08-08
    sayfa geçişinde arandı, bulunamadı.)*
-4. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
+5. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
    backend süreci bulundu ve 3001'i en eskisi tutuyordu — yani ölçülen kod
    çalışan kod değildi. Bu, o gün alınan her ölçümü şüpheli yapardı.
-5. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
-6. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
+6. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
+7. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
    ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
    onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
 
