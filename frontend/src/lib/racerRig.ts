@@ -47,7 +47,19 @@ interface Geometry {
   /** How far shoulders and hips sit from the torso centre, as a fraction of width. */
   armSpread: number
   legSpread: number
-  /** Winding key attachment, as a fraction of torso width/height. */
+  /**
+   * Winding key attachment, as a fraction of torso width/height.
+   *
+   * The x fraction is 1.0 in every rig, and that is not laziness — the key is
+   * literally the same 59px sprite in all five folders at nearly the same
+   * scale, so "tuck the shaft into the side of the body" resolves to the same
+   * number every time. It was 1.18-1.3, which put the key's left edge 17 to 37
+   * pixels PAST the torso's right edge: the key hung in mid-air beside every
+   * toy, on every screen, and the shaft it is drawn before the torso to hide
+   * never touched anything. At race scale it read as a speck; at the 128-220px
+   * the landing and mint pages now draw, it read as broken. 1.0 sinks the left
+   * ~11px of the key behind the body, which is the join the art was drawn for.
+   */
   key: [number, number]
   keyScale: number
   /** Total rig height in the same pixel space, used to scale to the lane. */
@@ -63,7 +75,7 @@ const GEOMETRY: Record<string, Geometry> = {
     scale: { head: 0.95, arm: 0.42, leg: 0.46, key: 0.75 },
     neck: [0.46, 0.0], shoulderY: 0.2, hipY: 0.95,
     armSpread: 0.2, legSpread: 0.14,
-    key: [1.3, 0.35], keyScale: 0.75, height: 330,
+    key: [1.0, 0.35], keyScale: 0.75, height: 330,
   },
   // Boxy robot: wide flat torso, square head sitting straight on top.
   tinbot: {
@@ -71,7 +83,7 @@ const GEOMETRY: Record<string, Geometry> = {
     scale: { head: 0.95, arm: 0.42, leg: 0.46, key: 0.75 },
     neck: [0.46, 0.0], shoulderY: 0.2, hipY: 0.95,
     armSpread: 0.2, legSpread: 0.14,
-    key: [1.3, 0.35], keyScale: 0.75, height: 330,
+    key: [1.0, 0.35], keyScale: 0.75, height: 330,
   },
   // Rocket: tall narrow capsule, wide cone head, blade limbs.
   jetster: {
@@ -79,7 +91,7 @@ const GEOMETRY: Record<string, Geometry> = {
     scale: { head: 0.8, arm: 0.5, leg: 0.4, key: 0.7 },
     neck: [0.55, 0.06], shoulderY: 0.2, hipY: 0.95,
     armSpread: 0.46, legSpread: 0.18,
-    key: [1.2, 0.4], keyScale: 0.7, height: 420,
+    key: [1.0, 0.4], keyScale: 0.7, height: 420,
   },
   // Duck: round head and fat egg body, short webbed legs.
   waddler: {
@@ -87,7 +99,7 @@ const GEOMETRY: Record<string, Geometry> = {
     scale: { head: 0.9, arm: 0.55, leg: 0.8, key: 0.75 },
     neck: [0.46, 0.0], shoulderY: 0.22, hipY: 0.94,
     armSpread: 0.42, legSpread: 0.16,
-    key: [1.2, 0.34], keyScale: 0.75, height: 380,
+    key: [1.0, 0.34], keyScale: 0.75, height: 380,
   },
   // Dinosaur: long snout, spined body, thick legs.
   chomper: {
@@ -95,7 +107,7 @@ const GEOMETRY: Record<string, Geometry> = {
     scale: { head: 0.9, arm: 0.52, leg: 0.85, key: 0.75 },
     neck: [0.44, 0.02], shoulderY: 0.2, hipY: 0.94,
     armSpread: 0.4, legSpread: 0.16,
-    key: [1.18, 0.32], keyScale: 0.75, height: 380,
+    key: [1.0, 0.32], keyScale: 0.75, height: 380,
   },
 }
 

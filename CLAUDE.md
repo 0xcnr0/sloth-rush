@@ -582,48 +582,58 @@ Kalan dört sayfa ikinci geçişte kapandı:
   ekranına giden tek yol **ilk yarış bitene kadar yoktu** — hem de bir ayar
   ekranını aramaya en yatkın oyuncudan gizlenmişti.
 
-> **⚠ Kurma anahtarı gövdeden kopuk çiziliyor.** Rig'de anahtar çapası torso
-> genişliğinin 1.18–1.3 katında (`racerRig.ts` GEOMETRY), anahtar sprite'ı ise
-> 59px. Sonuç: her arketipte anahtar gövdenin **16–37 piksel dışında**, boşlukta
-> duruyor. Anahtar torso'dan **önce** çiziliyor, yani niyet mili gövdenin içine
-> sokmak; o boşlukla mil hiç görünmüyor. Bu rig hatası yeni değil ama bu
-> sayfalar oyuncağı 128–220px'te öne çıkardığı için artık bariz. **Düzeltilmedi:**
-> `key[0]` değerleri elle, canlı slider'la ayarlanmış (dosyanın kendi notu) ve
-> değişiklik yarış görünümünü de etkiler — sahibinin `scripts/rig-preview.py`
-> ile göz kararı vermesi gereken bir sayı. Kabaca `key[0] ≈ 1.0` gövdeye
-> yaslıyor.
+### Yarış içi okunabilirlik ve görünmeyen tavan — 2026-08-08
+
+**Sıralama artık pistin üstünde.** Playtest sırayı alttaki listeden okuyordu ve
+sebep boyut değildi — koridor oyuncakları zaten iki katına çıkarmıştı. Dördü
+birden aynı kod bloğundaydı: plaka **hızı** öne çıkarıyordu (13px, izleyicinin
+hiç sormadığı tek sayı, üstelik listede zaten var), senin dışında **kimsenin adı
+yoktu**, sıra çipi `rank === 1`'de altına dönerek **renk bağını tam takip edilen
+yarışçıda koparıyordu**, ve plakalar oyuncak döngüsünün içinde çizildiği için
+öndeki oyuncak arkadakinin plakasını boyuyordu. Artık: sıra + isim, yarışçının
+kendi renginde, bütün oyuncaklardan sonra ikinci geçişte, kafasına renkli iple
+bağlı ve çakışmadan yukarı itilerek. Botlar `BOT` yazıyor — adları 90 piksel
+tutuyordu ve başlangıç yığılmasında etiketledikleri oyuncakları gömüyorlardı.
+
+**Günlük tavan yarıştan önce görünüyor.** Yarış *sonrası* panel zaten vardı; bir
+yarış geç kalıyordu. Çubuk artık yarışı başlatan butonun yanında. Sayılar
+`backend/src/progression.ts`'e taşındı — bir ekran onları gösterecekse 4.0'ın
+ikinci bir kopyası kaçınılmaz olarak sunucunun uyguladığından ayrışır.
+**Wind-Up kartında iki çubuk da yoktu**; Toybox elden geçirilirken ikisi de
+Showcase kartlarına gitmişti, yani "ne zaman gelişeceğim?" sorusu $3 ödemeyen
+herkes için cevapsız kalmıştı.
+
+**Kurma anahtarı gövdeye oturdu.** Çapa torso genişliğinin 1.18–1.3 katındaydı,
+anahtar sprite'ı 59px; sonuç, her arketipte gövdenin **17–37 piksel dışında**
+boşlukta duran bir anahtar. Anahtar torso'dan *önce* çiziliyor — niyet mili
+gövdeye sokmak — ama o boşlukla mil hiç görünmüyordu. Beş rig'de de
+`key[0] = 1.0`: anahtar hepsinde aynı 59px dosya ve neredeyse aynı ölçek olduğu
+için sayı tekil çıktı. Ölçüldü, üç ölçekte göz kararı doğrulandı.
 
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
 üretildi. Kapanan maddeler oradan düşürüldü; kalanlar aşağıda.
 
-1. **Yarış içi okunabilirlik.** Playtest: *"kimin önde olduğunu viewport'tan
-   değil, alttaki listeden okudum"* ve *"liste şu anda yarışın kendisinden daha
-   iyi iş yapıyor."* Koridor oyuncakları büyüttü, kimliği çözmedi.
-2. **Günlük tavan görünmüyor** — yukarıdaki açık kalem. Oyuncuya "bugün +2.8 /
-   4.0" demek, yarışıp hiçbir şey olmamasını açıklayan tek şey.
-3. **Mint stat tabanı.** Mint stat başına ~10 veriyor, tavanlar 15 (free) ve
+1. **Mint stat tabanı.** Mint stat başına ~10 veriyor, tavanlar 15 (free) ve
    22-35 (rarity). Taze yarışçı bütün sayıların ayarlandığı aralığın altında
    başlıyor; Endurance'ı 53 saniyede koşmasının sebebi bu. Denge kararı.
-4. **Passive'ler** — yukarıdaki açık kalem.
-5. **Kurma anahtarı gövdeden kopuk** — yukarıdaki kutu. Tek sayı, ama göz
-   kararı ve yarış görünümünü de etkiliyor.
-6. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
+2. **Passive'ler** — yukarıdaki açık kalem.
+3. **Item'ler nereden gelecek.** Yarış başına iki tane bedava veriliyor, yani
    sahiplik hissi yok. Gigling'de önceden ediniliyor ve tek seferlik. V1'de para
    olmadığı için kaynak ancak **yarışmak** olabilir. Karar alınmadı.
-7. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
+4. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
    Career'da 0 yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri
    bildirim vermiyor. Playtest raporunda 9, 10, 11 numaralı maddeler.
    *(Profil "Inventory" sekmesi ve Shop bağlantıları kodda kalmamış — 2026-08-08
    sayfa geçişinde arandı, bulunamadı.)*
-8. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
+5. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
    backend süreci bulundu ve 3001'i en eskisi tutuyordu — yani ölçülen kod
    çalışan kod değildi. Bu, o gün alınan her ölçümü şüpheli yapardı.
-9. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
-10. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
-    ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
-    onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
+6. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
+7. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
+   ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
+   onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
 
 ### Sanat hattı — kanıtlanmış ve tekrarlanabilir
 
