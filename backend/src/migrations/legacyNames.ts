@@ -132,6 +132,19 @@ export const RETIRED_MECHANIC_MIGRATIONS: string[] = [
   `DROP TABLE IF EXISTS racer_equipment`,
   `DROP TABLE IF EXISTS user_accessories`,
 
+  // --- the referral system, retired ---
+  // It was unreachable and paid nothing. No screen in the game ever called the
+  // endpoint that generates a code, so no player could obtain one and therefore
+  // nobody could ever be invited; the apply path recorded the referral and
+  // awarded nothing, because the award went out with the currency. Its stats
+  // endpoint still multiplied by 25 — a coin price from a currency that no
+  // longer exists. Rebuilding it for a launch is a design job with a sybil
+  // problem attached (one Wind-Up per wallet is the anti-sybil rule, and paying
+  // for referrals is paying people to make wallets), not a matter of switching
+  // this back on.
+  `DROP TABLE IF EXISTS referrals`,
+  `DROP TABLE IF EXISTS referral_codes`,
+
   // --- the Wind-Up phase, retired ---
   // Replaced by an item loadout chosen before the race and deployed during it.
   // The phase measured how long a button was held; the loadout asks a question

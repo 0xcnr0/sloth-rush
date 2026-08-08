@@ -46,11 +46,23 @@ function getResetDate(period: string): string {
 // promises.
 
 
-// Position-based stat rewards for organic growth
+/**
+ * What each finishing place grows.
+ *
+ * The order is the stats' MEASURED value, best finish first — statLever.check
+ * puts them at SPD +73.4, STA +51.0, ACC +24.6, REF +12.1. It used to read
+ * spd / acc / sta / ref, which meant third place paid a stat worth twice what
+ * second place paid: finishing better made your racer worse off. Nobody could
+ * see it because until AGI, REF and LCK were fixed nobody had measured what a
+ * stat was worth.
+ *
+ * Re-order this if statLever.check ever re-orders the stats. The rule is that
+ * the ladder must not invert — a better finish must never be worth less.
+ */
 const POSITION_STAT: Record<number, string> = {
   1: 'spd',
-  2: 'acc',
-  3: 'sta',
+  2: 'sta',
+  3: 'acc',
   4: 'ref',
 };
 

@@ -57,7 +57,7 @@ interface FinalOrder {
  * moves, move both — a screen that promises SPD for first place while the
  * server awards something else is worse than a screen that promises nothing.
  */
-const POSITION_STAT: Record<number, string> = { 1: 'SPD', 2: 'ACC', 3: 'STA', 4: 'REF' }
+const POSITION_STAT: Record<number, string> = { 1: 'SPD', 2: 'STA', 3: 'ACC', 4: 'REF' }
 const PER_RACE_STAT_GAIN = 0.4
 
 /** The engine ticks ten times a second; speeds are per tick. */

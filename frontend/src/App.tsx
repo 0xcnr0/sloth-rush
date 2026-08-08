@@ -10,7 +10,6 @@ import RaceReplay from './pages/RaceReplay'
 import Profile from './pages/Profile'
 import Guide from './pages/Guide'
 import DevPreview from './pages/DevPreview'
-import Invite from './pages/Invite'
 import NotFound from './pages/NotFound'
 import { FEATURES } from './config/features'
 
@@ -31,7 +30,6 @@ export default function App() {
         <Route path="/guide" element={<Guide />} />
         {/* Component gallery, dev builds only — see pages/DevPreview.tsx. */}
         {import.meta.env.DEV && <Route path="/dev" element={<DevPreview />} />}
-        <Route path="/invite/:code" element={<Invite />} />
         {/* Redirects for old routes */}
         <Route path="/stable" element={<Navigate to="/collection" replace />} />
         <Route path="/treehouse" element={<Navigate to="/collection" replace />} />

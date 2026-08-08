@@ -743,10 +743,42 @@ yarışçı için süre 44.8s → ~43.5s, yani lobideki "about 45 seconds" hâl�
 > yarışı üretir" iddiası bir motor sürümü içinde geçerlidir. Doğrulayıcı kopyası
 > senkron (`npm run check:verifier`).
 
+### Kalıntı temizliği ve ters duran ödül merdiveni — 2026-08-08
+
+**Sıra ödülleri ters duruyordu.** `POSITION_STAT` 1.→SPD, 2.→ACC, 3.→STA
+diyordu; ama ölçülmüş değerler SPD +73.4, STA +51.0, ACC +24.6, yani **üçüncü
+olmak ikinci olmaktan daha değerli bir stat kazandırıyordu.** İyi bitirmek
+yarışçını daha kötü durumda bırakıyordu. Kimse görememişti çünkü AGI/REF/LCK
+düzeltilene kadar bir statın ne ettiği hiç ölçülmemişti. Sıra artık ölçülen
+değere göre: SPD → STA → ACC → REF.
+
+**Referans sistemi kaldırıldı.** Ulaşılamaz ve ödülsüzdü: oyunda kod üreten ucu
+çağıran **hiçbir ekran yoktu**, yani hiçbir oyuncu kod alamıyor, dolayısıyla
+kimse davet edilemiyordu. Uygulama yolu referansı kaydedip hiçbir şey vermiyor
+(ödül para birimiyle birlikte gitmişti), istatistik ucu ise hâlâ 25 ile
+çarpıyordu — artık var olmayan bir paranın fiyatıyla. Sayfası da ilk temanın
+marka adını taşıyordu ("Racer Rush"), tıpkı Landing'de bulunan sızıntı gibi —
+`lint:vocab` yakalayamaz, çünkü `racer` izinli işlevsel kelime. Sayfa, rota,
+API sarmalayıcıları, dört uç ve iki tablo gitti. Lansman için geri istenirse bu
+bir tasarım işi ve **sybil problemi var**: cüzdan başına bir Wind-Up kuralı
+anti-sybil önlemi, referansa ödeme yapmak ise insanlara cüzdan açtırmak demek.
+
+**Geliştirme sunucusu koruması gerçekten devreye alındı.** `dev-guard.sh`
+vardı ama yalnızca `predev`'e bağlıydı — yani birleşik script'e. Tek bir
+servisin gerçekte yeniden başlatıldığı yol olan `npm run backend` korumanın
+yanından geçip gidiyordu (bu oturumda ben de tam olarak öyle yaptım). Artık
+`prebackend` ve `prefrontend` de var. Vite tarafı aynı sebepten önemli: 5173
+doluyken reddetmiyor, sessizce 5174'e geçiyor ve "localhost:5173"ün her ekran
+görüntüsü eski build'in oluyor.
+
+**Zaten kapanmış çıkan ikisi:** leaderboard Career sorgusu botları ve 0 yarışlı
+yarışçıları dışlıyor; "Share Result" her dalda toast veriyor (pano izni
+reddedilince bile). Playtest raporundaki 9 ve 11 numaralı maddeler.
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
-üretildi. Kapanan maddeler oradan düşürüldü; kalanlar aşağıda.
+üretildi. Kapanan maddeler düşürüldü; kalanlar aşağıda.
 
 1. **Üç oyuncağı yeniden çiz.** Sahip kararı (2026-08-08 playtest): *"aslında
    hepsi hatalı, asıl ilk yaptığımız robot dışında."* Tinbot doğru görünüyor,
@@ -774,17 +806,25 @@ Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
    `scripts/meshy.ts image --ref` ile üç sayfayı o şablona yeniden ürettir.
    Hattın kendisi kanıtlı (aşağıdaki "Sanat hattı"), eksik olan şablon.
 
-2. **Passive'ler** — yukarıdaki açık kalem.
-4. **Ölü ekranlar ve kalıntılar.** Referans sistemi ödülsüz ayakta, leaderboard
-   Career'da 0 yarışlı botlar listeyi dolduruyor, "Share Result" hiçbir geri
-   bildirim vermiyor. Playtest raporunda 9, 10, 11 numaralı maddeler.
-   *(Profil "Inventory" sekmesi ve Shop bağlantıları kodda kalmamış — 2026-08-08
-   sayfa geçişinde arandı, bulunamadı.)*
-5. **Geliştirme sunucusu tekilleştirilmeli.** Ölçüm sırasında makinede beş
-   backend süreci bulundu ve 3001'i en eskisi tutuyordu — yani ölçülen kod
-   çalışan kod değildi. Bu, o gün alınan her ölçümü şüpheli yapardı.
-6. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı.
-7. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
+2. **AGI ve LCK'nin büyüme yolu yok.** Dört bitiriş sırası var, altı stat.
+   `POSITION_STAT` 1.→SPD, 2.→STA, 3.→ACC, 4.→REF veriyor; AGI ve LCK hiçbir
+   sıradan gelmiyor, yarışmak da tek kaynak. Yani ikisi mint değerinde donuk
+   kalıyor. Bu önceden önemsizdi çünkü ikisi de ölçülebilir hiçbir şey
+   yapmıyordu; **artık yapıyorlar** (AGI +12.4, LCK +8.5), dolayısıyla açık bir
+   boşluk. Seçenekler: 4. sıra yarışçının en düşük ikincil statını beslesin
+   (deterministik, "zayıfını onar" okuması var), ya da yarış öncesi oyuncu
+   seçsin, ya da sıra→stat eşleşmesi seed'e göre dönsün. **Karar alınmadı.**
+
+3. **Passive'ler.** Motorda altı passive dalı var ve hiçbir şey passive
+   atamıyor — atayan tek yer kaldırılan manuel evrim ucuydu. Dallar zararsız ve
+   bir passive atanırsa doğru çalışırlar. Nereden gelecekleri (mint? rarity?
+   upgrade?) karar bekliyor.
+
+4. **Kontrat redeploy'u** — aşağıdaki tetikleyiciye bağlı. Ayrıca
+   `CONTRACTS_DEPLOYED` şu an **kapalı** (yukarıdaki kutu); başvurudan önce
+   açılacak.
+
+5. **Cüzdan bağlı tam oyun denemesi.** `?preview=1` ile her ekran oynanabiliyor,
    ama gerçek cüzdanla hiç denenmedi. **Oyun mekaniği ve ekonomisi
    onaylanmadan WalletConnect'e geçilmeyecek** — bu bir sahip kararı.
 

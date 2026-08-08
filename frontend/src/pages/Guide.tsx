@@ -147,8 +147,9 @@ export default function Guide() {
             label="What a place is worth"
             body={
               <>
-                Where you finish decides <em>which</em> stat grows: 1st feeds SPD, 2nd ACC,
-                3rd STA, 4th REF. So spending a boost to take a place is buying that stat &mdash;
+                Where you finish decides <em>which</em> stat grows: 1st feeds SPD, 2nd STA,
+                3rd ACC, 4th REF &mdash; in that order because that is the order they are
+                worth. So spending a boost to take a place is buying that stat &mdash;
                 the standings show what each place pays while the race is running.
               </>
             }
