@@ -19,7 +19,9 @@
     "lint:vocab": "bash tools/check-vocabulary.sh",
     "typecheck": "bash tools/typecheck.sh",
     "verify": "npm run typecheck && npm run lint:vocab && npm run check:verifier && npm run test:unit",
-    "check:verifier": "bash tools/check-verifier.sh"
+    "check:verifier": "bash tools/check-verifier.sh",
+    "predev": "bash tools/dev-guard.sh 3001",
+    "dev:reset": "lsof -nP -iTCP:3001 -sTCP:LISTEN -t | xargs -r kill -9; lsof -nP -iTCP:5173 -sTCP:LISTEN -t | xargs -r kill -9; echo 'ports cleared'"
   },
   "devDependencies": {
     "@types/pg": "^8.18.0",

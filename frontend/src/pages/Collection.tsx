@@ -376,9 +376,7 @@ export default function Collection() {
                         </span>
                       )}
                     </p>
-                    {racer.passive && (
-                      <p className="text-brand-accent text-[10px] mt-0.5">{racer.passive}</p>
-                    )}
+
                   </div>
                   <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${RARITY_COLORS[racer.rarity] || ''}`}>
                     {rarityLabel(racer.rarity)}

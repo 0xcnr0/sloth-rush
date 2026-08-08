@@ -39,7 +39,6 @@ export interface RacerStats {
   ref: number;
   lck: number;
   gridPosition: number; // 1 = pole, 4 = last
-  passive?: string;
   /**
    * Archetype CODE — speedster / tank / trickster / burst. Never a display
    * name: the label lives in theme.ts (CLAUDE.md §0). The client picks which
@@ -293,7 +292,6 @@ export function simulateRace(
     wallet: p.wallet,
     name: p.name,
     isBot: p.isBot,
-    passive: p.passive || undefined,
     distance: 0,
     speed: 0,
     maxSpeed: (3 + p.spd * 0.15) * weatherMods.speedMul,
@@ -311,7 +309,6 @@ export function simulateRace(
     finishOvershoot: 0,
     slowdown: 0,
     boost: 0,
-    overtakeBoostEnd: 0,
     prevPosition: p.gridPosition,
   }));
 
@@ -358,7 +355,7 @@ export function simulateRace(
             const weights = activeRacers.map((s) => {
               const distBehind = maxDist - s.distance;
               const rubberBand = 1 + distBehind * 0.02; // +2% weight per unit behind
-              const dreamCatcherMul = s.passive === 'luck_magnet' ? 1.20 : 1;
+              const dreamCatcherMul = 1;
               return s.luck * rubberBand * dreamCatcherMul;
             });
             const totalWeight = weights.reduce((a, b) => a + b, 0);
@@ -387,22 +384,6 @@ export function simulateRace(
             }
           }
 
-          // misfortune_flip passive: after a bad event, 30% chance to convert to boost
-          if (affectedIds.length > 0 && (event.type === 'mass_slow' || event.type === 'rain' || event.type === 'collision')) {
-            for (const aid of affectedIds) {
-              const affectedRacer = state.find(s => s.id === aid);
-              if (affectedRacer && affectedRacer.passive === 'misfortune_flip' && rng() < 0.30) {
-                affectedRacer.slowdown = 0;
-                affectedRacer.boost = 15;
-                events.push({
-                  tick,
-                  type: 'misfortune_flip',
-                  description: `${affectedRacer.name} turned misfortune into speed!`,
-                  affectedIds: [aid],
-                });
-              }
-            }
-          }
 
           if (affectedIds.length > 0) {
             events.push({
@@ -439,9 +420,9 @@ export function simulateRace(
           : activeRacers.reduce((a, b) => (a.distance > b.distance ? a : b));
         const shooter = state.find((s) => s.id === action.racerId);
         if (leader && shooter && leader.id !== shooter.id && !leader.finished) {
-          const projectileSlowdown = leader.passive === 'impact_resist' ? 5 : 10;
+          const projectileSlowdown = 10;
           leader.slowdown = projectileSlowdown; // speed drops for ticks (reduced by impact_resist)
-          leader.speed = leader.passive === 'impact_resist' ? leader.speed * 0.5 : 1;
+          leader.speed = 1;
           events.push({
             tick,
             type: "tactic_projectile",
@@ -465,7 +446,7 @@ export function simulateRace(
       // Stamina degradation (after 60% of race) — tripled STA impact, weather affects decay.
       // The Wind-Up multiplier is applied last so overwinding always costs
       // something even for a racer whose decay already floored out.
-      const fatigueMul = s.passive === 'fatigue_resist' ? 0.5 : 1;
+      const fatigueMul = 1;
       const staDecay =
         Math.max(
           FATIGUE.minDecay,
@@ -476,19 +457,6 @@ export function simulateRace(
       const fadeSpans = Math.max(0, s.distance - FATIGUE.freeDistance) / FATIGUE.spanDistance;
       const staminaFactor = Math.max(FATIGUE.minSpeedFactor, 1 - fadeSpans * staDecay);
 
-      // Passive abilities — speed multiplier
-      let passiveSpeedMul = 1;
-
-      // late_surge: last 33% of track +10% speed
-      if (s.passive === 'late_surge' && s.distance > trackLength * 0.67) {
-        passiveSpeedMul *= 1.10;
-      }
-
-      // overtake_boost: after overtaking, 10 tick speed burst
-      if (s.overtakeBoostEnd > tick) {
-        passiveSpeedMul *= 1.15;
-      }
-
       // Acceleration toward max speed. Grid slot adds a short opening burst
       // rather than a distance head start, so the lanes stay visually level.
       const gridAccelBonus =
@@ -498,7 +466,7 @@ export function simulateRace(
       // Items multiply the target speed and draw no numbers from `rng`, so the
       // frames before an item's tick come out bit-identical with or without it.
       const itemMul = items.length ? itemMultiplier(items, s.id, tick) : 1;
-      const targetSpeed = s.maxSpeed * staminaFactor * passiveSpeedMul * itemMul;
+      const targetSpeed = s.maxSpeed * staminaFactor * itemMul;
       if (s.speed < targetSpeed) {
         s.speed = Math.min(targetSpeed, s.speed + (s.acceleration + gridAccelBonus) * 0.1);
       } else {
@@ -535,20 +503,6 @@ export function simulateRace(
         // who travelled further past the line crossed it earlier within the tick.
         s.finishOvershoot = s.distance - trackLength;
         s.distance = trackLength;
-      }
-    }
-
-    // Detect overtakes for overtake_boost passive
-    const positionsAfterTick = state
-      .filter(s => !s.finished)
-      .sort((a, b) => b.distance - a.distance)
-      .map(s => s.id);
-    for (const s of state) {
-      if (s.finished || s.passive !== 'overtake_boost') continue;
-      const prevRank = positionsBeforeTick.indexOf(s.id);
-      const newRank = positionsAfterTick.indexOf(s.id);
-      if (prevRank >= 0 && newRank >= 0 && newRank < prevRank) {
-        s.overtakeBoostEnd = tick + 10;
       }
     }
 

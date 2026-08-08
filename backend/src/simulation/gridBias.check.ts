@@ -5,7 +5,7 @@ import { simulateRace } from './engine';
 const mk = (id: number) => ({
   id, wallet: `0x${id}`, name: `P${id}`, isBot: false,
   spd: 50, acc: 50, sta: 50, agi: 50, ref: 50, lck: 50,
-  archetype: 'tank', passive: null, gridPosition: 1,   // hepsi aynı → tasarlanmış pole bonusu nötr
+  archetype: 'tank', gridPosition: 1,   // hepsi aynı → tasarlanmış pole bonusu nötr
   staminaDrainMultiplier: 1,
 } as any);
 

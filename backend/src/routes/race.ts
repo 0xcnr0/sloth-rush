@@ -565,7 +565,7 @@ router.post("/simulate", async (req: Request, res: Response) => {
     // Grid order was written from the seed when the race started; read it back
     // rather than re-deriving it here.
     const participants = await getAll(
-      `SELECT rp.*, s.name, s.race, s.rarity, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.passive, s.tier
+      `SELECT rp.*, s.name, s.race, s.rarity, s.spd, s.acc, s.sta, s.agi, s.ref, s.lck, s.tier
        FROM race_participants rp
        JOIN racers s ON rp.racer_id = s.id
        WHERE rp.race_id = $1
@@ -602,7 +602,6 @@ router.post("/simulate", async (req: Request, res: Response) => {
         ref: p.ref + (bonus.ref || 0),
         lck: p.lck + (bonus.lck || 0),
         gridPosition: p.grid_position ?? index + 1,
-        passive: p.passive || undefined,
       };
     });
 

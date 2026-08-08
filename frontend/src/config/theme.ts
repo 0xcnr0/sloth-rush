@@ -97,15 +97,6 @@ export const THEME = {
     },
   } as Record<string, { label: string; statBonus: string; description: string }>,
 
-  /** Passive abilities. Code names say what the passive does. */
-  passives: {
-    late_surge: { label: 'Late Surge', description: 'Last third of the track, +10% speed.' },
-    overtake_boost: { label: 'Second Wind', description: 'After an overtake, a short speed burst.' },
-    fatigue_resist: { label: 'Slow Spring', description: 'Fatigue builds 50% slower.' },
-    impact_resist: { label: 'Tin Plating', description: 'Projectile hits slow you far less.' },
-    luck_magnet: { label: 'Lucky Marble', description: 'Attracts Luck Orbs 20% more often.' },
-    misfortune_flip: { label: 'Rewind', description: 'A bad event sometimes flips into a speed boost.' },
-  } as Record<string, { label: string; description: string }>,
 
   /** Random race events. */
   events: {
@@ -121,8 +112,8 @@ export const THEME = {
    * player choosing between them is really choosing which racer they own.
    */
   raceFormats: {
-    sprint: { name: 'Sprint', blurb: 'Short track. Top speed wins.' },
-    endurance: { name: 'Endurance', blurb: 'Long track. The spring has to last.' },
+    sprint: { name: 'Sprint', blurb: '800m, about 20 seconds. Top speed wins.' },
+    endurance: { name: 'Endurance', blurb: '1400m, about 45 seconds. The spring has to last.' },
   } as Record<string, { name: string; blurb: string }>,
 
   /**
@@ -352,10 +343,6 @@ export function formatLabel(format: string | undefined | null): string {
   return retired[format] || ''
 }
 
-/** Display label for a passive code. */
-export function passiveLabel(passive: string | undefined | null): string {
-  return (passive && THEME.passives[passive]?.label) || ''
-}
 
 /** Display label for an evolution path code. */
 export function pathLabel(path: string | undefined | null): string {

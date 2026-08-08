@@ -51,9 +51,20 @@ interface FinalOrder {
  * drawn in the Jetster's red. Colour is how a player finds their toy
  * (ART_DIRECTION §10); it has to follow the archetype.
  */
+/** The engine ticks ten times a second; speeds are per tick. */
+const TICKS_PER_SECOND = 10
+/** Ticks between pressing an item and it taking effect (backend ITEM_TUNING). */
+const ITEM_DELAY_TICKS = 50
+
 const RACER_COLORS = ['#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D', '#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D']
 
+/** Bare tin. A racer with no archetype yet gets its own colour rather than
+ *  borrowing one of the four accents — it collided with the Jetster's red and
+ *  put two identical colours in the standings. */
+const WINDUP_COLOR = '#9AA6B2'
+
 function colorFor(archetype: string | undefined, fallbackIndex: number): string {
+  if (!archetype) return WINDUP_COLOR
   return archetypeAccent(archetype) ?? RACER_COLORS[fallbackIndex % RACER_COLORS.length]
 }
 
@@ -650,7 +661,7 @@ export default function RaceBroadcast() {
         // used to live here belonged to four private lanes; in a shared field
         // they cover the race. Names are in the standings, where they can be
         // read without anything moving underneath them.
-        const speedText = pos.speed.toFixed(1)
+        const speedText = String(Math.round(pos.speed * TICKS_PER_SECOND))
         ctx.font = 'bold 13px ui-monospace, monospace'
         const sw = ctx.measureText(speedText).width + 34
         const sh = 21
@@ -1045,8 +1056,10 @@ export default function RaceBroadcast() {
             {soundMuted ? '\u{1F507}' : '\u{1F50A}'}
           </button>
           <div className="toy-chip px-3 py-1.5">
-            <span className="text-brand-dust text-[10px] tracking-widest">TICK</span>
-            <p className="text-brand-ink font-mono font-bold leading-none tabular-nums">{currentTick}</p>
+            <span className="text-brand-dust text-[10px] tracking-widest">TIME</span>
+            <p className="text-brand-ink font-mono font-bold leading-none tabular-nums">
+              {(currentTick / 10).toFixed(1)}s
+            </p>
           </div>
         </div>
       </div>
@@ -1371,6 +1384,11 @@ export default function RaceBroadcast() {
                   >
                     {arming ? 'Pick a target' : THEME.items[code].name}
                     {count > 1 && <span className="ml-2 text-sm">{'\u00D7'}{count}</span>}
+                    {!arming && canDeploy && (
+                      <span className="block text-[10px] font-normal opacity-70">
+                        lands ~{(ITEM_DELAY_TICKS / TICKS_PER_SECOND).toFixed(0)}s later
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -1453,7 +1471,7 @@ export default function RaceBroadcast() {
               </p>
             </div>
             <span className="text-brand-dust text-xs tabular-nums shrink-0">
-              {pos.speed.toFixed(1)}
+              {Math.round(pos.speed * TICKS_PER_SECOND)} m/s
             </span>
           </motion.div>
         ))}
@@ -1569,7 +1587,7 @@ export default function RaceBroadcast() {
             mvpAwards.push({ emoji: '\u{1F3CE}\uFE0F', title: 'Best Overtake', name: bestClimber.name, detail: `Climbed ${bestClimber.gain} positions!` })
           }
           if (speedDemon.speed > 0) {
-            mvpAwards.push({ emoji: '\u{26A1}', title: 'Speed Demon', name: speedDemon.name, detail: `Max ${speedDemon.speed.toFixed(1)} u/t` })
+            mvpAwards.push({ emoji: '\u{26A1}', title: 'Speed Demon', name: speedDemon.name, detail: `Max ${Math.round(speedDemon.speed * TICKS_PER_SECOND)} m/s` })
           }
           if (comebackKing) {
             mvpAwards.push({ emoji: '\u{1F451}', title: 'Comeback King', name: comebackKing.name, detail: `From P${comebackKing.worstPos} to top 2!` })
@@ -1627,7 +1645,7 @@ export default function RaceBroadcast() {
                                   {racerDisplayName(fo.name, (fo as any).race ?? archetypeRef.current[fo.id])}
                                 </p>
                                 <p className="text-brand-dust text-xs">
-                                  {fo.isBot ? 'BOT' : 'Player'} · top {(maxSpeeds[fo.id] || 0).toFixed(1)}
+                                  {fo.isBot ? 'BOT' : 'Player'} · top {Math.round((maxSpeeds[fo.id] || 0) * TICKS_PER_SECOND)} m/s
                                 </p>
                               </div>
                               <span className={`shrink-0 tabular-nums font-bold ${i === 0 ? 'text-brand-gold text-xl' : 'text-brand-dust'}`}>
