@@ -53,10 +53,16 @@ export default function Layout() {
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {address && xp > 0 && (
-              <div className="flex shrink-0 items-center gap-1 bg-brand-accent/10 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg whitespace-nowrap">
+              // The XP chip is the way to the profile now. Removing the footer
+              // took the only link to it with it, and a page nothing points at
+              // is a page nobody will find.
+              <Link
+                to="/profile"
+                className="flex shrink-0 items-center gap-1 bg-brand-accent/10 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg whitespace-nowrap hover:bg-brand-accent/20 transition-colors"
+              >
                 <span className="text-brand-accent font-bold text-[11px] sm:text-sm">{xp}</span>
                 <span className="text-brand-accent/70 text-[9px] sm:text-xs">XP</span>
-              </div>
+              </Link>
             )}
             <WalletConnect
               showBalance={false}
