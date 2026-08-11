@@ -870,6 +870,16 @@ router.post("/simulate", async (req: Request, res: Response) => {
     const statAwards: {
       racerId: number; stat: string; gain: number; dayTotal: number; dayCap: number;
       itemsEarned?: number; itemStock?: number;
+      /**
+       * The form change, if this race caused one.
+       *
+       * The biggest thing that happens in this game — a plain tin toy becoming
+       * a Jetster — was computed here, written to the database, and never
+       * mentioned to the client. The player found out later by opening the
+       * Toybox and noticing a different picture. A payoff nobody is told about
+       * is not a payoff.
+       */
+      formChange?: { from: number; to: number; archetype: string | null };
     }[] = [];
     for (let i = 0; justSettled && i < result.finalOrder.length; i++) {
       const entry = result.finalOrder[i];
@@ -960,7 +970,9 @@ router.post("/simulate", async (req: Request, res: Response) => {
       );
       if (grown) {
         const earned = tierForStats(totalStats(grown));
-        if (earned !== (grown.tier ?? 0)) {
+        const wasTier = grown.tier ?? 0;
+        let becameArchetype: string | null = null;
+        if (earned !== wasTier) {
           await query("UPDATE racers SET tier = $1 WHERE id = $2", [earned, entry.id]);
           /**
            * The one provenance moment that cannot be reconstructed later.
@@ -984,6 +996,11 @@ router.post("/simulate", async (req: Request, res: Response) => {
         if (earned >= 1 && !racerRow?.race) {
           const shape = archetypeForStats(grown);
           await query("UPDATE racers SET race = $1 WHERE id = $2 AND race IS NULL", [shape, entry.id]);
+          becameArchetype = shape;
+        }
+        if (earned !== wasTier) {
+          const award = statAwards.find((a) => a.racerId === entry.id);
+          if (award) award.formChange = { from: wasTier, to: earned, archetype: becameArchetype };
         }
       }
     }

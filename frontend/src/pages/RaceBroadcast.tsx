@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import { rigFor, drawRacer, cadence } from '../lib/racerRig'
-import { THEME, racerDisplayName, archetypeAccent } from '../config/theme'
+import { THEME, racerDisplayName, archetypeAccent, archetypeLabel } from '../config/theme'
 import RacerPortrait from '../components/RacerPortrait'
 import { getCommentary } from '../data/commentary'
 import { getDialogue, getEmote, type DialogueMoment, type EmoteMoment } from '../data/dialogues'
@@ -173,7 +173,10 @@ export default function RaceBroadcast() {
   // explanation anywhere on screen. A playtest with database access read that
   // silence as a dead feature; a player would read it the same way.
   const [statAward, setStatAward] = useState<
-    { stat: string; gain: number; dayTotal: number; dayCap: number } | null
+    {
+      stat: string; gain: number; dayTotal: number; dayCap: number
+      formChange?: { from: number; to: number; archetype: string | null }
+    } | null
   >(null)
 
   const isDemo = location.state?.demo === true
@@ -1736,6 +1739,20 @@ export default function RaceBroadcast() {
                     daily budget looked identical to one the game had forgotten
                     about. The cap is a rule; a rule the player cannot see is
                     indistinguishable from a bug. */}
+                {/* The form change, and it goes ABOVE the stat panel because
+                    it is the bigger event by a distance.
+
+                    This is what the whole progression system is for: a plain
+                    tin toy stops being plain and becomes a Jetster, chosen by
+                    the stat the player pushed hardest. The server has always
+                    computed it, written it to the database, and said nothing —
+                    the player found out later by opening the Toybox and
+                    noticing a different picture. A payoff nobody is told about
+                    is not a payoff. */}
+                {statAward?.formChange && (
+                  <FormChange change={statAward.formChange} rarity={raceData?.gridPositions?.find((g: any) => g.id === playerRacerId)?.rarity} />
+                )}
+
                 {statAward && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -1862,5 +1879,89 @@ export default function RaceBroadcast() {
         })()}
       </AnimatePresence>
     </div>
+  )
+}
+
+/**
+ * The moment a toy changes shape.
+ *
+ * Two portraits and a beat between them: what it was, then what it became. The
+ * first tier is the loud one because that is where a bare Wind-Up is given an
+ * archetype at all — before it, every racer is the same unpainted tin.
+ */
+function FormChange({
+  change,
+  rarity,
+}: {
+  change: { from: number; to: number; archetype: string | null }
+  rarity?: string
+}) {
+  const [revealed, setRevealed] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setRevealed(true), 900)
+    return () => clearTimeout(t)
+  }, [])
+
+  const became = archetypeLabel(change.archetype)
+  const form = THEME.evolutionTiers[change.to] ?? String(change.to)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 200, damping: 16 }}
+      className="toy-panel px-4 pt-4 pb-4 mb-4 text-center"
+    >
+      <span className="toy-chip inline-block px-3 py-1 text-[11px] font-bold uppercase tracking-wide bg-brand-gold text-brand-ink mb-3">
+        It changed shape
+      </span>
+
+      <div className="flex items-end justify-center gap-2">
+        {/* What it was. Dimmed once the new one lands, so the eye moves. */}
+        <motion.div
+          animate={{ opacity: revealed ? 0.35 : 1, scale: revealed ? 0.85 : 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-1/3 max-w-[110px]"
+        >
+          <RacerPortrait
+            archetype={change.from === 0 ? undefined : change.archetype ?? undefined}
+            height={96}
+            still
+          />
+        </motion.div>
+
+        <motion.span
+          animate={{ opacity: revealed ? 0.4 : 1 }}
+          className="text-brand-ink text-2xl font-black pb-8"
+          aria-hidden
+        >
+          &rarr;
+        </motion.span>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={revealed ? { opacity: 1, scale: [0.6, 1.12, 1] } : { opacity: 0, scale: 0.6 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="w-1/2 max-w-[150px]"
+        >
+          <RacerPortrait archetype={change.archetype ?? undefined} rarity={rarity} height={130} />
+        </motion.div>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={revealed ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ delay: 0.35 }}
+      >
+        <p className="text-brand-ink font-black text-xl leading-tight">
+          {became ? became.toUpperCase() : form.toUpperCase()}
+        </p>
+        <p className="text-brand-dust text-xs mt-0.5">
+          {change.from === 0 && became
+            ? `Your ${THEME.tiers.free} took its form from the stat you grew hardest.`
+            : `Now ${form}.`}
+        </p>
+      </motion.div>
+    </motion.div>
   )
 }
