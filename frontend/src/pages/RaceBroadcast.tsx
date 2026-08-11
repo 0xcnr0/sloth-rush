@@ -192,6 +192,17 @@ export default function RaceBroadcast() {
   const prevRankRef = useRef<Record<number, number>>({})
   const [activeEvent, setActiveEvent] = useState<RaceEvent | null>(null)
   const [raceFinished, setRaceFinished] = useState(false)
+  /**
+   * The three seconds the race never had.
+   *
+   * Playback used to begin the instant the screen mounted, so pressing Race in
+   * the lobby dropped the player into a race that was already running. There
+   * was no start — no grid, no count, nothing to brace against — and the grid
+   * data was being fetched from the server the whole time and used only to look
+   * up which archetype to draw. The toys stand on the line while this counts.
+   */
+  const [countdown, setCountdown] = useState(3)
+  const started = countdown <= 0
   const [loading, setLoading] = useState(!raceData)
 
   // Tactic mode state
@@ -1057,12 +1068,46 @@ export default function RaceBroadcast() {
       animFrameRef.current = requestAnimationFrame(animate)
     }
 
+    // Hold on the starting grid until the count reaches GO — the whole point is
+    // that you see who you are up against standing on the line before anything
+    // moves.
+    //
+    // It has to keep drawing rather than draw once. `drawRacer` returns early
+    // until every part PNG has loaded, and on a cold load that is still
+    // happening while the count runs — a single frame there produced a grid of
+    // name plates and contact shadows with no toys under them.
+    if (!started) {
+      const hold = () => {
+        renderFrame(frameAt(0))
+        animFrameRef.current = requestAnimationFrame(hold)
+      }
+      animFrameRef.current = requestAnimationFrame(hold)
+      return () => {
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+      }
+    }
+
     animFrameRef.current = requestAnimationFrame(animate)
 
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
     }
-  }, [raceData, racePhase])
+  }, [raceData, racePhase, started])
+
+  useEffect(() => {
+    if (!raceData) return
+    // A finished race being replayed, and the demo race, both skip it: there is
+    // nothing to brace for when the result is already known or the whole point
+    // is speed.
+    if (isDemo || raceFinished) { setCountdown(0); return }
+    setCountdown(3)
+    const timers = [
+      setTimeout(() => setCountdown(2), 850),
+      setTimeout(() => setCountdown(1), 1700),
+      setTimeout(() => setCountdown(0), 2550),
+    ]
+    return () => timers.forEach(clearTimeout)
+  }, [raceData?.raceId, isDemo])
 
   // Load the player's remaining items once the race is running.
   useEffect(() => {
@@ -1207,6 +1252,37 @@ export default function RaceBroadcast() {
         // colour for the sliver of canvas outside the track box.
         style={{ background: PALETTE.wall }}
       >
+        {/* The start. Over the corridor rather than instead of it, so the toys
+            are visibly standing on the line while the number counts down. */}
+        <AnimatePresence>
+          {!started && !raceFinished && (
+            <motion.div
+              key="countdown"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
+              style={{ background: 'rgba(36, 26, 56, 0.28)' }}
+            >
+              <motion.span
+                key={countdown}
+                initial={{ scale: 1.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.7, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 18 }}
+                className="text-brand-surface font-black tabular-nums"
+                style={{
+                  fontSize: countdown > 0 ? '5rem' : '3.4rem',
+                  WebkitTextStroke: `4px ${PALETTE.ink}`,
+                  paintOrder: 'stroke fill',
+                }}
+              >
+                {countdown > 0 ? countdown : 'GO!'}
+              </motion.span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <canvas
           ref={canvasRef}
           className="w-full"

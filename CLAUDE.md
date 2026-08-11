@@ -836,6 +836,31 @@ yazılmamıştı. `racer_milestones` sadece onun için var.
 ediyordu — ikisi de V1'den çıkarılmıştı, yani yeni oyuncunun okuduğu ilk şey
 olmayan bir oyunu anlatıyordu. Artık formun statlardan geldiğini anlatıyor.
 
+### Görünmeyen mekanikler — 2026-08-09
+
+Sahip gözlemi: *"mekanik biraz eksik hissettiriyor, sinematik geçişler eksik."*
+İncelendi ve büyük kısmı eksik mekanik değil, **anı olmayan mekanik** çıktı.
+
+**Form değişimi istemciye hiç söylenmiyordu.** Oyunun en büyük anı — boyasız
+tenekenin en çok büyütülen stata göre Jetster olması — sunucuda hesaplanıp
+veritabanına yazılıyor ve `/simulate` yanıtında **hiç yer almıyordu.** Oyuncu
+sonradan Toybox'a bakıp resmin değiştiğini fark ederek öğreniyordu. Artık sonuç
+ekranında, stat panelinin üstünde: eski hâli soluklaşıyor, ok, yeni oyuncak
+yayla iniyor, adı basılıyor.
+
+**Yarışın başlangıcı yoktu.** Lobide butona basınca oynatma anında başlıyordu,
+yani oyuncu kendini zaten koşan bir yarışın içinde buluyordu. `gridPositions`
+sunucudan geliyor ve sadece arketip eşlemek için kullanılıyordu. Artık üç
+saniyelik geri sayım var ve oyuncaklar sayarken başlangıç çizgisinde duruyor.
+Tutma karesi tek seferlik değil, döngü: `drawRacer` bütün parça PNG'leri
+yüklenene kadar hiçbir şey çizmiyor, ve soğuk açılışta bu geri sayım sürerken
+oluyordu — tek kare, altında oyuncak olmayan bir plaka ve gölge ızgarası
+üretiyordu.
+
+**Hâlâ eksik olan sinematik anlar:** bitiş çizgisini geçme anı, sayfalar arası
+geçiş (React Router anında takas ediyor), ve item'e basmakla 5 saniye sonra
+pistte olan şey arasındaki görsel bağ.
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile
