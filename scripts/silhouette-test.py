@@ -27,11 +27,17 @@ SIZE = 48
 
 # Her arketip icin govde ve kafa: siluetin buyuk kismini bu ikisi tasiyor.
 # Uzuvlar ayni sema uzerinde durdugu icin ayirt ediciligi onlar saglamiyor.
+#
+# Klasorler oyunda GERCEKTEN gorunen sayfalari gostermek zorunda. Uc arketip
+# docs/PART_TEMPLATE.md'ye gore yeniden cizildi; harita eski sayfalarda kalinca
+# script calismaya ve bir sayi basmaya devam etti — ama o sayi artik kimsenin
+# gormedigi bir sanata aitti. Gecmeyen bir kapi degil, yanlis kapiyi olcen bir
+# kapi daha kotudur. Dordunde de govde part-04, kafa part-01.
 ARCHETYPES = {
-    "Jetster": ("jetster", "part-05.png", "part-01.png"),
+    "Jetster": ("jetster-v5", "part-04.png", "part-01.png"),
     "Tinbot": ("tinbot-3q", "part-04.png", "part-01.png"),
-    "Waddler": ("waddler", "part-04.png", "part-01.png"),
-    "Chomper": ("chomper", "part-04.png", "part-01.png"),
+    "Waddler": ("waddler-v3", "part-04.png", "part-01.png"),
+    "Chomper": ("chomper-v3", "part-04.png", "part-01.png"),
 }
 
 

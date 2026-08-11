@@ -861,6 +861,49 @@ oluyordu — tek kare, altında oyuncak olmayan bir plaka ve gölge ızgarası
 geçiş (React Router anında takas ediyor), ve item'e basmakla 5 saniye sonra
 pistte olan şey arasındaki görsel bağ.
 
+### Sinematik anlar ve rig'in oranlara taşınması — 2026-08-12
+
+Ajan takımıyla yapıldı, sonra düşmanca incelemeden geçirildi. İnceleme üç
+gerçek kusur yakaladı ve üçü de düzeltildi ya da kayda geçti.
+
+**Sinematik:** bitiş çizgisini geçme anı (son 26 birimde yavaşlama, sonra lider
+bandı geçtiği karede 620ms donma), item'e basmakla etkisi arasındaki bağ (pist
+altında ne uçtuğunu söyleyen şerit + hedef oyuncakta tick'ine doğru dolan,
+varışta patlayan halka), ve sayfa geçişleri (90ms çıkış / 130ms giriş).
+
+`<Outlet />` yerine `useOutlet()` kullanılmak zorunda kaldı: `<Outlet />`
+elemanı yeniden render edildiğinde güncel rotaya göre yeniden çözülüyor, yani
+"çıkan" sayfa zaten yeni gelen sayfa oluyor ve geçiş yeni sayfayı soldurup geri
+getiriyordu.
+
+**Ve buton yalan söylüyormuş:** "lands ~5s later" yazıyordu, gerçek bekleme ~10
+saniye. Beş saniye kuralı **sunucunun** saatinden ölçülüyor; oynatma bir sayfa
+yüklemesi ve bir geri sayım geriden başlıyor ve asla yetişmiyor (10.7 tick/s'e
+karşı 10). Artık ekrandaki kareye göre ölçülüyor.
+
+**Rig artık oranlarla çalışıyor.** Arketip başına 11 sabit × 5 arketip = 55
+elle seçilmiş sayı gitti; yerine tek bir ortak oran seti ve PNG'lerden ölçen bir
+`measure()`. Bu, `PART_TEMPLATE.md`'nin var oluş sebebiydi. Yan ürün olarak
+gerçek bir hata çıktı: `height` sabitleri %6 kısa ile %13 uzun arasında
+geziniyordu, yani **Tinbot aynı boyda istendiğinde Waddler'dan beşte bir uzun
+çiziliyordu** — pistte, yan yana.
+
+> **⚠ Jetster ve Chomper'ın sayfaları şablonu geçmedi ve bu ekranda görünüyor.**
+> Ölçüm: Jetster kol yüksekliği −44%, Chomper −55.4%. Model, şablonun istediği
+> uzuvları değil **karakterin istediği** uzuvları çizdi — roketin kanatçıkları
+> ve dinozorun kolları güdük çıktı. Jetster'ın kol sprite'ı ölçeklenince 25px,
+> 111px'lik gövdede kanatçık okumuyor. **Rig'de yamalanmadı ve yamalanmamalı**;
+> ikisi de bir tur daha istiyor ve prompt'ta uzuv uzunluğu açıkça istenmeli.
+>
+> İnceleme ayrıca iki kusur buldu ve ikisi düzeltildi: Chomper'ın bütün
+> parçaları eski sayfanın tersine aynalanmış çizilmişti — `COUNTER_FLIP` kafayı
+> bilinçli olarak aynalamadığı için **dinozor pisti arkasına bakarak
+> koşuyordu**; ve türetilmiş `armSpread` kolun dış kenarını gövdeninkiyle *tam*
+> hizalıyordu (Jetster'da taşma ölçülen +0.0px), yani duruş pozunda çizen her
+> ekranda kanatçık gövdeye boyanmış bir şeritti.
+>
+> Silüet testi bunların hiçbirini yakalayamaz — düz siyah dolgunun yönü yoktur.
+
 ### Sıradaki iş kalemleri
 
 Kaynak: 2026-08-08 playtest raporu, `docs/PLAYTEST_AGENT_PROMPT.md` ile

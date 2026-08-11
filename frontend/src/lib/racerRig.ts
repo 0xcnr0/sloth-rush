@@ -7,9 +7,10 @@
  * against plain canvas, and for eight rigid parts turning on their pivots there
  * is nothing for a skeletal animation system to do.
  *
- * Every constant here was chosen by eye on live sliders and then written down,
- * not guessed. The mirror of this file is scripts/rig-preview.py, which renders
- * the same numbers to a strip so pivots can be checked without a browser.
+ * The proportions were chosen by eye on live sliders and then written down, not
+ * guessed. Everything that varies between archetypes is measured off the part
+ * PNGs instead — see `measure` — because the per-archetype table that used to
+ * live here is the thing docs/PART_TEMPLATE.md was written to end.
  */
 
 import { THEME } from '../config/theme'
@@ -18,103 +19,108 @@ const PART_NAMES = ['torso', 'head', 'arm', 'leg', 'key'] as const
 type PartName = (typeof PART_NAMES)[number]
 
 /**
- * Geometry is in the ORIGINAL part-sprite pixel space; the shipped PNGs are at
- * 50%, hence the ×2 when drawing. Keeping the numbers in source space means the
- * art can be re-exported at another resolution without touching the rig.
+ * Proportions shared by every archetype — ART_DIRECTION §12's one rig, four
+ * skins, finally spelled as one set of numbers.
+ *
+ * There used to be a table here instead: eleven constants per archetype, five
+ * archetypes, every one of them picked by eye. docs/PART_TEMPLATE.md exists
+ * because that table was the symptom. The four sheets had been drawn to four
+ * different part architectures — the leg-to-torso ratio ranged from 0.56 to
+ * 1.46 across toys meant to share a skeleton — so the rig was patching over the
+ * art, and each new sheet earned itself a new column. Three sheets have now
+ * been redrawn to the template, so the rig can carry ratios and read the rest
+ * off the files.
+ *
+ * The numbers are Tinbot's, because Tinbot is the sheet the rig was built from
+ * and the one the owner says looks right.
  */
+const SCALE: Record<Exclude<PartName, 'torso'>, number> = {
+  head: 0.95,
+  arm: 0.42,
+  leg: 0.46,
+  key: 0.75,
+}
+/** Neck attachment as a fraction of torso width/height. */
+const NECK: [number, number] = [0.46, 0.0]
+/** Shoulder and hip height as a fraction of torso height. */
+const SHOULDER_Y = 0.2
+const HIP_Y = 0.95
 /**
- * Rig geometry, per archetype.
+ * Winding key attachment, as a fraction of torso width/height.
  *
- * The first version hardcoded Tinbot's numbers and every archetype drew with
- * them, which left Jetster's cone head floating over a torso twice as tall as
- * the anchors expected. ART_DIRECTION §12 wants one rig and four skins, but that
- * only holds if the art is drawn to a shared part architecture — these sheets
- * are not, so the geometry is derived from each sheet's own part sizes instead.
- *
- * Sizes are in SHIPPED pixels (the PNGs are exported at 50% of the source
- * sheet), so everything below is measured from the files rather than guessed.
+ * The x fraction is 1.0, and that is not laziness — the key is literally the
+ * same 59px sprite in all five folders at nearly the same scale, so "tuck the
+ * shaft into the side of the body" resolves to the same number every time. It
+ * was 1.18-1.3, which put the key's left edge 17 to 37 pixels PAST the torso's
+ * right edge: the key hung in mid-air beside every toy, on every screen, and
+ * the shaft it is drawn before the torso to hide never touched anything. At
+ * race scale it read as a speck; at the 128-220px the landing and mint pages
+ * now draw, it read as broken. 1.0 sinks the left ~11px of the key behind the
+ * body, which is the join the art was drawn for.
+ */
+const KEY: [number, number] = [1.0, 0.35]
+
+/**
+ * The part of the geometry that is measured rather than chosen, taken off the
+ * shipped PNGs once the images land.
  */
 interface Geometry {
   /** Torso size, which everything else is positioned against. */
   torso: [number, number]
-  /** Per-part scale, to keep limbs in proportion to the torso. */
-  scale: Record<Exclude<PartName, 'torso'>, number>
-  /** Neck attachment as a fraction of torso width/height. */
-  neck: [number, number]
-  /** Shoulder and hip height as a fraction of torso height. */
-  shoulderY: number
-  hipY: number
   /** How far shoulders and hips sit from the torso centre, as a fraction of width. */
   armSpread: number
   legSpread: number
-  /**
-   * Winding key attachment, as a fraction of torso width/height.
-   *
-   * The x fraction is 1.0 in every rig, and that is not laziness — the key is
-   * literally the same 59px sprite in all five folders at nearly the same
-   * scale, so "tuck the shaft into the side of the body" resolves to the same
-   * number every time. It was 1.18-1.3, which put the key's left edge 17 to 37
-   * pixels PAST the torso's right edge: the key hung in mid-air beside every
-   * toy, on every screen, and the shaft it is drawn before the torso to hide
-   * never touched anything. At race scale it read as a speck; at the 128-220px
-   * the landing and mint pages now draw, it read as broken. 1.0 sinks the left
-   * ~11px of the key behind the body, which is the join the art was drawn for.
-   */
-  key: [number, number]
-  keyScale: number
-  /** Total rig height in the same pixel space, used to scale to the lane. */
+  /** Feet to crown in the same pixel space, used to scale to the lane. */
   height: number
 }
 
-const GEOMETRY: Record<string, Geometry> = {
-  // The plain starter toy: bare tin, no paint, no archetype yet. Redrawn from
-  // the Tinbot sheet so it shares its proportions — a different finish, not a
-  // different build.
-  windup: {
-    torso: [162, 172],
-    scale: { head: 0.95, arm: 0.42, leg: 0.46, key: 0.75 },
-    neck: [0.46, 0.0], shoulderY: 0.2, hipY: 0.95,
-    armSpread: 0.2, legSpread: 0.14,
-    key: [1.0, 0.35], keyScale: 0.75, height: 330,
-  },
-  // Boxy robot: wide flat torso, square head sitting straight on top.
-  tinbot: {
-    torso: [162, 172],
-    scale: { head: 0.95, arm: 0.42, leg: 0.46, key: 0.75 },
-    neck: [0.46, 0.0], shoulderY: 0.2, hipY: 0.95,
-    armSpread: 0.2, legSpread: 0.14,
-    key: [1.0, 0.35], keyScale: 0.75, height: 330,
-  },
-  // Rocket: tall narrow capsule, wide cone head, blade limbs.
-  jetster: {
-    torso: [138, 284],
-    scale: { head: 0.8, arm: 0.5, leg: 0.4, key: 0.7 },
-    neck: [0.55, 0.06], shoulderY: 0.2, hipY: 0.95,
-    armSpread: 0.46, legSpread: 0.18,
-    key: [1.0, 0.4], keyScale: 0.7, height: 420,
-  },
-  // Duck: round head and fat egg body, short webbed legs.
-  waddler: {
-    torso: [198, 176],
-    scale: { head: 0.9, arm: 0.55, leg: 0.8, key: 0.75 },
-    neck: [0.46, 0.0], shoulderY: 0.22, hipY: 0.94,
-    armSpread: 0.42, legSpread: 0.16,
-    key: [1.0, 0.34], keyScale: 0.75, height: 380,
-  },
-  // Dinosaur: long snout, spined body, thick legs.
-  chomper: {
-    torso: [214, 172],
-    scale: { head: 0.9, arm: 0.52, leg: 0.85, key: 0.75 },
-    neck: [0.44, 0.02], shoulderY: 0.2, hipY: 0.94,
-    armSpread: 0.4, legSpread: 0.16,
-    key: [1.0, 0.32], keyScale: 0.75, height: 380,
-  },
+/**
+ * Both spreads follow from the limb's own width, so a wider wing or a thinner
+ * fin lands correctly without anyone touching this file.
+ *
+ * Hips are one leg-width apart, which puts the two legs' inner edges on the
+ * centre line — the narrow stance that was chosen on live sliders in the first
+ * place. The rule reproduces all four hand-picked values to within 0.005,
+ * except Jetster's 0.18 where it says 0.162.
+ *
+ * Shoulders sit so the arm hangs flush with the flank. That rule agrees with
+ * the values picked by eye for the rocket, the duck and the dinosaur; the one
+ * it disagrees with is Tinbot's 0.2, which tucked the arm so far in that the
+ * hand landed in the middle of the chest, over the gauge panel. At 48-64px an
+ * arm that never reaches the silhouette contributes nothing to §10's "which one
+ * is mine", and at portrait size it reads as a smear across the paintwork.
+ */
+function measure(images: Record<PartName, HTMLImageElement>): Geometry {
+  const tw = images.torso.width
+  const th = images.torso.height
+  return {
+    torso: [tw, th],
+    // The arm's outer edge sits a little PAST the torso's, not flush with it.
+    // Flush is what the derived rule first produced, and the arithmetic is
+    // exact: on Jetster it put the fin's outer edge at 55.5 against a torso
+    // edge of 55.5, so the near fin was a strip painted onto the capsule and
+    // the far one was entirely behind it. Every portrait screen draws at rest,
+    // so the rocket was finless everywhere except mid-stride — and CLAUDE.md's
+    // locked table defines Jetster as a rocket with three fins. A third of an
+    // arm-width of daylight is enough to read at 48px and still keeps Tinbot's
+    // hand off the gauge panel, which is what flush was fixing.
+    armSpread: 0.5 - (images.arm.width * SCALE.arm * 0.15) / tw,
+    legSpread: (images.leg.width * SCALE.leg) / (2 * tw),
+    // Where drawRacer actually puts the feet and the crown, rather than a
+    // number typed next to them. The four constants this replaces were between
+    // 6% short and 13% long, so a Tinbot came out a fifth taller than a Waddler
+    // asked for at the same size — on the race track, side by side.
+    height: th * (HIP_Y - NECK[1])
+      + SCALE.leg * images.leg.height
+      + 0.94 * SCALE.head * images.head.height,
+  }
 }
 
 export interface RacerRig {
   ready: boolean
   images: Partial<Record<PartName, HTMLImageElement>>
-  geo: Geometry
+  /** Measured once the parts are in; nothing draws before then. */
+  geo: Geometry | null
 }
 
 /**
@@ -136,13 +142,15 @@ const ART_FOLDER: Record<string, string> = {
 
 export function loadRacerRig(archetype = 'windup'): RacerRig {
   const folder = ART_FOLDER[archetype] ?? ART_FOLDER.windup
-  const rig: RacerRig = { ready: false, images: {}, geo: GEOMETRY[folder] ?? GEOMETRY.tinbot }
+  const rig: RacerRig = { ready: false, images: {}, geo: null }
   let pending = PART_NAMES.length
   for (const name of PART_NAMES) {
     const img = new Image()
     img.onload = () => {
       rig.images[name] = img
-      if (--pending === 0) rig.ready = true
+      if (--pending > 0) return
+      rig.geo = measure(rig.images as Record<PartName, HTMLImageElement>)
+      rig.ready = true
     }
     img.src = `${THEME.art.basePath}${folder}/${name}.png`
   }
@@ -241,7 +249,7 @@ function part(
 ): void {
   const im = rig.images[name]
   if (!im) return
-  const k = rig.geo.scale[name]
+  const k = SCALE[name]
   // Pivots are expressed against the part's own size, so a wider head or a
   // longer leg lands on the same joint without a new constant.
   const px = name === 'head' ? im.width * k * 0.5 : im.width * k * 0.5
@@ -264,13 +272,13 @@ function part(
  */
 function drawKey(ctx: CanvasRenderingContext2D, rig: RacerRig, angleDeg: number): void {
   const im = rig.images.key
-  if (!im) return
-  const g = rig.geo
-  const k = g.keyScale
+  if (!im || !rig.geo) return
+  const [tw, th] = rig.geo.torso
+  const k = SCALE.key
   const c = Math.cos((angleDeg * Math.PI) / 180)
   const squash = Math.sign(c || 1) * Math.max(KEY_MIN_EDGE, Math.abs(c))
   ctx.save()
-  ctx.translate(g.torso[0] * g.key[0], g.torso[1] * g.key[1])
+  ctx.translate(tw * KEY[0], th * KEY[1])
   ctx.scale(1, squash)
   ctx.drawImage(im, -im.width * k * 0.25, -im.height * k * 0.5, im.width * k, im.height * k)
   ctx.restore()
@@ -295,7 +303,7 @@ export interface DrawOptions {
 }
 
 export function drawRacer(ctx: CanvasRenderingContext2D, rig: RacerRig, o: DrawOptions): void {
-  if (!rig.ready) return
+  if (!rig.ready || !rig.geo) return
   const g = rig.geo
   const facing = o.facing ?? 1
   const k = o.height / g.height
@@ -317,11 +325,11 @@ export function drawRacer(ctx: CanvasRenderingContext2D, rig: RacerRig, o: DrawO
   ctx.rotate((facing * 4 * Math.PI) / 180)
   ctx.scale(k * facing * ART_FACING, k)
   // Origin at the torso's top-left, with the feet landing on y = 0.
-  ctx.translate(-tw / 2, -th * g.hipY - g.scale.leg * (rig.images.leg?.height ?? 0))
+  ctx.translate(-tw / 2, -th * HIP_Y - SCALE.leg * (rig.images.leg?.height ?? 0))
   ctx.translate(0, -Math.abs(swing) * th * 0.05)
 
-  const shoulderY = th * g.shoulderY
-  const hipY = th * g.hipY
+  const shoulderY = th * SHOULDER_Y
+  const hipY = th * HIP_Y
   const armX = tw * g.armSpread
   const legX = tw * g.legSpread
 
@@ -333,7 +341,7 @@ export function drawRacer(ctx: CanvasRenderingContext2D, rig: RacerRig, o: DrawO
   const torso = rig.images.torso
   if (torso) ctx.drawImage(torso, 0, 0, tw, th)
 
-  part(ctx, rig, 'head', tw * g.neck[0], th * g.neck[1], swing * 3)
+  part(ctx, rig, 'head', tw * NECK[0], th * NECK[1], swing * 3)
   part(ctx, rig, 'leg', tw / 2 + legX, hipY, legAngle(o.phase))
   part(ctx, rig, 'arm', tw / 2 + armX, shoulderY, swing * 22)
   ctx.restore()

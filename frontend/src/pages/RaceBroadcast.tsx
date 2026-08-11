@@ -28,6 +28,34 @@ interface RaceEvent {
   affectedIds: number[]
 }
 
+/**
+ * An item this player pressed, and the tick the SERVER picked for it.
+ *
+ * The five seconds between the two are not latency and cannot be tuned away: an
+ * item may only be scheduled onto a tick nobody has watched yet, which is the
+ * whole reason a running race can accept input and still be one deterministic
+ * function of its seed (backend/src/simulation/items.ts). So the wait stays,
+ * and instead of hiding it the screen shows it — the toy it will land on is
+ * marked from the press, and the ring around that toy closes as the tick comes
+ * up. Before this the press produced a toast and, five seconds later, something
+ * happened on the track with nothing joining the two.
+ */
+interface DeployedItem {
+  key: number
+  code: 'boost' | 'hinder'
+  /** Who it lands on. `boost` acts on its user, so that is the player's racer. */
+  targetId: number
+  tick: number
+  /**
+   * The tick the player was watching when they pressed. The wait is measured
+   * against this and not against a constant, because the two are not the same
+   * number: the server counts from its own clock and playback is a few seconds
+   * behind it, so a fixed five-second bar sat empty for most of the wait and
+   * then filled in a hurry.
+   */
+  from: number
+}
+
 interface FinalOrder {
   id: number
   wallet: string
@@ -69,6 +97,21 @@ const PER_RACE_STAT_GAIN = 0.4
 const TICKS_PER_SECOND = 10
 /** Ticks between pressing an item and it taking effect (backend ITEM_TUNING). */
 const ITEM_DELAY_TICKS = 50
+/** Ticks an item keeps working once it lands (ITEM_TUNING.durationTicks). */
+const ITEM_DURATION_TICKS = 50
+
+/**
+ * The line, and the beat it never had.
+ *
+ * Playback ran at one speed straight through the banner and then handed the
+ * screen to a result panel, so the single moment a race exists to produce was
+ * reported rather than shown. Easing off over the run-in and then holding the
+ * crossing frame is punctuation, not a cutscene: the hold is under a second and
+ * the rest of the field still runs itself out behind the winner afterwards.
+ */
+const FINISH_EASE_UNITS = 26
+const FINISH_EASE_SCALE = 0.42
+const FINISH_HOLD_MS = 620
 
 const RACER_COLORS = ['#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D', '#E63946', '#2A6FDB', '#FFC93C', '#4CAF6D']
 
@@ -122,6 +165,10 @@ const PALETTE = {
   paper: '#FFFDF7',
   dust: '#7A7488',
   gold: '#E0A32E',
+  // --color-brand-danger. Here for the same reason as the rest: a hindered toy
+  // has to be marked in the interface's warning colour, and the canvas cannot
+  // read the stylesheet once a frame.
+  danger: '#E63946',
 } as const
 
 export default function RaceBroadcast() {
@@ -224,13 +271,41 @@ export default function RaceBroadcast() {
    */
   const [racePhase, setRacePhase] = useState<'racing' | 'finished'>('racing')
   const [canvasFlash, setCanvasFlash] = useState<string | null>(null)
+  /**
+   * Who is crossing, for as long as the crossing frame is held. Playback stops
+   * on that frame, so this is the only thing on screen that moves.
+   */
+  const [crossingWinner, setCrossingWinner] = useState<string | null>(null)
   // Items the player still has. The server owns the tick an item lands on, so
   // the client only ever asks — it never proposes a moment.
   const [itemsLeft, setItemsLeft] = useState<string[]>([])
   /** The stock the racer carries between races, not what is left in this one. */
   const [itemStock, setItemStock] = useState(0)
+  /**
+   * How long a press will actually take to land, in ticks, measured rather than
+   * assumed.
+   *
+   * The rule is five seconds past the server's frontier, and the button quoted
+   * that number — but playback starts a page load and a countdown after the
+   * server's clock does and never catches up, so the wait a player watches is
+   * that lag plus five, and it was closer to ten. The server hands back both
+   * its frontier and the tick it chose, so the difference is knowable instead
+   * of guessed at, and the button and the countdown can agree.
+   */
+  const [landDelayTicks, setLandDelayTicks] = useState(ITEM_DELAY_TICKS)
   const [deploying, setDeploying] = useState(false)
   const [aimingAt, setAimingAt] = useState<'hinder' | null>(null)
+  /**
+   * Items in flight. The list is mirrored into a ref because the canvas draws
+   * them every frame and the canvas must never be a reason to restart the
+   * animation — restarting it is the bug that killed Tactic Mode, and the
+   * playback effect reads refs for exactly that reason.
+   */
+  const [deployed, setDeployed] = useState<DeployedItem[]>([])
+  const deployedRef = useRef<DeployedItem[]>([])
+  const deployKeyRef = useRef(0)
+  /** Keys already announced, so a landing lands once and not once per frame. */
+  const landedRef = useRef<Set<number>>(new Set())
 
   /**
    * Re-ask the server for the simulation.
@@ -823,6 +898,81 @@ export default function RaceBroadcast() {
         ctx.textAlign = 'left'
         ctx.fillText(p.label, p.x + 25, p.y + p.h / 2 + 0.5)
       }
+
+      /**
+       * Pass three: the player's own item, on the toy it belongs to.
+       *
+       * A deployed item is a speed multiplier and not an engine event, so the
+       * track carried no cue for one at all — the toy simply got faster five
+       * seconds after a button was pressed. So the target is marked from the
+       * moment the item is armed: a ring that closes as its tick comes up, a
+       * burst on arrival, and then the same ring draining back down over the
+       * five seconds the effect runs.
+       *
+       * A third pass for the same reason the plates are a second one: drawn
+       * inside the back-to-front toy loop, a nearer toy paints over the ring of
+       * the toy behind it. The paper underlay is not decoration either — the
+       * hinder ring is the same red as one of the four archetype accents, and
+       * without it the ring would vanish on that toy.
+       */
+      for (const r of placed) {
+        if (r.cx < SIDE_MARGIN - r.h * 0.6) continue
+        for (const it of deployedRef.current) {
+          if (it.targetId !== r.pos.id) continue
+          const lead = it.tick - frame.tick
+          if (lead <= -ITEM_DURATION_TICKS) continue
+
+          const tint = it.code === 'boost' ? PALETTE.gold : PALETTE.danger
+          const cy = r.ground - r.h * 0.52
+          const rad = r.h * 0.58
+          // Armed: the ring fills toward the landing. Landed: it drains.
+          const sweep =
+            lead > 0
+              ? Math.max(0, Math.min(1, (frame.tick - it.from) / Math.max(1, it.tick - it.from)))
+              : 1 + lead / ITEM_DURATION_TICKS
+
+          ctx.save()
+          ctx.lineCap = 'round'
+
+          ctx.globalAlpha = 0.5
+          ctx.strokeStyle = PALETTE.paper
+          ctx.lineWidth = 6
+          ctx.beginPath()
+          ctx.arc(r.cx, cy, rad, 0, Math.PI * 2)
+          ctx.stroke()
+
+          ctx.globalAlpha = 0.3
+          ctx.strokeStyle = PALETTE.ink
+          ctx.lineWidth = 1.5
+          ctx.setLineDash([4, 5])
+          ctx.beginPath()
+          ctx.arc(r.cx, cy, rad, 0, Math.PI * 2)
+          ctx.stroke()
+          ctx.setLineDash([])
+
+          ctx.globalAlpha = lead > 0 ? 0.9 : 1
+          ctx.strokeStyle = tint
+          ctx.lineWidth = 3.5
+          ctx.beginPath()
+          ctx.arc(r.cx, cy, rad, -Math.PI / 2, -Math.PI / 2 + sweep * Math.PI * 2)
+          ctx.stroke()
+
+          // The arrival itself: one ring expanding out of the toy over half a
+          // second, so the tick the server chose is a moment and not a state
+          // the player has to notice having changed.
+          const age = -lead
+          if (age >= 0 && age < 6) {
+            const t = age / 6
+            ctx.globalAlpha = 0.6 * (1 - t)
+            ctx.lineWidth = 5 * (1 - t) + 1.5
+            ctx.beginPath()
+            ctx.arc(r.cx, cy, rad * (1 + t * 1.2), 0, Math.PI * 2)
+            ctx.stroke()
+          }
+
+          ctx.restore()
+        }
+      }
     }
 
     /**
@@ -862,7 +1012,44 @@ export default function RaceBroadcast() {
 
       setLivePositions(live)
       setCurrentTick(frame.tick)
-      currentTickRef.current = fi
+      // The engine tick, not the frame index. The server sends every third
+      // frame, so the index advances at a third of the tick and the two come
+      // apart further the longer the race runs — by the finish of a sprint the
+      // index is short by well over a hundred. Anything comparing the frame on
+      // screen against a tick the server chose has to read a tick.
+      currentTickRef.current = frame.tick
+
+      /**
+       * The landing, everywhere except the canvas.
+       *
+       * The block below reacts to engine events, and a deployed item does not
+       * produce one — it multiplies a speed. So none of this ever fired for the
+       * one thing the player actually did: no sound, no flash, no line of
+       * commentary. The tick came and the toy quietly went faster.
+       */
+      for (const it of deployedRef.current) {
+        if (landedRef.current.has(it.key) || frame.tick < it.tick) continue
+        landedRef.current.add(it.key)
+        const lane = frame.positions.findIndex(p => p.id === it.targetId)
+        if (it.code === 'boost') {
+          if (lane >= 0) showEmote(lane, 'boost_self')
+          sfxBoost()
+          setCanvasFlash('rgba(224, 163, 46, 0.20)')
+        } else {
+          if (lane >= 0) showEmote(lane, 'projectile_hit')
+          sfxProjectileHit()
+          setCanvasFlash('rgba(230, 57, 70, 0.18)')
+        }
+        setTimeout(() => setCanvasFlash(null), 300)
+        const line = getCommentary(
+          it.code === 'boost' ? 'tactic_boost' : 'tactic_projectile',
+          { name: names.get(it.targetId) }
+        )
+        if (line) {
+          setCommentary(line)
+          setTimeout(() => setCommentary(null), 3000)
+        }
+      }
 
       const nearEvent = events.find(e => Math.abs(e.tick - frame.tick) < 3)
       if (nearEvent) {
@@ -1023,6 +1210,11 @@ export default function RaceBroadcast() {
     let lastTime = 0
     let framePos = 0
     let lastAdvanced = -1
+    /** How far the leader had got at the last drawn frame, for the run-in ease. */
+    let lastLead = 0
+    /** While set, playback is frozen on the crossing frame until this timestamp. */
+    let holdUntil = 0
+    let crossed = false
     pausedRef.current = false
 
     function animate(time: number) {
@@ -1033,19 +1225,51 @@ export default function RaceBroadcast() {
         }
         return
       }
+      // The hold. Nothing advances and nothing is redrawn, so the freeze is
+      // literally the frame the leader crossed on.
+      if (holdUntil > 0) {
+        if (time < holdUntil) {
+          animFrameRef.current = requestAnimationFrame(animate)
+          return
+        }
+        holdUntil = 0
+        lastTime = time // the hold must not count as elapsed race time either
+        setCrossingWinner(null)
+      }
       if (lastTime === 0) lastTime = time
       // Clamped: a backgrounded tab must not fast-forward the race on return.
-      const dt = Math.min(120, time - lastTime)
+      let dt = Math.min(120, time - lastTime)
       lastTime = time
+      // Ease off over the last stretch, so the banner arrives rather than going
+      // past. Half a second of race time, stretched to about one.
+      if (!crossed && lastLead > trackLength - FINISH_EASE_UNITS) dt *= FINISH_EASE_SCALE
       framePos += dt / FRAME_DELAY
 
       const live = framesRef.current
       const fi = Math.floor(framePos)
       if (framePos < live.length - 1) {
-        renderFrame(frameAt(framePos))
+        const shown = frameAt(framePos)
+        renderFrame(shown)
+        lastLead = shown.positions.reduce((m, pt) => Math.max(m, pt.distance), 0)
         if (fi !== lastAdvanced) {
           lastAdvanced = fi
           advanceFrame(fi, live[fi])
+        }
+        // The crossing, and it belongs here rather than at the end of the frame
+        // list: the winner reaches the line several seconds before the last
+        // racer does, and the beat is the winner's. The engine clamps a
+        // finisher's distance to the track length, so this is true from the
+        // crossing frame onward and fires on the first of them.
+        if (!crossed && lastLead >= trackLength) {
+          crossed = true
+          holdUntil = time + FINISH_HOLD_MS
+          const first = [...shown.positions].sort((a, b) => b.distance - a.distance)[0]
+          setCrossingWinner(first ? names.get(first.id) ?? null : null)
+          // Half a flash, not a whiteout. The hold is there to be looked at, and
+          // at full strength the wash covered most of it.
+          setCanvasFlash('rgba(255, 253, 247, 0.5)')
+          setTimeout(() => setCanvasFlash(null), 300)
+          sfxFinish()
         }
       } else {
         const lastFrame = live[live.length - 1]
@@ -1055,7 +1279,10 @@ export default function RaceBroadcast() {
           lastFrame?.positions.slice().sort((a, b) => b.distance - a.distance)[0]?.id || 0
         )
         if (winnerName) setCommentary(getCommentary('finish', { name: winnerName }))
-        sfxFinish()
+        // Only if the crossing itself never happened — a simulation that capped
+        // out leaves everyone short of the line. Otherwise the sting has
+        // already played, on the frame it belongs to.
+        if (!crossed) sfxFinish()
         // Ask once more, now the clock has run out. The server settles a race
         // only when its own clock says it is over, and the client asked exactly
         // once — at the start, when it never is. So a race the player finished
@@ -1110,12 +1337,32 @@ export default function RaceBroadcast() {
   }, [raceData?.raceId, isDemo])
 
   // Load the player's remaining items once the race is running.
+  //
+  // After the countdown, not before it: `earliestTick` is measured against the
+  // server's clock, and the gap between that clock and the frame on screen is
+  // the thing being measured. Asking during the countdown would miss the two
+  // and a half seconds the countdown itself costs, and there is nothing to
+  // deploy while the toys are still standing on the line anyway.
   useEffect(() => {
-    if (!id || !playerRacerId || racePhase !== 'racing') return
+    if (!id || !playerRacerId || racePhase !== 'racing' || !started) return
     api.getRaceItems(id, playerRacerId)
-      .then(d => { setItemsLeft(d.remaining); setItemStock(d.itemStock ?? 0) })
+      .then(d => {
+        setItemsLeft(d.remaining)
+        setItemStock(d.itemStock ?? 0)
+        setLandDelayTicks(Math.max(ITEM_DELAY_TICKS, d.earliestTick - currentTickRef.current))
+      })
       .catch(() => { /* a spectator has no loadout; the controls stay hidden */ })
-  }, [id, playerRacerId, racePhase])
+  }, [id, playerRacerId, racePhase, started])
+
+  // Retire an item once its five seconds are up. The ref goes first because the
+  // canvas reads that one on every frame and the state only on the next render.
+  useEffect(() => {
+    if (deployed.length === 0) return
+    const running = deployed.filter(it => currentTick < it.tick + ITEM_DURATION_TICKS)
+    if (running.length === deployed.length) return
+    deployedRef.current = running
+    setDeployed(running)
+  }, [currentTick, deployed])
 
 
   if (loading) {
@@ -1283,6 +1530,45 @@ export default function RaceBroadcast() {
           )}
         </AnimatePresence>
 
+        {/* The crossing. Playback is frozen on this frame underneath, so the
+            name and the flag are the only things moving — and no dimming
+            behind them, because the point is to look at the frozen frame. */}
+        <AnimatePresence>
+          {crossingWinner && (
+            <motion.div
+              key="crossing"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 pointer-events-none"
+            >
+              <motion.span
+                initial={{ scale: 1.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 340, damping: 17 }}
+                className="text-4xl leading-none"
+                aria-hidden
+              >
+                {'\u{1F3C1}'}
+              </motion.span>
+              <motion.span
+                initial={{ scale: 1.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 18, delay: 0.05 }}
+                className="text-brand-surface font-black text-center px-3"
+                style={{
+                  fontSize: '2rem',
+                  WebkitTextStroke: `4px ${PALETTE.ink}`,
+                  paintOrder: 'stroke fill',
+                }}
+              >
+                {crossingWinner}
+              </motion.span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <canvas
           ref={canvasRef}
           className="w-full"
@@ -1413,6 +1699,65 @@ export default function RaceBroadcast() {
 
       </div>
 
+      {/* From the press to the landing.
+          The server schedules an item onto a tick nobody has watched yet, and
+          that rule is the only reason a running race can take input at all — so
+          the wait is a fixture, not a defect to be hidden. This says what is in
+          flight, on whom, and how much longer; the ring drawn on the toy itself
+          says the same thing in the same colour, which is the join that was
+          missing. */}
+      <AnimatePresence>
+        {!raceFinished && deployed.length > 0 && (
+          <motion.div
+            key="in-flight"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="space-y-2 mb-4"
+          >
+            {deployed.map(it => {
+              const armed = currentTick < it.tick
+              const target = livePositions.find(p => p.id === it.targetId)
+              const secs = Math.max(0, (it.tick - currentTick) / TICKS_PER_SECOND)
+              const fill = Math.max(0, Math.min(1,
+                armed
+                  ? (currentTick - it.from) / Math.max(1, it.tick - it.from)
+                  : 1 - (currentTick - it.tick) / ITEM_DURATION_TICKS
+              ))
+              const tone = it.code === 'boost' ? 'bg-brand-gold' : 'bg-brand-danger'
+              return (
+                <div key={it.key} className="toy-panel px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-3 w-3 shrink-0 rounded-full border-2 border-brand-ink ${tone}`}
+                      aria-hidden
+                    />
+                    <span className="text-brand-ink text-xs font-bold shrink-0">
+                      {THEME.items[it.code].name}
+                    </span>
+                    <span className="text-brand-dust text-[11px] truncate flex-1">
+                      {it.code === 'boost'
+                        ? 'on your racer'
+                        : `on ${target?.name ?? `#${it.targetId}`}`}
+                    </span>
+                    <span className="text-brand-ink text-[11px] font-bold tabular-nums shrink-0">
+                      {armed ? `lands in ${secs.toFixed(1)}s` : 'working'}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2 rounded-full border-2 border-brand-ink bg-brand-ink/10 overflow-hidden">
+                    <div
+                      className={`h-full ${tone} transition-[width] duration-300 ease-linear`}
+                      style={{ width: `${fill * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Item controls.
           `hinder` names its victim. It used to land on whoever happened to be
           leading, which looked like a decision and was not one — the game chose
@@ -1430,7 +1775,7 @@ export default function RaceBroadcast() {
           if (!id || !playerRacerId || !wallet) return
           setDeploying(true)
           try {
-            await api.deployItem(id, playerRacerId, wallet, code, targetId)
+            const sent = await api.deployItem(id, playerRacerId, wallet, code, targetId)
             await refreshSimulation()
             setItemsLeft(prev => {
               const next = [...prev]
@@ -1438,7 +1783,21 @@ export default function RaceBroadcast() {
               return next
             })
             setItemStock(v => Math.max(0, v - 1))
-            toast.success(`${THEME.items[code].name} away!`)
+            // Keep the tick the server chose. It is the whole link between the
+            // press and the thing that happens on the track five seconds later,
+            // and the toast that used to stand here reported the press and then
+            // left the player to spot the effect on their own.
+            const entry: DeployedItem = {
+              key: ++deployKeyRef.current,
+              code,
+              targetId: code === 'boost' ? playerRacerId : Number(targetId),
+              tick: sent.tick,
+              from: currentTickRef.current,
+            }
+            deployedRef.current = [...deployedRef.current, entry]
+            setDeployed(deployedRef.current)
+            // What the wait actually was, for the next press on this screen.
+            setLandDelayTicks(Math.max(ITEM_DELAY_TICKS, sent.tick - currentTickRef.current))
           } catch (err: any) {
             toast.error(err.message)
           }
@@ -1477,9 +1836,15 @@ export default function RaceBroadcast() {
                       // so the button has to say what pressing it costs. "Last
                       // one" is the whole reason the decision exists.
                       <span className="block text-[10px] font-normal opacity-70">
+                        {/* The delay is measured, not quoted from the rule. The
+                            rule is five seconds past the server's frontier; what
+                            the player waits is that plus however far the frame on
+                            screen trails the server's clock, and the strip above
+                            counts down the real figure. Two numbers on one screen
+                            disagreeing is worse than either being approximate. */}
                         {itemStock === 1
-                          ? 'your last one \u00B7 lands ~' + (ITEM_DELAY_TICKS / TICKS_PER_SECOND).toFixed(0) + 's later'
-                          : `${itemStock} in stock \u00B7 lands ~${(ITEM_DELAY_TICKS / TICKS_PER_SECOND).toFixed(0)}s later`}
+                          ? 'your last one \u00B7 lands ~' + (landDelayTicks / TICKS_PER_SECOND).toFixed(0) + 's later'
+                          : `${itemStock} in stock \u00B7 lands ~${(landDelayTicks / TICKS_PER_SECOND).toFixed(0)}s later`}
                       </span>
                     )}
                   </button>
